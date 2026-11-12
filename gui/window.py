@@ -520,8 +520,8 @@ class MainWindow(QMainWindow):
     def _on_video_open(self, source: str, title: str, muted: bool,
                        audio_source: str = "") -> None:
         if not HAVE_VIDEO or not self._video_player:
-            self._log.append_log("SYS: Video playback is not available in this Qt "
-                           "install.")
+            self._log.append_log("SYS: A reprodução de vídeo não está disponível nesta "
+                           "versão do Qt.")
             return
         # A video and the live camera cannot share the centre of the HUD.
         self._cam_stop.set()
@@ -569,8 +569,8 @@ class MainWindow(QMainWindow):
         pixmap = QPixmap(path)
         if pixmap.isNull():
             self._log.append_log(
-                f"SYS: '{Path(path).name}' could not be shown — this Qt build "
-                f"does not read that image format."
+                f"SYS: Não foi possível exibir '{Path(path).name}' — esta versão "
+                f"do Qt não lê esse formato de imagem."
             )
             return
 
@@ -679,11 +679,11 @@ class MainWindow(QMainWindow):
                         and not self._video_sound_out.isMuted())
         if sound_on and not self._muted:
             self._video_auto_muted = True
-            self._set_muted(True, "The video's sound is on — silence it, close "
-                                  "it, or press F4 to talk. Typing still works.")
+            self._set_muted(True, "O vídeo está com som — silencie ou feche o vídeo, "
+                                  "ou pressione F4 para falar. Você ainda pode digitar.")
         elif not sound_on and self._video_auto_muted:
             self._video_auto_muted = False
-            self._set_muted(False, "The video is quiet again.")
+            self._set_muted(False, "O vídeo voltou a ficar sem som.")
 
     def _sync_video_sound(self) -> None:
         """Keep the separate soundtrack in step with the picture.
@@ -721,7 +721,7 @@ class MainWindow(QMainWindow):
             err = self._video_player.errorString()
         except Exception:
             pass
-        self._log.append_log(f"SYS: The video could not be played{(' — ' + err) if err else ''}.")
+        self._log.append_log(f"SYS: Não foi possível reproduzir o vídeo{(' — ' + err) if err else ''}.")
         self._on_video_close()
 
     def stop_video(self) -> None:
@@ -1121,9 +1121,9 @@ class MainWindow(QMainWindow):
                 )
                 desk.chmod(desk.stat().st_mode | 0o755)
 
-            self._log.append_log("SYS: Desktop shortcut created.")
+            self._log.append_log("SYS: Atalho criado na área de trabalho.")
         except Exception as e:
-            self._log.append_log(f"ERR: Shortcut failed — {e}")
+            self._log.append_log(f"ERR: Não foi possível criar o atalho — {e}")
 
     def _toggle_fullscreen(self):
         if self.isFullScreen():
@@ -1185,13 +1185,13 @@ class MainWindow(QMainWindow):
         if gpu >= 0:
             self._g_gpu.set_value(gpu, f"{gpu:.0f}%")
         else:
-            self._g_gpu.set_value(0, "N/A")
+            self._g_gpu.set_value(0, "N/D")
 
         tmp = snap["tmp"]
         if tmp >= 0:
             self._g_tmp.set_value(min(100.0, tmp), f"{tmp:.0f}°")
         else:
-            self._g_tmp.set_value(0, "N/A")
+            self._g_tmp.set_value(0, "N/D")
 
         # NET in MB/s: the graph scales itself, the panel header carries the figure
         net = snap["net"]
@@ -1283,7 +1283,7 @@ class MainWindow(QMainWindow):
 
     @staticmethod
     def _subtitle(display: str) -> str:
-        return ("Just A Rather Very Intelligent System"
+        return ("Sistema Extremamente Inteligente e Versátil"
                 if display.replace(".", "") == "JINX" else "Personal AI Assistant")
 
     def _fit_side_columns(self) -> None:
@@ -1305,7 +1305,7 @@ class MainWindow(QMainWindow):
         try:
             from memory.config_manager import get_provider_mode, get_voice
             mode = str(get_provider_mode() or "gemini")
-            engine = "GEMINI LIVE" if mode == "gemini" else f"LOCAL {mode.upper()}"
+            engine = "GEMINI LIVE" if mode == "gemini" else "LOCAL"
             voice = str(get_voice() or "--").upper()
         except Exception:
             engine, voice = "GEMINI LIVE", "--"
@@ -1503,7 +1503,7 @@ class MainWindow(QMainWindow):
                 desktop.mirror_brief_switch(r["enabled"])
                 self._update_brief_btn(r["enabled"])
         except Exception as e:
-            self._log.append_log(f"SYS: Routine not changed — {e}")
+            self._log.append_log(f"SYS: A rotina não foi alterada — {e}")
         self._refresh_routines()
 
     def _open_routine(self, rid: str) -> None:
@@ -1517,10 +1517,10 @@ class MainWindow(QMainWindow):
         if not r:
             return
         stamp = lambda ts: _time.strftime("%Y-%m-%d %H:%M", _time.localtime(ts))  # noqa: E731
-        lines = [r["name"], "", f"When: {eng.describe(r)}"]
+        lines = [r["name"], "", f"Quando: {eng.describe(r)}"]
         if r["trigger"]["type"] == "time" and r.get("next_ts") and r.get("enabled"):
-            lines.append(f"Next: {stamp(r['next_ts'])}")
-        what = {"say": "Says", "prompt": "Carries out", "task": "Background task"}.get(r["kind"])
+            lines.append(f"Próxima execução: {stamp(r['next_ts'])}")
+        what = {"say": "Fala", "prompt": "Executa", "task": "Tarefa em segundo plano"}.get(r["kind"])
         if what and r.get("text"):
             lines.append(f"{what}: {r['text']}")
         for key, value in (r.get("options") or {}).items():
@@ -1529,14 +1529,14 @@ class MainWindow(QMainWindow):
                 lines += [f"  · {v}" for v in value]
             elif value not in ("", None):
                 lines.append(f"{key}: {value}")
-        state = "on" if r.get("enabled") else "off"
-        lines.append(f"State: {state}{' · held back in quiet hours' if r.get('quiet') else ''}"
-                     f" · ran {int(r.get('runs') or 0)} times")
+        state = "ativada" if r.get("enabled") else "desativada"
+        lines.append(f"Estado: {state}{' · pausada no horário silencioso' if r.get('quiet') else ''}"
+                     f" · executada {int(r.get('runs') or 0)} vez(es)")
         if r.get("last_run"):
-            lines.append(f"Last: {stamp(r['last_run'])} — {r.get('last_result') or ''}")
-        lines += ["", "Change it by voice — \"move the briefing to 08:30\", "
-                      "\"turn the check-in off\", \"remind me every Friday at 17:00\"."]
-        self._show_content("ROUTINE", "\n".join(lines)[:4000])
+            lines.append(f"Última execução: {stamp(r['last_run'])} — {r.get('last_result') or ''}")
+        lines += ["", "Altere por voz — \"mude o resumo para 08:30\", "
+                      "\"desative a verificação diária\", \"lembre-me toda sexta às 17:00\"."]
+        self._show_content("ROTINA", "\n".join(lines)[:4000])
 
     def _refresh_tasks(self) -> None:
         if getattr(self, "_tasks_stack", None) is not None and self._tasks_stack.currentIndex() == 1:
@@ -1555,7 +1555,7 @@ class MainWindow(QMainWindow):
             row.set_task(task)
             row.setVisible(task is not None)
         self._tasks_empty.setVisible(not shown)
-        self._tasks_panel.set_code(f"{len(active)} ACTIVE" if active else "")
+        self._tasks_panel.set_code(f"{len(active)} ATIVAS" if active else "")
 
     def _open_task(self, tid: str) -> None:
         try:
@@ -1569,10 +1569,14 @@ class MainWindow(QMainWindow):
         if t["status"] == "done":
             body = f"{t['title']}\n\n{(t.get('result') or '').strip()}"
             if t.get("report"):
-                body += f"\n\n— Full report: {t['report']}"
+                body += f"\n\n— Relatório completo: {t['report']}"
         else:
-            head = (f"{t['title']}\n\n{t['status']} · {t['used']['seconds'] / 60:.1f}/"
-                    f"{t['budget']['minutes']} min · {t['used']['rounds']} rounds")
+            state = {"running": "em andamento", "waiting_quota": "aguardando cota",
+                     "queued": "na fila", "scheduled": "agendada", "done": "concluída",
+                     "failed": "falhou", "cancelled": "interrompida"}.get(
+                         t["status"], t["status"])
+            head = (f"{t['title']}\n\n{state} · {t['used']['seconds'] / 60:.1f}/"
+                    f"{t['budget']['minutes']} min · {t['used']['rounds']} etapas")
             if t.get("error"):
                 head += f"\n{t['error']}"
             lines = [f"· {e['text']}" for e in (t.get("events") or [])[-14:]
@@ -1889,6 +1893,13 @@ class MainWindow(QMainWindow):
         "broken": ("RED", "!"),
     }
     _JOB_PHASES = ("reading", "planning", "writing", "checking", "testing")
+    _JOB_PHASE_LABELS = {"reading": "LENDO", "planning": "PLANEJANDO",
+                         "writing": "ESCREVENDO", "checking": "VERIFICANDO",
+                         "testing": "TESTANDO"}
+    _JOB_STATUS_LABELS = {"waiting": "AGUARDANDO", "writing": "ESCREVENDO",
+                          "done": "CONCLUÍDO", "fixing": "CORRIGINDO",
+                          "skipped": "IGNORADO", "failed": "FALHOU",
+                          "broken": "INTERROMPIDO"}
 
     def _show_code_job(self, job: dict):
         """Slot — Qt main thread. Draws the coding agent's progress."""
@@ -1909,26 +1920,28 @@ class MainWindow(QMainWindow):
         for i, ph in enumerate(phases):
             c = C.GREEN if i < here else (C.PRI if i == here else C.TEXT_DIM)
             mark = "●" if i <= here else "○"
-            strip.append(f'<span style="color:{c};">{mark} {ph.upper()}</span>')
+            phase_label = self._JOB_PHASE_LABELS.get(ph, ph.upper())
+            strip.append(f'<span style="color:{c};">{mark} {phase_label}</span>')
         if finished:
             fin = C.GREEN if status == "done" else (C.RED if status == "failed" else C.ACC2)
-            strip.append(f'<span style="color:{fin};"><b>● {e(status.upper())}</b></span>')
+            status_label = self._JOB_STATUS_LABELS.get(status, status.upper())
+            strip.append(f'<span style="color:{fin};"><b>● {e(status_label)}</b></span>')
 
         parts = [f'<div style="color:{C.TEXT}; font-family:Courier New;">',
                  f'<div style="color:{C.TEXT_DIM};">{"  ".join(strip)}'
                  f'&nbsp;&nbsp;·&nbsp;&nbsp;{took:.0f}s</div>',
                  f'<div style="margin-top:6px;"><span style="color:{C.TEXT_DIM};">'
-                 f'REQUEST&nbsp;</span>{e(job.get("request", ""))}</div>']
+                  f'PEDIDO&nbsp;</span>{e(job.get("request", ""))}</div>']
         if job.get("summary"):
             parts.append(
                 f'<div style="color:{C.WHITE}; border-left:2px solid {C.PRI};'
                 f' padding-left:8px; margin:8px 0;">{e(job["summary"])}</div>')
         files = job.get("files") or {}
         if files:
-            parts.append(f'<div style="color:{C.TEXT_DIM}; margin-top:4px;">FILES</div>')
+            parts.append(f'<div style="color:{C.TEXT_DIM}; margin-top:4px;">ARQUIVOS</div>')
             for path, f in files.items():
                 cname, mark = self._JOB_STATES.get(f.get("state", ""), ("TEXT_DIM", "·"))
-                verb = "new " if f.get("action") == "create" else ""
+                verb = "novo " if f.get("action") == "create" else ""
                 parts.append(
                     f'<div><span style="color:{col(cname)};">{mark}</span>&nbsp;'
                     f'<span style="color:{C.WHITE};">{e(path)}</span>&nbsp;'
@@ -1939,7 +1952,7 @@ class MainWindow(QMainWindow):
         steps = job.get("steps") or []
         if steps:
             parts.append(f'<div style="color:{C.TEXT_DIM}; margin-top:8px;">'
-                         f'STEPS — newest first</div>')
+                          f'ETAPAS — mais recentes primeiro</div>')
             for t, msg in reversed(steps[-14:]):
                 parts.append(f'<div><span style="color:{C.TEXT_DIM};">{float(t):6.1f}s'
                              f'</span>&nbsp;{e(msg)}</div>')
@@ -1947,7 +1960,7 @@ class MainWindow(QMainWindow):
 
         # Only the app's own label is upper-cased — the folder name after the
         # dash is the user's, in their language (see _show_content).
-        title = (f"CODE AGENT — {job.get('folder', '')} · {job.get('model', '')}")[:48]
+        title = (f"AGENTE DE CÓDIGO — {job.get('folder', '')} · {job.get('model', '')}")[:48]
         first = self._content_title_lbl.text() != title
         self._content_title_lbl.setText(title)
         self._content_ts_lbl.setText(_time.strftime("%H:%M:%S"))
@@ -2019,7 +2032,7 @@ class MainWindow(QMainWindow):
             parts.append(
                 f'<div style="margin-top:6px; border-top:1px solid {C.BORDER};'
                 f' padding-top:7px; color:{C.TEXT_MED};">'
-                'The document does not settle:</div>')
+                'O documento não esclarece:</div>')
             for u in unclear:
                 parts.append(
                     f'<div style="margin-left:12px; color:{C.TEXT_MED};">'
@@ -2117,7 +2130,7 @@ class MainWindow(QMainWindow):
             "results": [],
             "answered": False,
         }
-        self._quiz_title_lbl.setText((topic or "quiz").upper()[:48])
+        self._quiz_title_lbl.setText((topic or "QUESTIONÁRIO").upper()[:48])
         self.hud.glance(0.0, -0.85, hold=1.3)
         self._reveal_below_hud(self._quiz_panel, 250)
         self._quiz_render()
@@ -2155,7 +2168,7 @@ class MainWindow(QMainWindow):
             h = QHBoxLayout(row); h.setContentsMargins(0, 0, 0, 0); h.setSpacing(6)
             field = QLineEdit()
             field.setFont(hud_font(9))
-            field.setPlaceholderText("your answer")
+            field.setPlaceholderText("sua resposta")
             field.setStyleSheet(f"""
                 QLineEdit {{
                     background: {C.PANEL2}; color: {C.WHITE};
@@ -2198,13 +2211,13 @@ class MainWindow(QMainWindow):
                 wdg.setEnabled(False)
 
         if verdict is True:
-            mark, colour = "✓  correct", C.GREEN
+            mark, colour = "✓  resposta correta", C.GREEN
         elif verdict is False:
             mark, colour = "✕  " + str(q.get("answer", "")), C.RED
         else:
             # Open answers and near-miss gap-fills are JINX's to judge. Saying
             # so is honest; marking it wrong here would be a guess.
-            mark, colour = "…  noted — I'll go over this one with you", C.ACC2
+            mark, colour = "…  anotado — vou revisar esta resposta com você", C.ACC2
         note = q.get("note") or ""
         self._quiz_note_lbl.setText(mark + (("\n" + note) if note else ""))
         self._quiz_note_lbl.setStyleSheet(f"color: {colour}; background: transparent;")
@@ -2235,7 +2248,7 @@ class MainWindow(QMainWindow):
         self._quiz_panel.hide()
         self._quiz = None
 
-        self._log.append_log(f"QUIZ: {topic or 'quiz'} — {right}/{total} correct")
+        self._log.append_log(f"QUESTIONÁRIO: {topic or 'questionário'} — {right}/{total} corretas")
 
         # Hand it back to JINX as a message, not as a tool return: the tool
         # call ended minutes ago. This is the same channel a dropped file uses.
@@ -2264,7 +2277,7 @@ class MainWindow(QMainWindow):
     def _build_footer(self) -> QWidget:
         self._status_strip = StatusStrip()
         self._status_strip.set_right(
-            "F4 MUTE   ·   F11 FULLSCREEN   ·   ESC INTERRUPT   ·   BY FATIHMAKES")
+            "F4 MUDO   ·   F11 TELA CHEIA   ·   ESC INTERROMPER   ·   BY FATIHMAKES")
         self._refresh_status_strip()
         return self._status_strip
 
@@ -2276,9 +2289,9 @@ class MainWindow(QMainWindow):
         if cat == "folder":
             n = self._drop_zone._folder_files
             self._file_hint.setText(
-                f"{icon}  {p.name}  ·  {n} files  ·  Tell {self._assistant_name} "
-                f"what to change in it")
-            self._log.append_log(f"FOLDER: {p.name} ({n} files) loaded")
+                f"{icon}  {p.name}  ·  {n} arquivos  ·  Diga ao {self._assistant_name} "
+                f"o que deseja alterar")
+            self._log.append_log(f"FOLDER: {p.name} ({n} arquivos) carregada")
             if self.on_text_command:
                 msg = (
                     f"[FOLDER_UPLOADED] path={path} | name={p.name} | files={n} | "
@@ -2292,8 +2305,8 @@ class MainWindow(QMainWindow):
                                  daemon=True).start()
             return
         size = _fmt_size(p.stat().st_size)
-        self._file_hint.setText(f"{icon}  {p.name}  ·  {size}  ·  Tell {self._assistant_name} what to do with it")
-        self._log.append_log(f"FILE: {p.name} ({size}) loaded")
+        self._file_hint.setText(f"{icon}  {p.name}  ·  {size}  ·  Diga ao {self._assistant_name} o que fazer com ele")
+        self._log.append_log(f"FILE: {p.name} ({size}) carregado")
         if self.on_text_command:
             msg = (
                 f"[FILE_UPLOADED] path={path} | name={p.name} | "
@@ -2309,11 +2322,11 @@ class MainWindow(QMainWindow):
 
     def _open_remote(self):
         if not self.on_remote_clicked:
-            self._log.append_log("SYS: Dashboard not running — remote unavailable.")
+            self._log.append_log("SYS: O painel remoto não está em execução — acesso indisponível.")
             return
         result = self.on_remote_clicked()
         if not result:
-            self._log.append_log("SYS: Could not generate remote key.")
+            self._log.append_log("SYS: Não foi possível gerar a chave de acesso remoto.")
             return
         url    = result[0]
         key    = result[1]
@@ -2336,7 +2349,7 @@ class MainWindow(QMainWindow):
         ov.closed.connect(lambda: setattr(self, '_remote_overlay', None))
         ov.show()
         self._remote_overlay = ov
-        self._log.append_log(f"SYS: Remote key generated — manual: {manual or url}")
+        self._log.append_log(f"SYS: Chave de acesso remoto gerada — endereço manual: {manual or url}")
 
     # ── Auto-start ──────────────────────────────────────────────────────────────
 
@@ -2415,9 +2428,9 @@ class MainWindow(QMainWindow):
             enabled = not currently_on
             self._update_autostart_btn(enabled)
             self._log.append_log(
-                f"SYS: Auto-start {'enabled' if enabled else 'disabled'}.")
+                f"SYS: Inicialização com o sistema {'ativada' if enabled else 'desativada'}.")
         except Exception as e:
-            self._log.append_log(f"ERR: Auto-start failed — {e}")
+            self._log.append_log(f"ERR: Não foi possível configurar a inicialização automática — {e}")
 
     def _update_autostart_btn(self, enabled: bool):
         if not hasattr(self, '_autostart_btn'):
@@ -2496,7 +2509,7 @@ class MainWindow(QMainWindow):
         self._ptt_btn.setToolTip(
             "Microphone stays closed until you hold the key — nothing is sent "
             "while you are not holding it." if ptt
-            else "Hold a key to talk instead of streaming the mic continuously.")
+            else "Segure uma tecla para falar, em vez de manter o microfone ativo continuamente.")
 
     def _refresh_hud_btn(self):
         from memory.config_manager import get_hud_style
@@ -2504,14 +2517,14 @@ class MainWindow(QMainWindow):
         # Neither state is "off", so both read as active — this is a choice
         # between two things, not a switch with a disabled side.
         self._hud_btn.setText("🧑  HUD: ANIMATED FACE" if face
-                              else "◉  HUD: REACTOR CORE")
+                              else "◉  HUD: NÚCLEO REATOR")
         self._hud_btn.setStyleSheet(btn_css("choice"))
         self._hud_btn.setToolTip(
-            "An animated head that speaks your words and shows what JINX is "
-            "doing. Tap to switch to the reactor core."
+            "Um rosto animado que fala suas palavras e mostra o que o JINX está "
+            "fazendo. Clique para mudar para o núcleo reator."
             if face else
-            "A 3-D reactor core that turns with the state and moves with your "
-            "voice. Tap to switch to the animated head.")
+            "Um núcleo reator 3D que gira conforme o estado e reage à sua "
+            "voz. Clique para mudar para o rosto animado.")
 
     def _toggle_hud_style(self):
         """Swap the centrepiece. Both objects stay in memory, so the change is
@@ -2526,8 +2539,8 @@ class MainWindow(QMainWindow):
             pass
         self._refresh_hud_btn()
         self._log.append_log(
-            "SYS: HUD switched to the animated face." if want == "face"
-            else "SYS: HUD switched to the reactor core.")
+            "SYS: HUD alterado para o rosto animado." if want == "face"
+            else "SYS: HUD alterado para o núcleo reator.")
 
     def _toggle_ptt(self):
         from memory.config_manager import (get_push_to_talk_enabled,
@@ -2539,7 +2552,7 @@ class MainWindow(QMainWindow):
             try:
                 scope = self.on_push_to_talk(want)
             except Exception as e:
-                self._log.append_log(f"ERR: Push-to-talk failed — {e}")
+                self._log.append_log(f"ERR: Não foi possível configurar o modo pressionar para falar — {e}")
                 save_push_to_talk_enabled(False)
                 want = False
         self._apply_ptt_shortcut(want and scope != "global")
@@ -2700,13 +2713,13 @@ class MainWindow(QMainWindow):
             if ui_color:
                 fields["ui_color"] = ui_color.strip().lower()
             update_config(**fields)
-            self._log.append_log(f"SYS: Identity updated — {display}")
+            self._log.append_log(f"SYS: Nome atualizado — {display}")
             if color_changed:
-                self._log.append_log(f"SYS: UI colour applied — {ui_color}")
+                self._log.append_log(f"SYS: Cor da interface aplicada — {ui_color}")
             if voice_changed:
-                self._log.append_log(f"SYS: Voice set — {voice}")
+                self._log.append_log(f"SYS: Voz definida — {voice}")
         except Exception as e:
-            self._log.append_log(f"ERR: Config save failed — {e}")
+            self._log.append_log(f"ERR: Não foi possível salvar as configurações — {e}")
 
         self._refresh_identity_rows()
 
@@ -2734,7 +2747,7 @@ class MainWindow(QMainWindow):
         self._audio_overlay = ov            # keep a reference so it isn't GC'd
 
     def _on_audio_devices_applied(self):
-        self._log.append_log("SYS: Audio devices updated.")
+        self._log.append_log("SYS: Dispositivos de áudio atualizados.")
         if self.on_audio_device_change:
             self.on_audio_device_change()
 
@@ -2751,11 +2764,11 @@ class MainWindow(QMainWindow):
             ov = ProvidersOverlay(parent=self.centralWidget())
         except ImportError:
             self._log.append_log(
-                "SYS: The providers folder is not installed — "
-                "the assistant runs on Gemini Live.")
+                "SYS: A pasta de provedores não está instalada — "
+                "o assistente está usando o Gemini Live.")
             return
         except Exception as e:
-            self._log.append_log(f"SYS: Provider settings unavailable: {e}")
+            self._log.append_log(f"SYS: Configurações dos provedores indisponíveis: {e}")
             return
         ov.changed.connect(self._on_providers_applied)
         self._centre_overlay(ov)
@@ -2769,7 +2782,7 @@ class MainWindow(QMainWindow):
         transcript across such a rebuild through session resumption, and one
         path that is known to work is better than two that look alike."""
         self._refresh_identity_rows()
-        self._log.append_log("SYS: Engine settings saved — reconnecting.")
+        self._log.append_log("SYS: Configurações do mecanismo salvas — reconectando.")
         if self.on_audio_device_change:
             self.on_audio_device_change()
 
@@ -2805,7 +2818,7 @@ class MainWindow(QMainWindow):
             from core.confirm import resolve
             resolve(bool(accepted))
         except Exception as e:
-            self._log.append_log(f"ERR: Confirmation failed — {e}")
+            self._log.append_log(f"ERR: Não foi possível concluir a confirmação — {e}")
 
     def _open_plugin_manager(self):
         plugins = self.get_plugins() if self.get_plugins else []
@@ -2900,7 +2913,7 @@ class MainWindow(QMainWindow):
         txt = self._input.text().strip()
         if not txt: return
         self._input.clear()
-        self._log.append_log(f"You: {txt}")
+        self._log.append_log(f"Você: {txt}")
         if self.on_text_command:
             threading.Thread(target=self.on_text_command, args=(txt,), daemon=True).start()
 
@@ -2955,6 +2968,6 @@ class MainWindow(QMainWindow):
             self._overlay = None
         self._apply_state("LISTENING")
         self._assistant_name = _read_full_config().get("assistant_name", "JINX") or "JINX"
-        self._log.append_log(f"SYS: Initialised. OS={os_name.upper()}. {self._assistant_name} online.")
+        self._log.append_log(f"SYS: Inicializado. Sistema={os_name.upper()}. {self._assistant_name} está ativo.")
 
 

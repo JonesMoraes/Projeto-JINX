@@ -280,16 +280,16 @@ class WhisperSTT:
                     f"({time.monotonic() - t0:.1f}s, paid once)")
         except Exception as e:
             if log:
-                log(f"SYS: speech model not ready — {type(e).__name__}: "
+                log(f"SYS: modelo de fala indisponível — {type(e).__name__}: "
                     f"{str(e)[:100]}")
 
     def probe(self) -> tuple[bool, str]:
         if self.backend == "api":
             if not self.base_url:
-                return False, "No address set."
-            return True, "Will be checked on first use."
+                return False, "Nenhum endereço configurado."
+            return True, "Será verificado no primeiro uso."
         if find_spec("faster_whisper") is None:
-            return False, "faster-whisper is not installed."
+            return False, "O faster-whisper não está instalado."
         return True, (f"{self.model_name} on {self.device} "
                       f"({self._compute_type()}, {_threads()} threads)")
 
@@ -312,37 +312,37 @@ PROVIDER = {
     # Hearing, named the way somebody choosing it would name it. The local entry
     # is first and is the one that needs no account, no key and no connection.
     "catalog": (
-        {"id": "local", "label": "Whisper on this computer",
-         "note": "free · private · runs on the CPU", "local": True,
+        {"id": "local", "label": "Whisper neste computador",
+         "note": "gratuito · privado · executado no processador", "local": True,
          "values": {"backend": "local", "base_url": "", "api_key": ""}},
-        {"id": "groq", "label": "Groq Whisper",
-         "note": "cloud · very fast · free tier", "local": False,
+        {"id": "groq", "label": "Whisper da Groq",
+         "note": "nuvem · muito rápido · plano gratuito", "local": False,
          "values": {"backend": "api", "model": "whisper-large-v3-turbo",
                     "base_url": "https://api.groq.com/openai/v1"}},
         {"id": "openai", "label": "OpenAI Whisper",
-         "note": "cloud · needs a key", "local": False,
+         "note": "nuvem · requer uma chave", "local": False,
          "values": {"backend": "api", "model": "whisper-1",
                     "base_url": "https://api.openai.com/v1"}},
     ),
     "needs": (
-        Field("backend", "Where it runs", kind="choice",
+        Field("backend", "Onde é executado", kind="choice",
               choices=("local", "api"), default="local",
-              hint="local = on this machine, nothing leaves it"),
-        Field("model", "Model", kind="choice", choices=MODELS,
+              hint="local = neste computador; nada sai dele"),
+        Field("model", "Modelo", kind="choice", choices=MODELS,
               default=DEFAULT_MODEL,
-              hint="base is the fast default; small is more accurate and slower"),
-        Field("device", "Processor", kind="choice", choices=("cpu", "cuda"),
+              hint="base é a opção rápida padrão; small é mais preciso e lento"),
+        Field("device", "Processador", kind="choice", choices=("cpu", "cuda"),
               default="cpu", required=False, advanced=True,
-              hint="CPU is the default and needs no graphics card"),
-        Field("language", "Language", default="", required=False, advanced=True,
-              hint="Leave empty to detect it every time — the right setting "
-                   "unless you only ever speak one language"),
-        Field("base_url", "API address", default="", required=False,
-              hint="Only for the api backend, e.g. https://api.groq.com/openai/v1"),
-        Field("api_key", "API key", kind="secret", default="", required=False),
-        Field("download_root", "Model folder", kind="path", default="",
+              hint="CPU é a opção padrão e não exige placa de vídeo"),
+        Field("language", "Idioma", default="", required=False, advanced=True,
+              hint="Deixe em branco para detectar o idioma a cada uso — recomendado "
+                   "se você fala mais de um idioma"),
+        Field("base_url", "Endereço da API", default="", required=False,
+              hint="Usado somente com o modo api, por exemplo https://api.groq.com/openai/v1"),
+        Field("api_key", "Chave da API", kind="secret", default="", required=False),
+        Field("download_root", "Pasta dos modelos", kind="path", default="",
               required=False, advanced=True,
-              hint="Leave empty for the usual cache in your home folder"),
+              hint="Deixe em branco para usar a pasta de cache padrão do usuário"),
     ),
     "caps": {},
     "factory": _make,

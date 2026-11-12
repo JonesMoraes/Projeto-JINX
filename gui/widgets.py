@@ -161,13 +161,13 @@ class LogWidget(QTextEdit):
         """(tag, label, words) for one log line."""
         head, sep, rest = text.partition(":")
         tl = text.lower()
-        if tl.startswith("you:"):
+        if tl.startswith(("you:", "você:")):
             return "you", "YOU", rest.strip()
         if sep and (tl.startswith(f"{self._ai_name_lc}:") or tl.startswith("jinx:")):
             return "ai", head.strip().upper(), rest.strip()
         key = head.strip().lower()
         if sep and key in self._TAGS:
-            tag = key if key in ("err", "file") else "sys"
+            tag = key if key in ("err", "file", "folder") else "sys"
             return tag, self._TAGS[key], rest.strip()
         # Anything else keeps the old rule: an error if it says so.
         return ("err" if "err" in tl else "sys"), "SYS", text.strip()
@@ -180,6 +180,7 @@ class LogWidget(QTextEdit):
             "ai":   (qcol(C.PRI), qcol(C.TEXT)),
             "err":  (qcol(C.RED), qcol(C.RED)),
             "file": (qcol(C.GREEN), qcol(C.TEXT)),
+            "folder": (qcol(C.GREEN), qcol(C.TEXT)),
             # SYS lines are the bulk of the log, so they sit back. TEXT_MED
             # follows the theme and drops the contrast to a level you read past.
             "sys":  (qcol(C.TEXT_DIM), qcol(C.TEXT_MED)),
@@ -363,27 +364,27 @@ class FileDropZone(QWidget):
             f"border: 1px solid {C.BORDER_B}; }}"
             f"QMenu::item {{ padding: 6px 18px; }}"
             f"QMenu::item:selected {{ background: {C.PRI_GHO}; }}")
-        pick_file = menu.addAction("📄  Choose a file…")
-        pick_dir = menu.addAction("📁  Choose a folder…  (for coding)")
+        pick_file = menu.addAction("📄  Escolher um arquivo…")
+        pick_dir = menu.addAction("📁  Escolher uma pasta…  (para programação)")
         chosen = menu.exec(QCursor.pos())
         if chosen is pick_dir:
             path = QFileDialog.getExistingDirectory(
-                self, "Select a project folder for JINX", str(Path.home()))
+                self, "Selecionar uma pasta de projeto para o JINX", str(Path.home()))
             if path:
                 self._set_file(path)
             return
         if chosen is not pick_file:
             return
         path, _ = QFileDialog.getOpenFileName(
-            self, "Select a file for JINX", str(Path.home()),
-            "All Files (*.*);;"
-            "Images (*.jpg *.jpeg *.png *.gif *.webp *.bmp *.svg);;"
-            "Documents (*.pdf *.docx *.txt *.md *.pptx);;"
-            "Data (*.csv *.xlsx *.json *.xml);;"
-            "Code (*.py *.js *.ts *.html *.css *.java *.cpp *.go);;"
-            "Audio (*.mp3 *.wav *.ogg *.m4a *.aac *.flac);;"
-            "Video (*.mp4 *.avi *.mov *.mkv *.wmv *.webm);;"
-            "Archives (*.zip *.rar *.tar *.gz *.7z)",
+            self, "Selecionar um arquivo para o JINX", str(Path.home()),
+            "Todos os arquivos (*.*);;"
+            "Imagens (*.jpg *.jpeg *.png *.gif *.webp *.bmp *.svg);;"
+            "Documentos (*.pdf *.docx *.txt *.md *.pptx);;"
+            "Dados (*.csv *.xlsx *.json *.xml);;"
+            "Código (*.py *.js *.ts *.html *.css *.java *.cpp *.go);;"
+            "Áudio (*.mp3 *.wav *.ogg *.m4a *.aac *.flac);;"
+            "Vídeo (*.mp4 *.avi *.mov *.mkv *.wmv *.webm);;"
+            "Arquivos compactados (*.zip *.rar *.tar *.gz *.7z)",
         )
         if path:
             self._set_file(path)
@@ -457,10 +458,10 @@ class _DropCanvas(QWidget):
             size_str = _fmt_size(path.stat().st_size)
         except OSError:
             size_str = "?"
-        ext_str = path.suffix.upper().lstrip(".") or "FILE"
+        ext_str = path.suffix.upper().lstrip(".") or "ARQUIVO"
         if cat == "folder":
             n = self._z._folder_files
-            ext_str, size_str = "FOLDER", f"{n}{'+' if n >= 5000 else ''} files"
+            ext_str, size_str = "PASTA", f"{n}{'+' if n >= 5000 else ''} arquivos"
 
         p.setFont(QFont("Segoe UI Emoji", 13) if _OS == "Windows" else QFont("Arial", 13))
         p.setPen(QPen(qcol(icon_col)))
@@ -706,7 +707,7 @@ class RingGauge(QWidget):
         W, H = self.width(), self.height()
         r = min(W - 4, H - 4) / 2
         cx, cy = W / 2, H / 2
-        na = self._text in ("N/A", "--")
+        na = self._text in ("N/A", "N/D", "--")
         col = (blend(C.PRI, 0.5) if na else qcol(C.RED) if self._v > 85
                else qcol(C.ACC) if self._v > 65 else qcol(C.PRI))
         maj, mnr = [], []
@@ -1258,8 +1259,8 @@ class TaskRow(QWidget):
             return f"{used:.0f}/{t['budget']['minutes']}m"
         if s == "scheduled":
             return time.strftime("%H:%M", time.localtime(t.get("not_before") or 0))
-        return {"waiting_quota": "WAIT", "queued": "QUEUED", "done": "DONE",
-                "failed": "FAILED", "cancelled": "STOPPED"}.get(s, s.upper())
+        return {"waiting_quota": "AGUARDANDO", "queued": "NA FILA", "done": "CONCLUÍDA",
+                "failed": "FALHOU", "cancelled": "INTERROMPIDA"}.get(s, s.upper())
 
     def paintEvent(self, _):
         t = self._task

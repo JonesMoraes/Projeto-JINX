@@ -284,7 +284,7 @@ class HudCanvas(QWidget):
             p.drawLine(QLineF(x0, y0 + sy * cut, x0 + sx * cut, y0))
         p.setFont(px_font(10, QFont.Weight.DemiBold, spacing=2.2))
         p.setPen(QPen(blend(C.PRI, 0.55)))
-        p.drawText(QRectF(m + 24, m + 8, 260, 16), Qt.AlignmentFlag.AlignVCenter, "VOICE INTERFACE")
+        p.drawText(QRectF(m + 24, m + 8, 260, 16), Qt.AlignmentFlag.AlignVCenter, "INTERFACE DE VOZ")
         p.end()
         return pm
 
@@ -637,15 +637,15 @@ class HudCanvas(QWidget):
 
         # state line: spaced capitals between two fading rules that pulse
         if self.muted:
-            txt, col = "MUTED", qcol(C.MUTED_C)
+            txt, col = "MUDO", qcol(C.MUTED_C)
         elif self.speaking:
-            txt, col = "SPEAKING", qcol(C.ACC)
+            txt, col = "FALANDO", qcol(C.ACC)
         elif self.state in ("THINKING", "PROCESSING"):
-            txt, col = self.state, qcol(C.ACC2)
+            txt, col = {"THINKING": "PENSANDO", "PROCESSING": "PROCESSANDO"}.get(self.state, self.state), qcol(C.ACC2)
         elif self.state == "LISTENING":
-            txt, col = "LISTENING", qcol(C.GREEN)
+            txt, col = "OUVINDO", qcol(C.GREEN)
         else:
-            txt, col = str(self.state), qcol(C.PRI)
+            txt, col = {"SLEEPING": "EM ESPERA", "INITIALISING": "INICIALIZANDO"}.get(str(self.state), str(self.state)), qcol(C.PRI)
         p.setFont(px_font(13, QFont.Weight.DemiBold, spacing=5))
         tw = p.fontMetrics().horizontalAdvance(txt)
         p.setPen(QPen(col))

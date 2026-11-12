@@ -209,28 +209,28 @@ class ElevenLabsTTS:
 
     def probe(self) -> tuple[bool, str]:
         if not self.key:
-            return False, "No API key set."
+            return False, "Nenhuma chave da API configurada."
         try:
             vs = self.voices()
         except Exception as e:
             msg = str(e)
             if "401" in msg:
-                return False, "The key was refused."
+                return False, "A chave foi recusada."
             return False, msg[:120]
         if not self.voice_id:
             names = ", ".join(n for _, n in vs[:4])
-            return False, f"Key works. Choose a voice — {len(vs)} available: {names}"
+            return False, f"A chave funciona. Escolha uma voz — {len(vs)} disponíveis: {names}"
         found = _match_voice(self.voice_id, vs)
         if not found and not _VOICE_ID.fullmatch(self.voice_id):
-            return False, (f"No voice called {self.voice_id!r} on this account. "
-                           f"Pick one from the list.")
+            return False, (f"Não há uma voz chamada {self.voice_id!r} nesta conta. "
+                           f"Escolha uma voz da lista.")
         # An ID that is not on the account's own list is left alone, as before:
         # a voice can be usable without being listed there.
         self.voice_id = found or self.voice_id
         name = next((n for i, n in vs if i == self.voice_id), self.voice_id)
         note = "" if find_spec("av") else \
-            "  (MP3 fallback would need PyAV — only matters on a free tier)"
-        return True, f"Ready: {name}, {self.model}{note}"
+            "  (a alternativa MP3 requer PyAV — necessário apenas no plano gratuito)"
+        return True, f"Pronto: {name}, {self.model}{note}"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -299,25 +299,25 @@ PROVIDER = {
     "id": "elevenlabs",
     "kind": "tts",
     "label": "ElevenLabs",
-    "hint": "One voice that speaks every language — needs a key and a connection",
+    "hint": "Uma voz que fala vários idiomas — requer uma chave e conexão com a internet",
     "requires": ("httpx",),
     "catalog": (
         {"id": "elevenlabs", "label": "ElevenLabs",
-         "note": "cloud · one voice speaks every language", "local": False,
+         "note": "nuvem · uma voz fala vários idiomas", "local": False,
          "values": {}},
     ),
     "needs": (
-        Field("api_key", "API key", kind="secret",
-              hint="elevenlabs.io -> Profile -> API key"),
-        Field("voice_id", "Voice", kind="choice", choices=(),
-              hint="Press LIST to read the voices on your account"),
-        Field("model", "Model", kind="choice", choices=MODELS,
+        Field("api_key", "Chave da API", kind="secret",
+              hint="elevenlabs.io → perfil → chave da API"),
+        Field("voice_id", "Voz", kind="choice", choices=(),
+              hint="Toque em ATUALIZAR para carregar as vozes da sua conta"),
+        Field("model", "Modelo", kind="choice", choices=MODELS,
               default=DEFAULT_MODEL, required=False,
-              hint="flash is the quickest and still multilingual"),
-        Field("stability", "Stability", kind="number", default=0.5,
-              required=False, advanced=True, hint="0 to 1"),
-        Field("similarity", "Similarity", kind="number", default=0.75,
-              required=False, advanced=True, hint="0 to 1"),
+              hint="flash é o mais rápido e ainda oferece vários idiomas"),
+        Field("stability", "Estabilidade", kind="number", default=0.5,
+              required=False, advanced=True, hint="De 0 a 1"),
+        Field("similarity", "Semelhança", kind="number", default=0.75,
+              required=False, advanced=True, hint="De 0 a 1"),
     ),
     "caps": {"audio_out": True},
     "factory": _make,

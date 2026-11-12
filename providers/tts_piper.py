@@ -419,16 +419,16 @@ class PiperTTS:
 
     def probe(self) -> tuple[bool, str]:
         if find_spec("piper") is None:
-            return False, "Piper is not installed."
+            return False, "O Piper não está instalado."
         if not self.voice:
             n = len(catalog())
-            return False, (f"Choose a voice - {n} available in about "
-                           f"{len({language_of(v) for v in catalog()})} languages."
-                           if n else "Choose a voice.")
+            return False, (f"Escolha uma voz — {n} disponíveis em cerca de "
+                           f"{len({language_of(v) for v in catalog()})} idiomas."
+                           if n else "Escolha uma voz.")
         try:
             path = download(self.voice)
             if not path.exists():
-                return False, f"Could not download {self.voice}."
+                return False, f"Não foi possível baixar {self.voice}."
             t0 = time.monotonic()
             model = self._load(self.voice)
             pcm = self._synth(model, "Test.")
@@ -440,9 +440,9 @@ class PiperTTS:
         extra = ""
         if self.follow:
             others = [v for v in installed() if v != self.voice]
-            extra = (f"  |  also here: {', '.join(sorted(language_of(v) for v in others))}"
-                     if others else "  |  download more voices to follow other languages")
-        return True, (f"Ready in {took:.1f}s, {secs:.1f}s of test audio, "
+            extra = (f"  |  idiomas instalados: {', '.join(sorted(language_of(v) for v in others))}"
+                     if others else "  |  baixe mais vozes para acompanhar outros idiomas")
+        return True, (f"Pronto em {took:.1f}s, {secs:.1f}s de áudio de teste, "
                       f"{rate} Hz{extra}")
 
 
@@ -504,18 +504,18 @@ PROVIDER = {
     "requires": ("piper",),
     "install": "piper-tts",
     "catalog": (
-        {"id": "piper", "label": "Piper (on this computer)",
-         "note": "free - private - ~50 languages - downloads once",
+        {"id": "piper", "label": "Piper (neste computador)",
+         "note": "gratuito · privado · cerca de 50 idiomas · baixa uma vez",
          "local": True, "values": {}},
     ),
     "needs": (
-        Field("voice", "Voice", kind="choice", choices=(),
-              hint="A star means it is already downloaded; TEST fetches the rest"),
-        Field("follow_language", "Follow the language you speak", kind="bool",
+        Field("voice", "Voz", kind="choice", choices=(),
+              hint="A estrela indica que já foi baixada; TESTAR baixa as demais"),
+        Field("follow_language", "Seguir o idioma falado", kind="bool",
               default="1", required=False,
-              hint="Uses a downloaded voice for whatever language Whisper heard"),
-        Field("speed", "Speed", kind="number", default=1.0, required=False,
-              advanced=True, hint="1.0 is normal"),
+              hint="Usa uma voz baixada compatível com o idioma detectado pelo Whisper"),
+        Field("speed", "Velocidade", kind="number", default=1.0, required=False,
+              advanced=True, hint="1,0 é a velocidade normal"),
     ),
     "caps": {"audio_out": True},
     "factory": _make,

@@ -345,18 +345,18 @@ class SystemTTS:
     def probe(self) -> tuple[bool, str]:
         if not self._engine:
             if _SYS == "Linux":
-                return False, "No speech engine — install espeak-ng."
-            return False, "No speech engine was found on this system."
+                return False, "Nenhum mecanismo de fala encontrado — instale o espeak-ng."
+            return False, "Nenhum mecanismo de fala foi encontrado neste sistema."
         try:
             wav = self._synth_blocking("ok")
             pcm = audio.wav_to_pcm(wav, audio.SPEAKER_RATE)
         except Exception as e:
             return False, str(e)[:120]
         if not pcm:
-            return False, f"{self._engine} produced no audio."
+            return False, f"{self._engine} não produziu áudio."
         n = len(list_voices())
-        return True, (f"{self._engine}, {n} voice{'s' if n != 1 else ''} installed "
-                      f"({audio.duration_s(pcm, audio.SPEAKER_RATE):.2f}s of test audio)")
+        return True, (f"{self._engine} — vozes instaladas: {n} "
+                      f"({audio.duration_s(pcm, audio.SPEAKER_RATE):.2f}s de áudio de teste)")
 
 
 def _split(text: str, max_chars: int = 240) -> list[str]:
@@ -392,22 +392,21 @@ def _make(cfg: dict) -> SystemTTS:
 PROVIDER = {
     "id": "system_tts",
     "kind": "tts",
-    "label": "System voice",
-    "hint": "The voices already installed on this computer — nothing to download",
+    "label": "Voz do sistema",
+    "hint": "Vozes já instaladas neste computador — não é necessário baixar nada",
     "requires": (),
     "catalog": (
-        {"id": "system", "label": "This computer's own voices",
-         "note": "free · instant · nothing to download", "local": True,
+        {"id": "system", "label": "Vozes deste computador",
+         "note": "gratuito · imediato · não precisa baixar", "local": True,
          "values": {}},
     ),
     "needs": (
-        Field("voice", "Voice", kind="choice", choices=(), default="",
+        Field("voice", "Voz", kind="choice", choices=(), default="",
               required=False,
-              hint="Empty uses the system default; the list is read from this "
-                   "machine"),
-        Field("rate", "Speed", kind="number", default=0, required=False,
+              hint="Em branco usa a voz padrão do sistema; a lista vem deste computador"),
+        Field("rate", "Velocidade", kind="number", default=0, required=False,
               advanced=True,
-              hint="-10 to 10, 0 is normal"),
+              hint="De -10 a 10; 0 é a velocidade normal"),
     ),
     "caps": {"audio_out": True},
     "factory": _make,

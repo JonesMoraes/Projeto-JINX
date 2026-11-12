@@ -1167,8 +1167,8 @@ def _make(cfg: dict) -> PipelineEngine:
 PROVIDER = {
     "id": "pipeline",
     "kind": "engine",
-    "label": "Local pipeline",
-    "hint": "Speech recognition, a language model and speech synthesis, assembled",
+    "label": "Mecanismo local",
+    "hint": "Reconhecimento de fala, modelo de linguagem e síntese de voz combinados",
     "requires": (),
     "needs": (),        # its parts are chosen in the panel, not typed in
     "caps": {},         # taken from whatever fills its slots

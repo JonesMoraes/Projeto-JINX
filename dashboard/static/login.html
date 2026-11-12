@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
@@ -134,21 +134,21 @@
 </head>
 <body>
   <div class="card" id="card">
-    <div class="logo"><em>J</em>ARVIS</div>
-    <div class="sub">Remote Access</div>
-    <p id="reconnecting">Reconnecting…</p>
-    <p class="hint">Press <strong style="color:var(--text)">Remote Control</strong> in the JINX desktop app to get a QR code or session key.</p>
+    <div class="logo"><em>J</em>INX</div>
+    <div class="sub">Acesso remoto</div>
+    <p id="reconnecting">Reconectando…</p>
+    <p class="hint">Toque em <strong style="color:var(--text)">Acesso remoto</strong> no aplicativo JINX para gerar um QR code ou uma chave de sessão.</p>
     <div class="key-wrap">
       <input class="key-input" id="key" type="text" maxlength="6"
              autocomplete="off" autocorrect="off" spellcheck="false"
              placeholder="· · · · · ·">
     </div>
     <div class="err" id="err"></div>
-    <button class="btn" onclick="doLogin()">CONNECT</button>
+    <button class="btn" onclick="doLogin()">CONECTAR</button>
     <p class="voice-note">
-      🎤 <strong style="color:var(--text)">Voice commands:</strong> open
-      <code>chrome://flags</code> on your phone, search
-      <code>Insecure origins treated as secure</code>, add your JINX URL, tap Relaunch.
+      🎤 <strong style="color:var(--text)">Comandos de voz:</strong> abra
+      <code>chrome://flags</code> no celular, pesquise
+      <code>Insecure origins treated as secure</code>, adicione o endereço do JINX e toque em Relaunch.
     </p>
   </div>
 

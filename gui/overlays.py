@@ -314,7 +314,7 @@ class CustomizeOverlay(QWidget):
                f"border: 1px solid {C.BORDER}; border-radius: 3px; padding: 4px 8px; }}"
                f"QLineEdit:focus {{ border: 1px solid {C.PRI}; }}")
 
-        lay.addWidget(_lbl("⚙  CUSTOMISE ASSISTANT", 12, True))
+        lay.addWidget(_lbl("⚙  PERSONALIZAR ASSISTENTE", 12, True))
         sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
         lay.addWidget(sep)
@@ -328,10 +328,10 @@ class CustomizeOverlay(QWidget):
         lay.addWidget(self._name_input)
 
         lay.addSpacing(4)
-        lay.addWidget(_lbl("YOUR NAME  (leave blank for default sir / efendim)", 8,
+        lay.addWidget(_lbl("SEU NOME  (deixe em branco para usar senhor/senhora)", 8,
                             color=C.TEXT_DIM, align=Qt.AlignmentFlag.AlignLeft))
         self._user_input = QLineEdit(user_name)
-        self._user_input.setPlaceholderText("e.g.  Tony   (leave blank for auto)")
+        self._user_input.setPlaceholderText("ex.: Ana  (deixe em branco para detecção automática)")
         self._user_input.setFont(hud_font(10))
         self._user_input.setFixedHeight(32)
         self._user_input.setStyleSheet(_fs)
@@ -364,7 +364,7 @@ class CustomizeOverlay(QWidget):
         # ── UI colour — colour wheel ─────────────────────────────────────────
         lay.addSpacing(4)
         clr_hdr = QHBoxLayout()
-        clr_hdr.addWidget(_lbl("UI COLOUR  —  drag the handle", 8,
+        clr_hdr.addWidget(_lbl("COR DA INTERFACE  —  arraste o seletor", 8,
                                color=C.TEXT_DIM, align=Qt.AlignmentFlag.AlignLeft))
         clr_hdr.addStretch()
         df_btn = QPushButton("DEFAULT")
@@ -394,7 +394,7 @@ class CustomizeOverlay(QWidget):
         self._wheel.hue_committed.connect(self._on_wheel_commit)
 
         self._hex_input = QLineEdit(self._sel_color)
-        self._hex_input.setPlaceholderText("#00d4ff   (custom hex colour)")
+        self._hex_input.setPlaceholderText("#00d4ff   (cor hexadecimal personalizada)")
         self._hex_input.setFont(hud_font(10))
         self._hex_input.setFixedHeight(28)
         self._hex_input.setStyleSheet(_fs)
@@ -797,15 +797,15 @@ class AudioDeviceOverlay(_HudOverlay):
             # The list is served from a cache warmed on a background thread at
             # startup, so opening this panel never blocks the Qt thread on the
             # host audio API.
-            box.addItem(DEFAULT_LABEL, "")
+            box.addItem("Padrão do sistema", "")
             for name in list_devices(kind):
                 box.addItem(name, name)
-            idx = box.findData(current) if current else 0
+            idx = box.findData(current) if current and current != DEFAULT_LABEL else 0
             box.setCurrentIndex(idx if idx >= 0 else 0)
-            if current and idx < 0:
+            if current and current != DEFAULT_LABEL and idx < 0:
                 # Saved device is not plugged in right now. Show it rather than
                 # silently resetting the user's choice to default.
-                box.addItem(f"{current}  (not connected)", current)
+                box.addItem(f"{current}  (não conectado)", current)
                 box.setCurrentIndex(box.count() - 1)
 
             # THE ONE CHECK THE STARTUP PROBE CANNOT MAKE.
@@ -864,10 +864,10 @@ class AudioDeviceOverlay(_HudOverlay):
         self._level_seen.connect(self._on_level)
         self._test_result.connect(self._on_result)
 
-        self._in_box  = _row("MICROPHONE — what JINX hears you with",
+        self._in_box  = _row("MICROFONE — dispositivo usado para ouvir você",
                              "input", get_input_device())
         lay.addSpacing(4)
-        self._out_box = _row("SPEAKERS — what JINX talks through",
+        self._out_box = _row("ALTO-FALANTES — dispositivo usado para falar com você",
                              "output", get_output_device())
 
         # ── Output volume, beside the output device ──────────────────────────
@@ -924,7 +924,7 @@ class AudioDeviceOverlay(_HudOverlay):
             self._out_box.currentIndexChanged.connect(
                 lambda _i: self._volume_follows_device())
 
-        note = QLabel("Applying reconnects the session. Your conversation is kept.")
+        note = QLabel("Ao aplicar, a sessão será reconectada. A conversa será mantida.")
         note.setWordWrap(True)
         note.setFont(hud_font(7))
         note.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
@@ -1027,13 +1027,13 @@ class AudioDeviceOverlay(_HudOverlay):
                     res = audio_devices.measure_input(
                         name,
                         on_level=lambda f: self._level_seen.emit(int(f * 100)))
-                    text = f"peak {res['peak']}  —  {res['verdict']}"
+                    text = f"pico {res['peak']}  —  {res['verdict']}"
                 else:
                     res = audio_devices.play_tone(name)
                     text = res["verdict"]
                 good = bool(res.get("ok", False))
             except Exception as e:
-                text, good = f"The test itself failed: {e}", False
+                text, good = f"O teste falhou: {e}", False
             self._test_result.emit(text, good)
 
         threading.Thread(target=_work, daemon=True, name=f"audio-test-{kind}").start()
@@ -1179,9 +1179,9 @@ class MemoryOverlay(_HudOverlay):
 
         rows = all_entries_for_ui()
 
-        cap = QLabel(f"{len(rows)} stored facts — newest first. "
-                     f"Nothing here is sent anywhere; it lives in "
-                     f"memory/long_term.json on this machine.")
+        cap = QLabel(f"{len(rows)} fatos armazenados — dos mais recentes aos mais antigos. "
+                     f"Nada daqui é enviado; os dados ficam em "
+                     f"memory/long_term.json neste computador.")
         cap.setWordWrap(True)
         cap.setFont(hud_font(7))
         cap.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
@@ -1223,7 +1223,7 @@ class MemoryOverlay(_HudOverlay):
                 rm.setFixedSize(20, 20)
                 rm.setFont(hud_font(8, QFont.Weight.Bold))
                 rm.setCursor(Qt.CursorShape.PointingHandCursor)
-                rm.setToolTip("Forget this")
+                rm.setToolTip("Esquecer este item")
                 rm.setStyleSheet(f"""
                     QPushButton {{ background: transparent; color: {C.TEXT_DIM};
                         border: 1px solid {C.BORDER}; border-radius: 3px; }}
@@ -1422,16 +1422,16 @@ class PluginSettingsOverlay(QWidget):
         root.setContentsMargins(22, 16, 22, 16)
         root.setSpacing(8)
 
-        root.addWidget(self._lbl("⚙  PLUGIN SETTINGS", 12, True))
+        root.addWidget(self._lbl("⚙  CONFIGURAÇÕES DOS PLUG-INS", 12, True))
         sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
         root.addWidget(sep)
 
         if not self._sections:
             root.addWidget(self._lbl(
-                "No configurable plugins are installed.\nDrop a plugin that needs "
-                "settings (like the 3D-printer suite) into the plugins folder and "
-                "it will show up here.", 9, color=C.TEXT_DIM))
+                "Nenhum plug-in com configurações está instalado.\nAdicione à pasta "
+                "plugins um plug-in que precise de ajustes (como o conjunto de "
+                "impressão 3D) para que ele apareça aqui.", 9, color=C.TEXT_DIM))
         else:
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
@@ -1698,7 +1698,7 @@ class RemoteKeyOverlay(QWidget):
 
         self._update_qr(auto_login_url)
 
-        lay.addWidget(_lbl("Scan with phone camera to connect instantly", 8, color=C.TEXT_DIM))
+        lay.addWidget(_lbl("Escaneie com a câmera do celular para conectar", 8, color=C.TEXT_DIM))
 
         # THE ONE FAILURE THAT LOOKS LIKE THE SERVER BEING OFF.
         #
@@ -1726,11 +1726,11 @@ class RemoteKeyOverlay(QWidget):
             _blocked = []
         if _blocked:
             warn = _lbl(
-                "⚠  Windows is blocking incoming connections to this copy of "
-                "Python, so your phone cannot reach this page. Restart JINX "
-                "and accept the Windows prompt, or remove the rules named "
+                "⚠  O Windows está bloqueando conexões recebidas para esta cópia do "
+                "Python, então o celular não consegue acessar esta página. Reinicie "
+                "o JINX e aceite o aviso do Windows, ou remova as regras chamadas "
                 + ", ".join(sorted({n for n, _ in _blocked}))
-                + " under Windows Defender Firewall → Inbound Rules.",
+                + " no Firewall do Windows Defender → Regras de Entrada.",
                 8, color="#f4b942")
             lay.addWidget(warn)
 
@@ -1738,7 +1738,7 @@ class RemoteKeyOverlay(QWidget):
         sep2.setStyleSheet(f"color: {C.BORDER}; margin: 1px 0;")
         lay.addWidget(sep2)
 
-        lay.addWidget(_lbl("Or enter manually:", 7, color=C.TEXT_DIM,
+        lay.addWidget(_lbl("Ou informe os dados manualmente:", 7, color=C.TEXT_DIM,
                            align=Qt.AlignmentFlag.AlignLeft))
 
         self._url_lbl = QLabel(self._manual_url)
@@ -1830,7 +1830,7 @@ class RemoteKeyOverlay(QWidget):
                           Qt.TransformationMode.SmoothTransformation)
             )
         except ImportError:
-            self._qr_label.setText("pip install\nqrcode[pil]")
+            self._qr_label.setText("Instale com pip\nqrcode[pil]")
             self._qr_label.setFont(hud_font(8))
             self._qr_label.setStyleSheet(
                 "color: #888; background: white; border-radius: 10px; padding: 4px;"
@@ -1845,7 +1845,7 @@ class RemoteKeyOverlay(QWidget):
     def _tick(self):
         remaining = max(0, int(self._expiry - time.time()))
         m, s = divmod(remaining, 60)
-        self._timer_lbl.setText(f"Key expires in  {m:02d}:{s:02d}")
+        self._timer_lbl.setText(f"A chave expira em  {m:02d}:{s:02d}")
         if remaining == 0:
             self._do_close()
 
@@ -1866,7 +1866,7 @@ class RemoteKeyOverlay(QWidget):
         self._qr_label.setStyleSheet(
             "color: #00ff88; background: #001a0d; border-radius: 10px;"
         )
-        self._timer_lbl.setText("Phone connected — JINX ready")
+        self._timer_lbl.setText("Celular conectado — JINX pronto")
         self._timer_lbl.setStyleSheet(f"color: {C.GREEN}; background: transparent;")
 
     def _refresh_key(self):

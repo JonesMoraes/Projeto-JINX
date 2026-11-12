@@ -494,16 +494,16 @@ def measure_input(name: str, seconds: float = 3.0, on_level=None) -> dict:
         peak = peak_seen[0]
     except Exception as e:
         return {"ok": False, "peak": 0, "level": 0.0,
-                "verdict": f"This microphone could not be opened: {e}"}
+                "verdict": f"Não foi possível abrir este microfone: {e}"}
 
     if peak < _SILENT_PEAK:
-        verdict = ("Nothing arrived. The microphone is muted, its level is at "
-                   "zero, or this is not the device you are speaking into.")
+        verdict = ("Nenhum sinal recebido. O microfone pode estar mudo, com o "
+                   "nível zerado ou não ser o dispositivo usado para falar.")
     elif peak < _QUIET_PEAK:
-        verdict = ("Very quiet. Speech recognition will struggle — raise the "
-                   "input level in the system sound settings.")
+        verdict = ("Sinal muito baixo. O reconhecimento de fala pode falhar — "
+                   "aumente o nível de entrada nas configurações de som do sistema.")
     else:
-        verdict = "Working. Your voice is coming through clearly."
+        verdict = "Funcionando. Sua voz está sendo captada com clareza."
 
     return {"ok": peak >= _QUIET_PEAK, "peak": peak,
             "level": min(1.0, peak / 12000.0), "verdict": verdict}
@@ -530,8 +530,8 @@ def play_tone(name: str, seconds: float = 0.6) -> dict:
         sd.play(tone, samplerate=rate, device=idx)
         sd.wait()
     except Exception as e:
-        return {"ok": False, "verdict": f"This output could not be played: {e}"}
-    return {"ok": True, "verdict": "Tone played. Did you hear it?"}
+        return {"ok": False, "verdict": f"Não foi possível reproduzir o som neste dispositivo: {e}"}
+    return {"ok": True, "verdict": "Tom reproduzido. Você conseguiu ouvi-lo?"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -132,7 +132,7 @@ CATALOG = (
      "note": "on this computer · free", "local": True,
      "values": {"base_url": PRESETS["Jan"], **_LOCAL}},
     {"id": "gemini",     "label": "Google Gemini",
-     "note": "cloud · leave the key empty to use your Gemini key", "local": False,
+      "note": "nuvem · deixe a chave em branco para usar a chave do Gemini", "local": False,
      "values": {"base_url": PRESETS["Google Gemini"], **_CLOUD,
                 "model": "gemini-3.5-flash"}},
     {"id": "minimax",    "label": "MiniMax",
@@ -140,7 +140,7 @@ CATALOG = (
      "values": {"base_url": PRESETS["MiniMax"], **_CLOUD,
                 "model": "MiniMax-M3.1-Flash"}},
     {"id": "groq",       "label": "Groq",
-     "note": "cloud · very fast · free tier", "local": False,
+      "note": "nuvem · muito rápido · plano gratuito", "local": False,
      "values": {"base_url": PRESETS["Groq"], **_CLOUD}},
     {"id": "openai",     "label": "OpenAI",
      "note": "cloud · needs a key", "local": False,
@@ -155,7 +155,7 @@ CATALOG = (
      "note": "cloud · needs a key", "local": False,
      "values": {"base_url": PRESETS["xAI"], **_CLOUD}},
     {"id": "openrouter", "label": "OpenRouter",
-     "note": "cloud · many models behind one key", "local": False,
+      "note": "nuvem · vários modelos com uma única chave", "local": False,
      "values": {"base_url": PRESETS["OpenRouter"], **_CLOUD}},
     {"id": "together",   "label": "Together",
      "note": "cloud · needs a key", "local": False,
@@ -163,8 +163,8 @@ CATALOG = (
     {"id": "cerebras",   "label": "Cerebras",
      "note": "cloud · needs a key", "local": False,
      "values": {"base_url": PRESETS["Cerebras"], **_CLOUD}},
-    {"id": "custom",     "label": "Something else",
-     "note": "type the address yourself", "local": None,
+     {"id": "custom",     "label": "Outro serviço",
+      "note": "informe o endereço manualmente", "local": None,
      "values": {}},
 )
 
@@ -646,9 +646,9 @@ class OpenAICompatLLM:
         person reading it is trying to get a model working, not debug HTTP.
         """
         if not self.base:
-            return False, "No address set."
+            return False, "Nenhum endereço configurado."
         if not self.model:
-            return False, "No model chosen."
+            return False, "Nenhum modelo escolhido."
         import time
         t0 = time.monotonic()
         try:
@@ -658,12 +658,12 @@ class OpenAICompatLLM:
         except Exception as e:
             msg = str(e)
             if "401" in msg or "403" in msg:
-                return False, "The server refused the key."
+                return False, "O servidor recusou a chave."
             if "404" in msg:
-                return False, f"No model called '{self.model}' at that address."
+                return False, f"Não há um modelo chamado '{self.model}' nesse endereço."
             if "Connect" in msg or "connect" in msg or "timed out" in msg:
-                return False, ("Nothing answered at that address — is the "
-                               "server running?")
+                return False, ("Nenhuma resposta nesse endereço — o servidor "
+                               "está em execução?")
             return False, _terse(msg, 90)
 
         took = time.monotonic() - t0
@@ -671,8 +671,8 @@ class OpenAICompatLLM:
         if check_vision:
             self._vision_known = ""          # TEST always re-measures
             seen = self.ensure_vision_known()
-            note = "  |  can see images" if seen else "  |  text only"
-        return True, f"Answered in {took:.2f}s{note}"
+            note = "  |  analisa imagens" if seen else "  |  somente texto"
+        return True, f"Resposta em {took:.2f}s{note}"
 
 
 def _with_address(exc: Exception, base: str) -> Exception:
@@ -719,7 +719,7 @@ def _make(cfg: dict) -> OpenAICompatLLM:
 PROVIDER = {
     "id": "openai_compat",
     "kind": "llm",
-    "label": "OpenAI-compatible",
+    "label": "Compatível com OpenAI",
     "hint": "Ollama · LM Studio · llama.cpp · vLLM · Groq · DeepSeek · OpenRouter · OpenAI · MiniMax",
     # httpx ships with google-genai, so this is always true — checked anyway,
     # because a provider must never raise during discovery.
@@ -728,31 +728,31 @@ PROVIDER = {
     # What the panel lists instead of this provider's own name. See CATALOG.
     "catalog": CATALOG,
     "needs": (
-        Field("base_url", "Address", kind="choice",
+        Field("base_url", "Endereço", kind="choice",
               choices=tuple(PRESETS.values()),
               default=PRESETS["Ollama"],
-              hint="A preset, or any address serving /v1/chat/completions"),
+              hint="Um endereço predefinido ou qualquer endereço com /v1/chat/completions"),
         # A choice rather than free text, even though the list starts empty:
         # LIST fills it from the endpoint itself, and the panel keeps a choice
         # field typeable so an unlisted model can still be entered. Declared as
         # plain text it rendered as a box LIST had nothing to populate.
-        Field("model", "Model", kind="choice", choices=(),
-              hint="Filled in from the server — press REFRESH if it is empty"),
-        Field("api_key", "API key", kind="secret", required=False,
-              hint="Local servers usually need none"),
+        Field("model", "Modelo", kind="choice", choices=(),
+              hint="Carregado do servidor — toque em ATUALIZAR se a lista estiver vazia"),
+        Field("api_key", "Chave da API", kind="secret", required=False,
+              hint="Servidores locais geralmente não precisam de chave"),
         # Filled in by TEST, not asked. The user is the wrong person to ask
         # whether a model is multimodal — see OpenAICompatLLM.can_see. Kept as a
         # field so the answer is stored and so somebody who knows better can
         # override it under MORE.
-        Field("vision", "Can see images", kind="bool",
+        Field("vision", "Pode analisar imagens", kind="bool",
               default=False, required=False, advanced=True,
-              hint="Set automatically when you press TEST"),
-        Field("max_tools", "Tool limit", kind="number", default=0,
+              hint="Detectado automaticamente ao tocar em TESTAR"),
+        Field("max_tools", "Limite de ferramentas", kind="number", default=0,
               required=False, advanced=True,
-              hint="0 = no limit. Small models choose badly past about 12"),
-        Field("max_tool_chars", "Tool prompt limit", kind="number", default=0,
+              hint="0 = sem limite. Modelos pequenos podem escolher mal acima de 12"),
+        Field("max_tool_chars", "Limite de texto das ferramentas", kind="number", default=0,
               required=False, advanced=True,
-              hint="0 = no limit. Characters of tool descriptions sent each  turn"),
+              hint="0 = sem limite. Número de caracteres das descrições enviadas a cada turno"),
     ),
     "caps": {"tools": True, "tool_format": "openai"},
     "factory": _make,
