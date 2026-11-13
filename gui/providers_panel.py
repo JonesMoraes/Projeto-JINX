@@ -91,6 +91,7 @@ class ProvidersOverlay(_HudOverlay):
     # endpoint what it offers.
     _models_ready = pyqtSignal(str, list)
     _hearing_test_ready = pyqtSignal(str, bool, str)
+    _edge_ready = pyqtSignal(str, str, bool, str)
     _OW = 760                       # the window's own minimum is 820
 
     # Which provider fills each slot, and what the slot is FOR — in the words
@@ -124,6 +125,8 @@ class ProvidersOverlay(_HudOverlay):
         self._live_ready.connect(self._on_live_ready)
         self._models_ready.connect(self._on_models_ready)
         self._hearing_test_ready.connect(self._on_hearing_test_ready)
+        self._edge_ready.connect(self._on_edge_ready)
+        self._edge_jobs = set()
         self._hearing_tests = set()
         self._hearing_cancels = {}
         self._model_cache: dict[str, list] = {}
@@ -387,7 +390,8 @@ class ProvidersOverlay(_HudOverlay):
             box.setCurrentIndex(j)
         elif keep:
             box.setCurrentText(keep)
-        self._say(pid, f"{len(items)} modelo(s) encontrado(s) neste servidor — "
+        noun = "voz(es)" if (self._registry.get_declaration(pid) or {}).get("kind") == "tts" else "modelo(s)"
+        self._say(pid, f"{len(items)} {noun} encontrado(s) neste serviço — "
                        f"escolha um acima.", C.TEXT_DIM)
 
     def _set_mode(self, value: str) -> None:
@@ -766,6 +770,8 @@ class ProvidersOverlay(_HudOverlay):
         brow.addWidget(self._btn("TESTAR", lambda _=0, p=pid: self._test(p), C.PRI))
         if decl.get("id") == "groq_stt":
             brow.addWidget(self._btn("🎙 GRAVAR 4 S E TESTAR / RECORD", lambda _=0, p=pid: self._test_hearing(p, True), C.ACC2))
+        if decl.get("id") == "edge_tts":
+            brow.addWidget(self._btn("▶ OUVIR TESTE / LISTEN", lambda _=0, p=pid: self._edge_job(p, "play"), C.ACC2))
         # Not "LIST" any more: the list arrives on its own when a service is
         # chosen. This is the button for when it did not — the server was
         # starting up, or a model has just been pulled.
@@ -776,7 +782,7 @@ class ProvidersOverlay(_HudOverlay):
                 ("⌃ MENOS" if self._more.get(pid) else "⌄ MAIS"),
                 lambda _=0, p=pid: self._toggle_more(p)))
         if not decl.get("_available", True) and decl.get("install"):
-            brow.addWidget(self._btn(f"INSTALAR {decl['install']}",
+            brow.addWidget(self._btn(decl.get("install_label") or f"INSTALAR {decl['install']}",
                                      lambda _=0, p=pid: self._install(p), C.ACC2))
         brow.addStretch(1)
         holder = QWidget()
@@ -1046,6 +1052,9 @@ class ProvidersOverlay(_HudOverlay):
             lb.setStyleSheet(f"color: {colour}; background: transparent; border: none;")
 
     def _test(self, pid: str) -> None:
+        if pid == "edge_tts":
+            self._edge_job(pid, "probe")
+            return
         if pid.split("@", 1)[0] == "groq_stt":
             self._test_hearing(pid, False)
             return
@@ -1104,6 +1113,54 @@ class ProvidersOverlay(_HudOverlay):
                 pass
         threading.Thread(target=work, name="groq-hearing-test", daemon=True).start()
 
+    def _edge_job(self, pid: str, job: str):
+        if pid in self._edge_jobs:
+            return
+        values = self._values(pid)
+        self._edge_jobs.add(pid)
+        cancel = threading.Event()
+        self._hearing_cancels[pid] = cancel
+        labels = {"install": "Conferindo dependências opcionais (limite 20 MB) / Checking optional dependencies…",
+                  "voices": "Consultando vozes PT-BR/EN / Listing voices…",
+                  "probe": "Verificando voz / Checking voice…", "play": "Sintetizando e enviando teste à saída escolhida / Preparing playback test…"}
+        self._say(pid, labels.get(job, "…"), C.ACC)
+        def work():
+            try:
+                from providers.tts_edge import EdgeTTS
+                if job == "install":
+                    from providers.edge_install import install
+                    ok, message = install()
+                else:
+                    inst = EdgeTTS(values)
+                    if job == "voices":
+                        items = inst.voices()
+                        self._models_ready.emit(pid, items)
+                        ok, message = True, f"{len(items)} vozes retornadas / voices returned"
+                    elif job == "play":
+                        ok, message = inst.playback_test(cancel)
+                    else:
+                        ok, message = inst.probe()
+            except Exception:
+                ok, message = False, "Teste não confirmado; confira dependências e conexão / Test unverified; check dependencies and connection"
+            try:
+                self._edge_ready.emit(pid, job, ok, message)
+            except RuntimeError:
+                pass
+        threading.Thread(target=work, name="edge-tts-" + job, daemon=True).start()
+
+    def _on_edge_ready(self, pid, job, ok, message):
+        self._edge_jobs.discard(pid)
+        self._hearing_cancels.pop(pid, None)
+        if job == "install":
+            from providers.tts_edge import available
+            declaration = self._registry.get_declaration(pid)
+            if declaration:
+                declaration["_available"] = available()
+        label = self._status.get(pid)
+        if label is not None:
+            label.setTextFormat(Qt.TextFormat.PlainText)
+        self._say(pid, ("✓ " if ok else "✕ ") + message, C.GREEN if ok else C.RED)
+
     def _on_hearing_test_ready(self, pid: str, ok: bool, message: str):
         self._hearing_tests.discard(pid)
         self._hearing_cancels.pop(pid, None)
@@ -1118,6 +1175,9 @@ class ProvidersOverlay(_HudOverlay):
         super().hideEvent(event)
 
     def _list(self, pid: str) -> None:
+        if pid == "edge_tts":
+            self._edge_job(pid, "voices")
+            return
         values = self._values(pid)          # before processEvents — see _test
         self._say(pid, "consultando…", C.TEXT_DIM)
         QApplication.processEvents()
@@ -1156,6 +1216,9 @@ class ProvidersOverlay(_HudOverlay):
         self._say(pid, f"✓  {len(items)} disponíveis — escolha um acima.", C.GREEN)
 
     def _install(self, pid: str) -> None:
+        if pid == "edge_tts":
+            self._edge_job(pid, "install")
+            return
         """Fetch a provider's optional dependency, off the Qt thread — pip takes
         tens of seconds and a frozen window looks like a crashed one."""
         import subprocess

@@ -115,6 +115,10 @@ contas reais e voz pendentes. Tarefa 1.6 implementada: foco/humor/blocklist,
 Sem dependências novas; aceitação por voz pendente. Tarefa 1.7 implementada:
 Groq STT dedicado, legado preservado e teste explícito de microfone; 98 testes
 e smoke do sinal Qt passaram. Chave vazia e transcrição real pendente.
-Próxima tarefa: 1.8, Edge TTS como provedor de voz.
+Tarefa 1.8 implementada: Edge TTS opcional com vozes/teste/instalador pela UI;
+110 testes passaram. Dependências opcionais ainda ausentes, síntese/escuta
+reais e validação integrada da Fase 1 pendentes. Não mesclar nem declarar a
+Fase 1 concluída sem registrar essas verificações. Próxima etapa: concluir
+smoke integrado e aceitação da Fase 1 antes da Fase 2.
 
 Executar 0.2: baseline controlado e Git local, registrar conflitos de licença/dependências e proposta reversível para o HUD. Não iniciar 1.1 antes de finalizar a Fase 0. Nenhuma alteração de segurança ou exclusão é autorizada por este documento.

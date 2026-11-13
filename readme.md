@@ -1043,6 +1043,47 @@ and CHANGELOG.md for task reports and verification limits. -->
 
 ### Audição Groq (expansão 1.7)
 
+### Voz Edge TTS opcional (expansão 1.8)
+
+Em ⚙ → MECANISMO E PROVEDORES → sua configuração própria → VOZ / SPEAKING,
+escolha **Edge TTS — vozes online**. Não exige conta, chave ou servidor seu;
+usa o serviço online de fala do Microsoft Edge pela biblioteca edge-tts.
+Requer internet e o texto a falar é enviado ao serviço. Referência:
+[projeto edge-tts](https://github.com/rany2/edge-tts).
+
+O provedor permanece opcional. Clique **INSTALAR EDGE TTS + ÁUDIO** para
+instalar edge-tts e miniaudio somente nessa instalação do JINX. O instalador
+resolve o plano, verifica os tamanhos dos arquivos e instala os artefatos com
+hash; acima de 20 MB, origem diferente de PyPI ou tamanho não verificável,
+ele interrompe e pede revisão/aprovação. Feche e reabra o painel após instalar.
+Nenhum modelo neural local é baixado e as dependências padrão não mudam.
+
+O seletor começa com Antonio/Francisca em PT-BR e Aria/Guy em inglês;
+**ATUALIZAR** consulta as vozes PT-BR e inglês disponíveis no serviço.
+Padrão: `pt-BR-AntonioNeural`. A velocidade aceita de `-50%` a `+100%`,
+com sinal. Escolha uma voz compatível com o idioma que deseja ouvir.
+
+**TESTAR** verifica se a voz está listada, sem reprodução. **OUVIR TESTE**
+sintetiza uma frase no idioma da voz e envia áudio à saída escolhida nas
+configurações de áudio. Confirme se ouviu: receber amostras no dispositivo
+não prova som audível. Ocultar o painel impede o início de reprodução ainda
+pendente e interrompe entre blocos a que já começou; não retira texto já
+enviado ao serviço. Não há gravação de microfone nesse teste.
+
+Depois de configurar também audição e pensamento, clique SALVAR E APLICAR.
+O provedor pertence ao motor de configuração própria; não substitui as vozes
+nativas do Gemini Live automaticamente. Comandos para testar a conversa:
+“Diga uma frase em português do Brasil” / “Say a sentence in English”.
+Troque a voz no seletor para comparar; não é um comando de instalação por voz.
+
+O áudio MP3 da frase é recebido e decodificado para PCM mono de 24 kHz antes
+da reprodução; a primeira amostra pode demorar até a síntese desse trecho
+terminar. O adaptador não promete a meta futura de barge-in. As bibliotecas
+opcionais ainda não foram instaladas nesta tarefa; síntese online e escuta
+reais seguem pendentes. Testes internos usam áudio/respostas simulados.
+
+### Configuração da audição Groq
+
 Em ⚙ → MECANISMO E PROVEDORES, selecione sua configuração própria e,
 em AUDIÇÃO / HEARING, escolha **Groq — audição / hearing**. Cadastre **sua**
 chave, escolha o modelo e deixe o idioma vazio para detectar PT-BR/EN,

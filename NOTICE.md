@@ -52,6 +52,13 @@ JINX adaptation uses the existing provider/Whisper contract rather than the
 source's separate microphone loop: dedicated lazy provider, manual secret
 entry, explicit connection vs microphone-transcription tests and Qt signals.
 Legacy whisper@groq remains supported. No source credentials were imported.
+
+Expansion task 1.8: Edge TTS integration follows the existing EdgeTTSEngine
+adapter in core/tts.py (also present in the authorized jgm-source fork at
+87d9ea2bfd600e189ba849a0653039e8c505c978; original Mark attribution retained).
+The provider adapter, optional installation gate and panel tests are new JINX
+integration code. edge-tts and miniaudio are optional external libraries, not
+vendored source; their respective licenses remain applicable.
 Brahma assets present on this machine are excluded from Git and are not
 relicensed by this notice. Their existing HUD integration is a recorded
 remediation item; it is not represented as an independently authored visual.

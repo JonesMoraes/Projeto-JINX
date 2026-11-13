@@ -1,5 +1,19 @@
 # Histórico de alterações
 
+## 2026-11-13 — Tarefa 1.8
+
+- Provedor Edge TTS opcional no seletor de voz, padrão PT-BR Antonio,
+  opções PT-BR/EN e consulta atualizada de vozes. Sem conta/chave prévia.
+- TESTAR verifica lista/voz; OUVIR TESTE sintetiza uma frase e envia PCM
+  mono 24 kHz à saída escolhida. Confirmação de escuta ainda depende do usuário.
+- edge-tts e miniaudio ausentes nesta máquina; importação sob demanda e
+  instalação apenas pelo botão do painel, com plano/tamanho/hashes verificados
+  e recusa acima de 20 MB. requirements.txt não alterado.
+- 110 testes passaram; smoke Qt do painel passou sem reproduzir/instalar.
+  Síntese online e escuta reais pendentes das dependências opcionais.
+- Implementações da Fase 1 disponíveis na branch; validação integrada real
+  ainda pendente, portanto a fase não foi declarada concluída nem mesclada.
+
 ## 2026-11-13 — Tarefa 1.7
 
 - Groq STT dedicado no seletor de audição, dois modelos multilíngues,
