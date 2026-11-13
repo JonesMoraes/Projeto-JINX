@@ -1037,6 +1037,51 @@ and CHANGELOG.md for task reports and verification limits. -->
 
 ### Vendas Cakto (expansão 1.4)
 
+### Rastracking de vendas e rastreamento de encomendas (expansão 1.5)
+
+São dois plugins distintos. Reinicie o JINX para carregá-los. Nenhum recebe
+conta pronta; todos os segredos são preenchidos em ⚙ → CONFIGURAÇÕES DOS
+PLUGINS e persistidos apenas na configuração local ignorada pelo Git.
+
+**Rastracking — vendas/clientes/suporte:** informe a URL HTTPS completa da
+**sua** API de integrações e a **sua** chave de leitura. O campo de servidor
+também vem vazio; nenhum servidor pessoal do autor foi importado. O contrato
+foi adaptado do port autorizado de jgm-source; não foi possível confirmar uma
+documentação pública independente desse serviço. O botão TESTAR verifica
+somente o endpoint de clientes e o formato básico de paginação. Os demais
+endpoints precisam ser validados com sua API; respostas divergentes não são
+tratadas como dados confirmados.
+
+Comandos: “Quanto foi trackeado hoje no Rastracking?”, “Quais clientes vencem
+esta semana?”, “Tem alguém esperando resposta no suporte?”, “Quais foram as
+últimas vendas?” e “Mostre um resumo das vendas do mês no Rastracking”.
+Em inglês: “Show tracked revenue this month in Rastracking” / “Who is waiting
+for support?”. O texto das mensagens de suporte só é incluído quando você
+pede explicitamente o assunto. Os valores desse contrato são tratados como
+BRL, conforme o port de origem; não equivalem a saldo ou lucro.
+Não há filtros de vendas por valor/cliente nesta adaptação compacta inicial.
+Resultados limitados por página/tempo são marcados como parciais.
+
+**Encomendas — Correios:** preencha seu token Bearer autorizado, escolha
+produção ou homologação e informe um código seu para o botão TESTAR CONSULTA.
+Tokens expirados precisam ser substituídos manualmente. Não há geração de
+token por senha dentro desta integração. A [API Rastro dos Correios](https://www.correios.com.br/atendimento/developers)
+restringe a consulta a objetos vinculados ao contrato do remetente; cadastrar
+um token não garante acesso a qualquer encomenda. O modo homologação retorna
+dados de teste e é identificado no resultado.
+
+Comandos: “Rastreie a encomenda [seu código] nos Correios” / “Track my Correios
+parcel [your code]”. O resultado inclui status, data do evento, cidade e fonte,
+sem expor endereço completo. Sem eventos válidos, não é informado status de entrega.
+Para abrir a alternativa manual: “Abra o site dos Correios para rastrear
+[seu código]”. O código deverá ser digitado no [site oficial](https://rastreamento.correios.com.br/app/index.php);
+abrir a página não confirma rastreamento. Outras transportadoras ainda não
+estão integradas; para elas, use o site oficial correspondente pelo navegador.
+Nenhuma dependência adicional. Consultas reais e teste falado dependem de
+configurar suas contas; testes internos usam respostas simuladas.
+
+### Consultas Cakto
+
 Depois de reiniciar o app, abra ⚙ → CONFIGURAÇÕES DOS PLUGINS → CAKTO.
 Os campos vêm vazios. Cadastre **seu Client ID e seu Client Secret**, gerados
 no seu painel Cakto em Integrações → Cakto API. Permissões necessárias:

@@ -1,5 +1,18 @@
 # Histórico de alterações
 
+## 2026-11-13 — Tarefa 1.5
+
+- Divergência do backlog confirmada com o usuário: o plugin de origem é de
+  vendas/marketing. Usuário solicitou os dois recursos, separados.
+- Rastracking de vendas/clientes/suporte: servidor HTTPS e chave vazios,
+  agregados Decimal, paginação por cursor com limites, mensagens de suporte
+  ocultas salvo solicitação explícita. Contrato real depende da API do usuário.
+- Encomendas: plugin separado para Correios com token manual, leitura de
+  eventos/status/data e alternativa de consulta manual no site oficial.
+  API restrita ao contrato do remetente; outras transportadoras não integradas.
+- 71 testes passaram, incluindo regressões; sintaxe e descoberta verificadas.
+  Contas reais e voz ainda não verificadas. Nenhuma dependência nova.
+
 ## 2026-11-13 — Tarefa 1.4
 
 - Plugin Cakto para vendas brutas pagas de hoje/mês, pedidos recentes,

@@ -27,6 +27,15 @@ Adaptations: separate read-only client, exact decimal totals, payment-date
 filters, currency isolation, bounded pagination with explicit partial results,
 credential-specific in-memory token cache and minimized order summaries.
 No source credentials, customer diagnostic files or private servers imported.
+
+Expansion task 1.5: Rastracking SALES/client/support contract adapted from
+plugins/rastracking.py in jgm-source/jarvis-opensource, commit
+87d9ea2bfd600e189ba849a0653039e8c505c978 (João Gabriel; CC BY-NC 4.0).
+Adaptations: user-provided HTTPS server with no default, read-only endpoints,
+Decimal aggregates, bounded cursor pagination and explicit partial results,
+support subjects only on explicit request, no diagnostic files or credentials.
+Parcel tracking is a separate original implementation against the published
+Correios API contract, not a feature ported from the Rastracking source.
 Brahma assets present on this machine are excluded from Git and are not
 relicensed by this notice. Their existing HUD integration is a recorded
 remediation item; it is not represented as an independently authored visual.

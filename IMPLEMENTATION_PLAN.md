@@ -51,7 +51,7 @@ Os nomes novos abaixo são propostas, sujeitos à revisão pontual do código no
 | 1.2 Trello e sync | plugins/trello_control.py, core/agenda_sync.py novos; gui/window.py; persistência compartilhada de agenda | IDs estáveis, paginação, fusos, conflito, exclusão e idempotência; mudança para 17h deve reaparecer no remoto. requests existente. Como 1.3 vem depois, 1.2 cria apenas contrato/store mínimo de agenda que 1.3 completa; evitar dependência invertida. |
 | 1.3 Organizer | plugins/organizer.py, core/agenda_store.py proposto; reminder.py e core/routines integrados sem lembretes duplicados | CRUD local atômico com undo e eventos de sync. Sem pacote novo. |
 | 1.4 Cakto | plugins/cakto_sales.py, cartão de configuração | Consultar pedidos/vendas, sem movimentação financeira implícita; resultados de serviço real ou unverified. requests. |
-| 1.5 Rastracking | plugins/rastracking.py | Rastrear código com status/data da origem; erros honestos. requests. |
+| 1.5 Rastracking + encomendas | core/rastracking_client.py, plugins/rastracking.py e plugins/parcel_tracking.py | Escopo corrigido com o usuário: ambos, separados. Rastracking consulta vendas/clientes/suporte via API do usuário; encomendas via Correios autorizado ou site manual. Sem conta/servidor pessoal pré-preenchido. requests existente. |
 | 1.6 Foco/humor/blocklist | três plugins; hooks de prompt e voz em main.py | Persistência, liga/desliga, PT/EN; regras de personalidade não podem anular segurança. Sem pacote novo. |
 | 1.7 Groq STT | providers/stt_whisper.py, registry.py, gui/providers_panel.py | Reutilizar preset existente e oferecer configuração/teste de audição; confirmar transcrição real. HTTP existente. |
 | 1.8 Edge TTS | core/tts.py → providers/tts_edge.py; registry e painel | Vozes PT-BR/EN e botão TESTAR; lazy import. edge-tts opcional; requer internet. |
@@ -108,6 +108,8 @@ incluindo regressões de 1.1/1.2 e smoke headless do painel. Aceitação por voz
 das funcionalidades novas e integração Trello real seguem pendentes; não
 confundir conclusão de implementação com conclusão da Fase 1. Próxima tarefa:
 1.4 implementada: Cakto com campos vazios para configuração manual, 55 testes
-passando e aceitação real/voz pendente. Próxima tarefa: 1.5, Rastracking.
+passando e aceitação real/voz pendente. Tarefa 1.5 implementada com os dois
+recursos separados conforme escolha explícita do usuário: 71 testes passando,
+contas reais e voz pendentes. Próxima tarefa: 1.6, foco/humor/blocklist.
 
 Executar 0.2: baseline controlado e Git local, registrar conflitos de licença/dependências e proposta reversível para o HUD. Não iniciar 1.1 antes de finalizar a Fase 0. Nenhuma alteração de segurança ou exclusão é autorizada por este documento.
