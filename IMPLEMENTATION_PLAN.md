@@ -111,7 +111,14 @@ cancelamento, proteção do JINX, reutilização de PID e force separado.
 Consultas reais somente leitura de CPU/RAM e descoberta/dispatch das 20 ações
 passaram. Nenhum processo real foi encerrado; aceite por voz do novo recurso
 pendente de reinício. Sem nova dependência nem mudanças em confirm.py/undo.py.
-Próxima tarefa: 2.2, bateria e alertas de carga com limites honestos do SO.
+Tarefa 2.2 implementada: core/battery.py, plugins/battery_health.py e hook
+assíncrono em main.py, com 16 testes novos em tests/test_battery.py.
+141 testes passaram; consulta real verificou carga de 30% e tomada conectada.
+O driver não expôs capacidade de projeto válida, portanto saúde/desgaste
+permanecem unverified. Plugin/cartão/dispatch verificados, alertas opt-in,
+silêncio e undo existentes preservados. Sem nova dependência nem mudança
+nos módulos de segurança. Voz PT-BR/EN e escuta dos alertas pendentes.
+Próxima tarefa: 2.3, brilho por monitor no Windows e limites dos dispositivos.
 
 Atualização de execução: Fase 0 aceita pelo usuário; tarefas 1.1, 1.2 e 1.3
 implementadas na branch feature/phase-1-ports. A tarefa 1.3 passou em 38 testes

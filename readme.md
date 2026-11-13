@@ -1,5 +1,34 @@
 # ⚙️ JINX
 
+### Expansão 2.2 — Bateria e alertas
+
+Após reiniciar, diga “Como está a bateria?” / “How is my battery?”. Mostra carga,
+alimentação externa e tempo restante estimado quando o sistema o informa.
+Estar na tomada não comprova que a bateria esteja carregando.
+No Windows, consulta capacidades pelo driver WMI, pareando cada bateria;
+se houver dados válidos, estima capacidade preservada e desgaste.
+A razão capacidade cheia/capacidade de projeto segue a orientação da
+[Microsoft](https://support.microsoft.com/en-us/surface/battery/how-to-check-your-surface-battery-capacity).
+Não é diagnóstico; dados ausentes permanecem `unverified`, sem estimativa inventada.
+Nesta máquina, carga/tomada foram verificadas; o driver não forneceu capacidade
+de projeto válida, portanto o desgaste permanece indisponível.
+
+Alertas desligados por padrão. Configure em ⚙ → plugins → BATERIA / BATTERY,
+ou diga “Avise quando a bateria baixar a 20% e chegar a 80%” / “Alert me below
+20 percent and above 80 percent”. Limites: 5 ≤ mínimo < máximo ≤ 100.
+“Desative os alertas de bateria” / “Disable battery alerts” desliga; mudanças
+por voz têm desfazer. O limite inferior só alerta sem alimentação externa;
+o superior, com alimentação externa. Não altera limites de carga do hardware.
+
+Verifica a cada 30 segundos durante uma sessão ativa, respeitando mute,
+repouso, conversa recente e horário silencioso. Um alerta por episódio, com
+histerese de 3 pontos e intervalo mínimo de 5 minutos; períodos silenciosos
+adiam o aviso enquanto a condição persistir. Sem bateria detectada, não alerta.
+Saúde indisponível fora do Windows nesta versão; carga depende do suporte psutil.
+Sem dependências novas ou conta. Alertas reais/voz PT-BR e EN aguardam teste
+após reinício; testes automatizados não falam nem alteram a carga da bateria.
+
+
 ### Expansão 2.1 — Gerenciador de processos
 
 Após reiniciar o JINX, diga “Quem está consumindo minha RAM?” ou

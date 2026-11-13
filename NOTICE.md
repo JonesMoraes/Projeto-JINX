@@ -63,6 +63,12 @@ Brahma assets present on this machine are excluded from Git and are not
 relicensed by this notice. Their existing HUD integration is a recorded
 remediation item; it is not represented as an independently authored visual.
 
+Expansion task 2.2: core/battery.py, plugins/battery_health.py, tests and
+the main.py monitor hook are original JINX integration code. Windows battery
+driver interfaces follow Microsoft documentation; no external implementation
+was ported. Existing psutil, config, outcome and undo APIs are reused.
+No Brahma code, additional dependency or protected safety-module change.
+
 Expansion task 2.1: actions/process_manager.py and its tests are original JINX
 integration code. They reuse existing core.appidentity, core.confirm and
 core.outcome interfaces without changing the safety modules. psutil is an

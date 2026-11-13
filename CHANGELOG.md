@@ -1,5 +1,18 @@
 # Histórico de alterações
 
+## 2026-11-13 — Tarefa 2.2
+
+- Plugin de bateria: carga, tomada e autonomia estimada; consulta WMI Windows
+  sob demanda para capacidade/desgaste, com limite de 4 s e sem pacote novo.
+- Alertas opt-in por voz e cartão de configurações, limites 20/80% por padrão,
+  reversão via undo existente. Não altera hardware nem políticas de energia.
+- Monitor a cada 30 s nos modos Live/pipeline; silêncio, mute, repouso,
+  conversa recente, histerese e cooldown; falha no envio não consome o alerta.
+- 141 testes passaram (16 novos). Consulta real detectou 30% e tomada;
+  capacidade de projeto não disponível no driver, saúde `unverified`.
+  Descoberta do plugin/cartão e consulta pelo dispatcher verificadas.
+- Voz PT-BR/EN e escuta real de alertas pendentes após reinício do app.
+
 ## 2026-11-13 — Tarefa 2.1
 
 - Nova ação process_manager: consulta de CPU/RAM por processo, nome exato ou PID,

@@ -2468,6 +2468,16 @@ class JinxLive:
 
     # ── Proactive mode ──────────────────────────────────────────────────────────
 
+    async def _run_battery_monitor(self):
+        from core import battery
+        alerts = battery.BatteryAlerts()
+        while True:
+            await asyncio.sleep(30)
+            try:
+                await battery.poll(self, alerts)
+            except Exception as exc:
+                print(f"[Battery] Monitor unavailable: {type(exc).__name__}")
+
     async def _run_focus_reminders(self):
         from memory.config_manager import get_plugin_config
         clock = _preferences.FocusClock()
@@ -2888,6 +2898,7 @@ class JinxLive:
                     tg.create_task(self._receive_audio())
                     tg.create_task(self._play_audio())
                     tg.create_task(self._run_system_monitor())
+                    tg.create_task(self._run_battery_monitor())
                     tg.create_task(self._run_focus_reminders())
                     if self._routines is None:
                         # Routines did not load: the fixed schedules they replaced.
