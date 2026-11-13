@@ -1,5 +1,11 @@
 # Execução local — Fases 2 e 3
 
+## 3.2 — Legendas e resumo do YouTube
+- core/youtube_summary.py, plugins/youtube_summary.py, actions/youtube_video.py, tests/test_youtube_summary.py.
+- URL validada, legenda pela API atual com idioma PT/EN prioritário e fallback para idiomas existentes; timeout HTTP, limite de conteúdo e dados untrusted antes da ladder. Resumo no painel; reprodução HUD preservada. Rota antiga summarize usa a nova implementação, sem Tk na thread de trabalho; save mantém arquivo Desktop com undo.
+- Testar “Resuma este vídeo: https://www.youtube.com/watch?v=...” / “Summarize this YouTube video: ...”. Cinco testes, incluindo API atual, falhas e caminho legado. youtube-transcript-api já instalado, import lazy e instalador opcional no cartão de legendas.
+- Sem garantias para vídeos sem legendas, privados ou bloqueados pelo YouTube; ausência é unverified. Não confunde legenda com análise de imagens. Resumo real/voz pendente de vídeo/serviço acessível.
+
 ## 3.1 — Documentos e PDF
 - core/office.py, core/optional_packages.py, plugins/office_suite.py, tests/test_office.py.
 - PPTX com layouts e notas; DOCX com títulos/listas/tabelas; XLSX com fórmulas reais e recálculo no Excel. Conteúdo por JSON ou ladder configurada, sem modelos fixos. PDFs merge/split por seleção de páginas/extract; arquivos novos sem sobrescrever, reabertos antes da entrega, undo por hash.

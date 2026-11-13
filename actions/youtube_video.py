@@ -27,11 +27,8 @@ try:
 except ImportError:
     _REQUESTS_OK = False
 
-try:
-    from youtube_transcript_api import YouTubeTranscriptApi
-    _TRANSCRIPT_OK = True
-except ImportError:
-    _TRANSCRIPT_OK = False
+from importlib.util import find_spec
+_TRANSCRIPT_OK = find_spec("youtube_transcript_api") is not None
 
 from config import get_os, is_windows, is_mac, is_linux
 
@@ -134,63 +131,16 @@ def _ask_for_url(prompt_text: str = "YouTube video URL:") -> str | None:
 
 
 def _get_transcript(video_id: str) -> str | None:
-    if not _TRANSCRIPT_OK:
-        return None
+    from core.youtube_summary import transcript
     try:
-        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-        transcript      = None
-
-        lang_priority = ["en", "tr", "de", "fr", "es", "it", "pt", "ru", "ja", "ko", "ar", "zh"]
-
-        try:
-            transcript = transcript_list.find_manually_created_transcript(lang_priority)
-        except Exception:
-            pass
-
-        if transcript is None:
-            try:
-                transcript = transcript_list.find_generated_transcript(lang_priority)
-            except Exception:
-                for t in transcript_list:
-                    transcript = t
-                    break
-
-        if transcript is None:
-            return None
-
-        fetched = transcript.fetch()
-        return " ".join(entry["text"] for entry in fetched)
-
-    except Exception as e:
-        print(f"[YouTube] ⚠️ Transcript fetch failed: {e}")
+        return transcript(video_id)
+    except Exception:
         return None
 
 
 def _summarize_with_gemini(transcript: str, video_url: str) -> str:
-    from google.genai import types
-    from core import gemini
-
-    max_chars = 80000
-    truncated = transcript[:max_chars] + ("..." if len(transcript) > max_chars else "")
-    # A whole transcript can be 80k characters, hence the long deadline — but a
-    # deadline there is, and the ladder in core/gemini.py picks the model.
-    response = gemini.call(
-        f"Please summarize this YouTube video transcript:\n\n{truncated}",
-        tier=gemini.SMART,
-        timeout_ms=60_000,
-        config=types.GenerateContentConfig(
-            system_instruction=(
-                "You are JINX, an AI assistant. "
-                "Summarize YouTube video transcripts clearly and concisely. "
-                "Structure: 1-sentence overview, then 3-5 key points. "
-                "Be direct. Address the user as 'sir'. "
-                "Match the language of the transcript."
-            )
-        )
-    )
-    if response is None:
-        return "I couldn't reach Gemini to summarise that transcript, sir."
-    return (response.text or "").strip()
+    from core.youtube_summary import summarize
+    return summarize(transcript)
 
 
 def _save_summary(content: str, video_url: str) -> str:
@@ -309,44 +259,11 @@ def _handle_play(parameters: dict, player) -> str:
 
 
 def _handle_summarize(parameters: dict, player, speak) -> str:
-    if not _TRANSCRIPT_OK:
-        return "youtube-transcript-api is not installed. Run: pip install youtube-transcript-api"
+    # URL comes from the conversation; no Tk dialog on a worker thread.
+    from core.youtube_summary import run
+    return run(parameters, player)
 
-    url = _ask_for_url("Please paste the YouTube video URL:")
-    if not url:
-        return "No URL provided, sir. Summary cancelled."
-    if not _is_valid_youtube_url(url):
-        return "That doesn't appear to be a valid YouTube URL, sir."
 
-    video_id = _extract_video_id(url)
-    if not video_id:
-        return "Could not extract video ID from that URL, sir."
-
-    if player:
-        player.write_log(f"[YouTube] Summarizing: {url}")
-    if speak:
-        speak("Fetching the transcript now, sir. One moment.")
-
-    transcript = _get_transcript(video_id)
-    if not transcript:
-        return "I couldn't retrieve a transcript for that video, sir."
-
-    if speak:
-        speak("Transcript retrieved. Generating summary now.")
-
-    try:
-        summary = _summarize_with_gemini(transcript, url)
-    except Exception as e:
-        return f"Summary generation failed, sir: {e}"
-
-    if speak:
-        speak(summary)
-
-    if parameters.get("save", False):
-        saved_path = _save_summary(summary, url)
-        return f"Summary complete and saved to Desktop: {saved_path}"
-
-    return summary
 
 
 def _handle_get_info(parameters: dict, player, speak) -> str:
@@ -466,7 +383,7 @@ TOOL = {
             },
             "url": {
                 "type": "STRING",
-                "description": "Video URL for get_info action"
+                "description": "YouTube HTTPS URL required for summarize; also used by get_info"
             }
         },
         "required": []
