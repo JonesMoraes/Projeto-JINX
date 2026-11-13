@@ -7,6 +7,12 @@ plugins/gemini_accounts.py. Primary-first fallback design also informed
 core/gemini_accounts.py; retry integration and tests adapted to JINX's ladder.
 Source: https://github.com/jgm-source/jarvis-opensource/tree/87d9ea2bfd600e189ba849a0653039e8c505c978
 Existing FatihMakes attribution and non-commercial restrictions remain.
+
+Expansion task 1.2: Trello configuration, matching and agenda reconciliation
+adapted from plugins/trello_control.py and core/agenda_sync.py in the same
+jgm-source commit above (João Gabriel, CC BY-NC 4.0). The JINX adaptation
+separates transport/store/UI, adds verified readback and undo, preserves
+conflicts instead of deleting events and uses no upstream accounts or servers.
 Brahma assets present on this machine are excluded from Git and are not
 relicensed by this notice. Their existing HUD integration is a recorded
 remediation item; it is not represented as an independently authored visual.

@@ -705,6 +705,8 @@ class JinxLive:
         )
         self.ui.get_plugins = self._plugin_registry.list_for_ui
         self.ui.get_plugin_settings = self._plugin_registry.settings_schemas  # ⚙ settings tab
+        from core import agenda_sync
+        agenda_sync.start(log=self.ui.write_log)
         self.ui.request_say = self.plugin_say   # plugins: mid-task speech channel
 
         # Tool access for plugins that ORCHESTRATE other tools rather than doing
@@ -961,6 +963,8 @@ class JinxLive:
     def finish(self, timeout: float = 15.0) -> None:
         """Called on the Qt thread after the window has closed. The window is
         already gone, so this wait is not something anybody sits through."""
+        from core import agenda_sync
+        agenda_sync.stop()
         loop = getattr(self, "_loop", None)
         if loop is not None and loop.is_running():
             try:

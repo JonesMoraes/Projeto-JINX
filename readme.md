@@ -1045,3 +1045,36 @@ Contas do mesmo projeto podem compartilhar cota: chaves extras não garantem
 cota independente. Com todas em pausa, o provedor alternativo configurado
 continua disponível. Comando: “Qual conta Gemini está ativa?” / “Which Gemini
 account is active?”. Não há dependência adicional.
+
+### Trello e agenda (expansão 1.2)
+
+Reinicie para descobrir os plugins. Em ⚙ → CONFIGURAÇÕES DOS PLUGINS →
+TRELLO, informe **sua** chave e **seu** token; use TESTAR CONEXÃO.
+Crie credenciais no portal oficial https://trello.com/apps/admin.
+Não há login, token, quadro, servidor privado ou destino pessoal pré-preenchido.
+O único endpoint desta integração é a API oficial https://api.trello.com/1.
+
+Use “Mostre meus quadros no Trello”, “Liste as listas do quadro Trabalho”,
+“Crie o cartão Revisar orçamento na lista A fazer do quadro Trabalho” ou
+“Mova o cartão Revisar orçamento da lista A fazer para Concluído”.
+Em inglês: “List my Trello boards” / “Move the card Review budget from To Do to Done”.
+Movimentações, conclusão e arquivamento têm leitura de confirmação e undo;
+arquivamento é reversível, não exclusão definitiva.
+
+Em ⚙ → AGENDA / SCHEDULE, informe o ID da **sua lista** (obtido ao listar
+as listas por voz), salve e habilite sync. O sincronizador consulta essa lista
+a cada 60 segundos. Apenas cartões com prazo são importados como eventos.
+Você pode adicionar/reagendar no painel ou dizer “Adicione Call amanhã às 16h
+na agenda”, depois “Muda a Call para 17h”. O modelo deve preservar a data do
+evento ao reagendar e enviar data/hora ISO. Comando inglês: “Reschedule Call
+to 5 PM”. O JSON pessoal fica em memory/agenda.json, fora do Git.
+
+Conflitos, cartões movidos/arquivados e prazos removidos geram pendências,
+preservando os dados locais. Trocar conta/token/lista suspende vínculos antigos
+para revisão; não transfere eventos automaticamente. Após timeout ao criar,
+o marcador persistido permite recuperar o cartão sem criar uma segunda cópia;
+se não for encontrado, a pendência exige revisão manual. Listas com 1.000 ou
+mais cartões suspendem reconciliação para evitar conclusões por resposta parcial.
+O painel mostra as pendências; não há resolução automática de conflitos nesta versão.
+Sincronização desligada não faz chamadas à API. Sem dependências novas.
+Validação com conta real e voz requer suas credenciais, inseridas somente na UI.

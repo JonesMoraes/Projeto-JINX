@@ -1658,6 +1658,7 @@ class MainWindow(QMainWindow):
         _btn("🧠  MEMÓRIA", self._open_memory_panel)
         _btn("🧩  PLUGINS", self._open_plugin_manager)
         _btn("⚙  CONFIGURAÇÕES DOS PLUGINS", self._open_plugin_settings)
+        _btn("📅  AGENDA / SCHEDULE", self._open_agenda)
         # The button is built here with the rest of the drawer; the panel behind
         # it — and the whole providers package — is imported on the click. The
         # drawer used to stutter for a measured 2.104 seconds because a state
@@ -2844,6 +2845,11 @@ class MainWindow(QMainWindow):
         ov.show()
         ov.raise_()
         self._plugin_manager_overlay = ov   # keep a reference so it isn't GC'd
+
+    def _open_agenda(self):
+        from gui.agenda_panel import AgendaPanel
+        self._agenda_panel = AgendaPanel(self)
+        self._agenda_panel.show()
 
     def _open_plugin_settings(self):
         sections = self.get_plugin_settings() if self.get_plugin_settings else []

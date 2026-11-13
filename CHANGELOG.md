@@ -1,5 +1,16 @@
 # Histórico de alterações
 
+## 2026-11-13 — Tarefa 1.2 (integração real pendente)
+
+- Plugins Trello e agenda: quadros/listas/cartões, criação, movimentação,
+  conclusão e arquivamento com readback; undo para alterações reversíveis.
+- Store mínimo de eventos e sync bidirecional com lista escolhida pelo usuário;
+  painel em ⚙; reagendamento por título; persistência atômica e conflitos visíveis.
+- Sync OFF por padrão, nenhum login/destino de origem importado; troca de
+  conta/lista bloqueia vínculos antigos, timeout de criação não duplica cartões.
+- Testes simulados e smoke headless do painel; conta Trello real e voz ainda
+  unverified. Nenhuma dependência nova; nenhum módulo de segurança alterado.
+
 ## 2026-11-13 — Tarefa 1.1
 
 - Rotação primary-first de até três chaves integrada à ladder e reconexão Live.
