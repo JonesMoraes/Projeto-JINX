@@ -1,5 +1,13 @@
 # Execução local — Fases 2 e 3
 
+## 3.3 — Assistente de reuniões
+- core/meeting.py, plugins/meeting_assistant.py, indicador Qt em gui/window.py/ui.py, tests/test_meeting.py.
+- Start/stop/status explícitos; captura só após confirmação técnica de exibição do indicador PARAR. Duas trilhas mic/loopback iniciadas por barreira, redução 48k→16k, PCM em disco temporário com RAM limitada, máximo 30 min. Áudio bruto removido após processamento; transcript/resumo no diretório de documentos com undo por hash.
+- Testar “Comece a gravar a reunião” / “Start recording the meeting”; “Pare a gravação da reunião” / “Stop meeting recording”. O botão visível PARAR também interrompe. Configurar Whisper local já em cache ou Groq em audição; nenhum modelo é baixado automaticamente. Groq envia áudio à sua conta configurada.
+- SoundCard opcional via cartão REUNIÕES (instalador recusa plano >20 MB). Se loopback ou STT não estiver disponível, recusa captura em vez de gravar só metade silenciosamente. Alternativa: configurar Groq ou modelo local existente; áudio real depende de drivers/dispositivos compartilhados.
+- Seis testes, inclusive ciclo completo com duas trilhas sintéticas, resumo simulado pela ladder e arquivo real. Teste de interface/indicador separado. Não gravada conversa real. Timestamps aproximados, sem diarização; sons do próprio JINX podem entrar na trilha sistema. Driver travado mantém indicador até encerrar a captura; stop/processamento é assíncrono e status parcial é explícito.
+- SoundCard instalado sob demanda pelo callback do cartão: 0,04 MB; indicador Qt show/ack/hide passou sem abrir gravador.
+
 ## 3.2 — Legendas e resumo do YouTube
 - core/youtube_summary.py, plugins/youtube_summary.py, actions/youtube_video.py, tests/test_youtube_summary.py.
 - URL validada, legenda pela API atual com idioma PT/EN prioritário e fallback para idiomas existentes; timeout HTTP, limite de conteúdo e dados untrusted antes da ladder. Resumo no painel; reprodução HUD preservada. Rota antiga summarize usa a nova implementação, sem Tk na thread de trabalho; save mantém arquivo Desktop com undo.

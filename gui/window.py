@@ -117,6 +117,22 @@ class MainWindow(QMainWindow):
     _quiz_sig       = pyqtSignal(str, object, object)  # (topic, questions, grader)
     _quiz_hide_sig  = pyqtSignal()
     _review_sig     = pyqtSignal(str, str, object, object)  # document review payload
+    _meeting_sig    = pyqtSignal(bool, object)  # recording consent indicator + ack
+
+    def _set_meeting_recording(self, active, ack=None):
+        if not hasattr(self, "_meeting_button"):
+            self._meeting_button = QPushButton("● GRAVANDO REUNIÃO — PARAR / RECORDING — STOP", self.centralWidget())
+            self._meeting_button.setFont(hud_font(9, QFont.Weight.Bold))
+            self._meeting_button.setStyleSheet(f"background: {C.BG}; color: {C.RED}; border: 2px solid {C.RED}; padding: 6px;")
+            self._meeting_button.clicked.connect(self._stop_meeting)
+        self._meeting_button.setGeometry(12, 5, min(520, self.centralWidget().width() - 24), 38)
+        self._meeting_button.setVisible(active)
+        if active: self._meeting_button.raise_()
+        if ack is not None and (not active or self._meeting_button.isVisible()): ack.set()
+
+    def _stop_meeting(self):
+        from core.meeting import manager
+        manager.stop()
 
     def __init__(self, face_path: str):
         super().__init__()
@@ -415,6 +431,7 @@ class MainWindow(QMainWindow):
         self._quiz_sig.connect(self._show_quiz)
         self._quiz_hide_sig.connect(self._hide_quiz)
         self._review_sig.connect(self._show_review)
+        self._meeting_sig.connect(self._set_meeting_recording)
         self._cam_stop = threading.Event()
 
         # Camera preview overlay (child of central widget, positioned in resizeEvent)

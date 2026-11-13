@@ -266,6 +266,10 @@ class JinxUI:
         """Thread-safe: display content in the panel below the HUD."""
         self._win._content_sig.emit(title[:48], text[:4000])
 
+    def meeting_recording(self, active: bool, ack=None):
+        """Thread-safe recording indicator; ack only after Qt shows it."""
+        self._win._meeting_sig.emit(bool(active), ack)
+
     def show_code_job(self, job: dict) -> None:
         """Thread-safe: draw the coding agent's live progress in the panel."""
         self._win._codejob_sig.emit(dict(job))
