@@ -1,5 +1,15 @@
 # Histórico de alterações
 
+## 2026-11-13 — Tarefa 1.1
+
+- Rotação primary-first de até três chaves integrada à ladder e reconexão Live.
+- Cooldown por fingerprint da chave, configurável por campos de senha no plugin;
+  mudanças de configuração sem reiniciar. Sem dependências novas.
+- Testes offline verificam 429 A→B, cooldown, credencial externa isolada,
+  atualização de configuração, Live e fallback de provedor. Teste real com
+  contas secundárias ainda depende de o usuário cadastrá-las.
+- Atribuição do port em NOTICE.md. Módulos de segurança não alterados.
+
 ## 2026-11-13 — Fase 0 concluída
 
 - Auditoria estática e mapeamento completo em IMPLEMENTATION_PLAN.md.

@@ -376,23 +376,9 @@ def _cooling(model: str) -> bool:
 
 
 def api_key(refresh: bool = False) -> str:
-    """The Gemini key from config/api_keys.json. Cached; never raises."""
-    global _cached_key
-    with _key_lock:
-        if _cached_key is not None and not refresh:
-            return _cached_key
-        try:
-            data = json.loads(_KEY_FILE.read_text(encoding="utf-8"))
-            new_key = str(data.get("gemini_api_key") or "")
-        except Exception:
-            new_key = ""
-        if _cached_key is not None and new_key != _cached_key:
-            # What a model answered to the old key says nothing about the new one.
-            with _cool_lock:
-                _cooldown.clear()
-                _gone.clear()
-        _cached_key = new_key
-        return _cached_key
+    """Current available account; config changes apply without a restart."""
+    from core.gemini_accounts import select
+    return select()
 
 
 def client(timeout_ms: int = DEFAULT_TIMEOUT_MS, key: str = ""):
@@ -748,7 +734,8 @@ def call(contents, tier: str = FAST, config=None,
         rungs = (chosen,) + tuple(r for r in rungs if r != chosen)
         ladder = (chosen,) + tuple(m for m in ladder if m != chosen)
 
-    resolved_key = key or api_key()
+    from core.gemini_accounts import attempt, configured
+    resolved_key = key or (configured()[0] if configured() else "")
     if not resolved_key:
         # A provider does not need a Gemini key. Before this, a missing key
         # meant every one-shot call in the app failed — which is exactly the
@@ -770,7 +757,6 @@ def call(contents, tier: str = FAST, config=None,
             print("[Gemini] nothing on this ladder can read a recording")
             return None
 
-    cl = None
     tried = usable_rungs(ladder)
     key_refused = False
     for model in tried:
@@ -778,18 +764,27 @@ def call(contents, tier: str = FAST, config=None,
             continue                     # same key, same answer — a provider does not use it
         try:
             if model == LIVE:
-                reply = _live_call(contents, config, timeout_ms, resolved_key)
+                reply = attempt(lambda account: _live_call(contents, config, timeout_ms, account), key)
                 if reply is not None:
                     return reply
                 raise RuntimeError("the Live turn came back empty")
             if model.startswith(PROVIDER_PREFIX):
                 return _provider_call(model, contents, config, timeout_ms)
-            if cl is None:
-                cl = client(timeout_ms=timeout_ms, key=resolved_key)
             kwargs = {"model": model, "contents": contents}
             if config is not None:
                 kwargs["config"] = config
-            return cl.models.generate_content(**kwargs)
+            def generate(account):
+                session_client = client(timeout_ms=timeout_ms, key=account)
+                try:
+                    return session_client.models.generate_content(**kwargs)
+                finally:
+                    close = getattr(session_client, "close", None)
+                    if close:
+                        try:
+                            close()
+                        except Exception:
+                            pass  # Cleanup must not replace a generation result/error.
+            return attempt(generate, key)
         except Exception as e:
             msg = str(e)
             if is_key_error(msg) and not model.startswith(PROVIDER_PREFIX):

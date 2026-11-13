@@ -336,8 +336,7 @@ def _render_prompt(template: str, values: dict) -> str:
 
 
 def _get_api_key() -> str:
-    with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)["gemini_api_key"]
+    return _gemini.api_key(refresh=True)
 
 
 def _gemini_usable() -> bool:
@@ -2642,8 +2641,9 @@ class JinxLive:
         client being rebuilt on every reconnect.
         """
         if self._engine_caps is None:
+            self._session_api_key = _get_api_key()
             client = genai.Client(
-                api_key=_get_api_key(),
+                api_key=self._session_api_key,
                 http_options={"api_version":
                               "v1alpha" if self._enhanced_live else "v1beta"},
             )
@@ -2934,6 +2934,17 @@ class JinxLive:
                 # difference between "JINX is quieter today" and "JINX does
                 # not start today": one model means one daily limit, and the
                 # limit always arrives mid-conversation.
+                account_rotated = False
+                if _gemini.is_quota_error(err_str) or _gemini.is_key_error(err_str):
+                    from core.gemini_accounts import rest, select
+                    failed_key = getattr(self, "_session_api_key", "")
+                    if failed_key:
+                        rest(failed_key, _gemini.is_key_error(err_str))
+                        account_rotated = bool(select())
+                if account_rotated:
+                    self.ui.write_log("SYS: Gemini: alternando conta / switching account.")
+                    self._conn_backoff = 0
+                    continue
                 if _gemini.note_live_failure(live_model, err_str):
                     nxt = _gemini.live_model()
                     self.ui.write_log(

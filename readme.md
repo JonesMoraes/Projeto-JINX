@@ -1031,4 +1031,17 @@ JINX is a modified, **non-commercial** derivative of **Mark-LVII** by [FatihMake
 | Instagram | [@fatihmakes](https://www.instagram.com/fatihmakes) |
 <!-- Expansion audit: see IMPLEMENTATION_PLAN.md for the ordered backlog,
 BASELINE.md for measured startup results and pending voice acceptance,
-and CHANGELOG.md for task reports. No expansion feature is claimed complete. -->
+and CHANGELOG.md for task reports and verification limits. -->
+
+### Contas Gemini adicionais (expansão 1.1)
+
+Em ⚙ → configurações de plugins → CONTAS GEMINI / GEMINI ACCOUNTS,
+cadastre a segunda e a terceira chave e use TESTAR CHAVES. As chaves ficam
+somente na configuração local ignorada pelo Git. Após reiniciar o app uma
+vez para descobrir o novo plugin, alterações nas chaves valem sem reinício.
+Uma resposta 429 ou chave rejeitada põe a conta em pausa e tenta outra conta
+na mesma chamada; a principal volta a ter prioridade após sua pausa.
+Contas do mesmo projeto podem compartilhar cota: chaves extras não garantem
+cota independente. Com todas em pausa, o provedor alternativo configurado
+continua disponível. Comando: “Qual conta Gemini está ativa?” / “Which Gemini
+account is active?”. Não há dependência adicional.

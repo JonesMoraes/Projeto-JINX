@@ -1,7 +1,12 @@
 # NOTICE — JINX
 
-Expansion audit (2026-11-13): no code from jgm-source/jarvis-opensource has
-been ported yet. Future ports must retain their source commit and attribution.
+Expansion task 1.1 (2026-11-13): Gemini account configuration plugin adapted
+from João Gabriel / jgm-source/jarvis-opensource, CC BY-NC 4.0,
+commit 87d9ea2bfd600e189ba849a0653039e8c505c978,
+plugins/gemini_accounts.py. Primary-first fallback design also informed
+core/gemini_accounts.py; retry integration and tests adapted to JINX's ladder.
+Source: https://github.com/jgm-source/jarvis-opensource/tree/87d9ea2bfd600e189ba849a0653039e8c505c978
+Existing FatihMakes attribution and non-commercial restrictions remain.
 Brahma assets present on this machine are excluded from Git and are not
 relicensed by this notice. Their existing HUD integration is a recorded
 remediation item; it is not represented as an independently authored visual.
