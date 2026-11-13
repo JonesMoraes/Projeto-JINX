@@ -28,7 +28,7 @@ from PyQt6.QtGui import (
 )
 from PyQt6.QtWidgets import (
     QApplication, QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
-    QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter,
+    QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter, QToolBar,
     QGraphicsScene, QGraphicsView, QGraphicsPixmapItem,
     QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar, QSlider,
 )
@@ -121,11 +121,16 @@ class MainWindow(QMainWindow):
 
     def _set_meeting_recording(self, active, ack=None):
         if not hasattr(self, "_meeting_button"):
-            self._meeting_button = QPushButton("● GRAVANDO REUNIÃO — PARAR / RECORDING — STOP", self.centralWidget())
+            self._meeting_toolbar = QToolBar(self)
+            self._meeting_toolbar.setMovable(False)
+            self._meeting_toolbar.setStyleSheet(f"background: {C.BG}; border: 0;")
+            self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self._meeting_toolbar)
+            self._meeting_button = QPushButton("● GRAVANDO REUNIÃO — PARAR / RECORDING — STOP")
             self._meeting_button.setFont(hud_font(9, QFont.Weight.Bold))
             self._meeting_button.setStyleSheet(f"background: {C.BG}; color: {C.RED}; border: 2px solid {C.RED}; padding: 6px;")
             self._meeting_button.clicked.connect(self._stop_meeting)
-        self._meeting_button.setGeometry(12, 5, min(520, self.centralWidget().width() - 24), 38)
+            self._meeting_toolbar.addWidget(self._meeting_button)
+        self._meeting_toolbar.setVisible(active)
         self._meeting_button.setVisible(active)
         if active: self._meeting_button.raise_()
         if ack is not None and (not active or self._meeting_button.isVisible()): ack.set()
@@ -133,6 +138,11 @@ class MainWindow(QMainWindow):
     def _stop_meeting(self):
         from core.meeting import manager
         manager.stop()
+
+    def closeEvent(self, event):
+        from core.meeting import manager
+        manager.stop()
+        super().closeEvent(event)
 
     def __init__(self, face_path: str):
         super().__init__()

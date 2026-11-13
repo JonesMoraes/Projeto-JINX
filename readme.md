@@ -1,5 +1,22 @@
 # ⚙️ JINX
 
+As implementações locais até a Fase 3 estão disponíveis; Fase 4 pausada antes
+de começar por solicitação do usuário. Resultados e limites dos testes internos
+em [PHASE_3_VALIDATION.md](PHASE_3_VALIDATION.md): 187 testes passaram.
+
+Novos comandos: “Crie uma apresentação de cinco slides sobre eletrônica”,
+“Resuma este vídeo do YouTube [URL]”, “Comece a gravar a reunião” / “Pare a
+gravação da reunião” e “Pesquise voos de GRU para Lisboa em [data]”. Também
+aceitam inglês. Reunião requer audição Whisper local já instalada/em cache
+ou Groq configurada em ENGINE & PROVIDERS; captura exige indicador visual
+no HUD. Todos os detalhes por tarefa em [EXPANSION_PROGRESS.md](EXPANSION_PROGRESS.md).
+
+⚙ → configurações dos plugins inclui instaladores opcionais de documentos,
+legendas e reuniões. pypdf e SoundCard são opcionais; nenhum modelo pesado
+é baixado automaticamente. A conversão Office→PDF requer LibreOffice existente;
+se ausente, use Exportar PDF no Office. Credenciais pessoais são inseridas
+manualmente na UI e nunca entram nos commits. Reinicie para carregar novidades.
+
 Expansão local: tarefas 2.3–2.6 (brilho por monitor, privacidade da janela,
 watchers e jogos) documentadas em [EXPANSION_PROGRESS.md](EXPANSION_PROGRESS.md),
 com comandos PT-BR/EN, arquivos e limites de verificação. Todas usam dependências

@@ -60,6 +60,8 @@ def content(p):
             " slides if a presentation. Return JSON only matching " + schema[p["format"]] +
             ". Never invent citations; formulas must reference actual cells.\nTopic data:\n" + outcome.untrusted("document-topic", topic),
             tier=gemini.SMART, timeout_ms=30000)
+        if p["format"] == "pptx" and isinstance(data, dict) and len(data.get("slides", [])) != count:
+            raise ValueError("Quantidade de slides não corresponde ao pedido; tente novamente / Slide count does not match request; retry")
     if not isinstance(data, dict):
         raise ValueError("No valid document content generated")
     return data
@@ -119,7 +121,7 @@ def generate(kind, data):
             if len(rows) > 10000 or any(len(r) > 100 for r in rows): raise ValueError("Cell limit")
             for row in rows:
                 for value in row:
-                    if isinstance(value, str) and ("[" in value or re.search(r"(?i)(WEBSERVICE|HYPERLINK|DDE|RTD)\s*\(", value) or "|" in value):
+                    if isinstance(value, str) and value.startswith("=") and ("[" in value or re.search(r"(?i)(WEBSERVICE|HYPERLINK|DDE|RTD)\s*\(", value) or "|" in value):
                         raise ValueError("External/active spreadsheet content refused")
                 sheet.append(row)
             sheet.freeze_panes = "A2"

@@ -1,4 +1,5 @@
 import io
+import importlib.util
 import json
 import tempfile
 import unittest
@@ -50,6 +51,7 @@ class OfficeTest(unittest.TestCase):
             self.assertIn("status=failed", office_suite.run({"action": "create", "format": "pptx", "topic": "X"}))
         self.assertEqual(list(Path(self.temp.name).iterdir()), [])
 
+    @unittest.skipUnless(importlib.util.find_spec("pypdf"), "optional pypdf not installed")
     def test_pdf_real_merge_and_split(self):
         office.dependency("pypdf")
         from pypdf import PdfWriter, PdfReader
@@ -62,6 +64,11 @@ class OfficeTest(unittest.TestCase):
         self.assertEqual(len(PdfReader(split).pages), 2)
         with self.assertRaises(ValueError): office.pdf({"action": "split", "files": [str(source)], "pages": [0]})
         self.assertIsInstance(office.pdf({"action": "extract", "files": [str(source)]}), str)
+
+    def test_model_wrong_slide_count_is_not_delivered(self):
+        with patch.object(office.gemini, "as_json", return_value={"slides": [{"title": "Only one"}]}):
+            self.assertIn("status=failed", office_suite.run({"action": "create", "format": "pptx", "topic": "X", "count": 5}))
+        self.assertEqual(list(Path(self.temp.name).iterdir()), [])
 
     def test_conversion_requires_real_converter(self):
         with patch.object(office.shutil, "which", return_value=None), patch.object(Path, "is_file", return_value=False):

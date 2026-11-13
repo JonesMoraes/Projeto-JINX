@@ -25,6 +25,7 @@ def run(parameters, player=None, session_memory=None):
         if action == "create":
             kind = p.get("format")
             if kind not in ("pptx", "docx", "xlsx"): raise ValueError("format")
+            office.dependency({"pptx": "pptx", "docx": "docx", "xlsx": "openpyxl"}[kind])
             data = office.content(p)
             path = office.created(office.generate(kind, data), "." + kind, p.get("title") or data.get("title", "JINX"))
         elif action == "extract":

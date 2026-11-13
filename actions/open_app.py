@@ -36,6 +36,7 @@ WHY IT IS NOT A LIST OF APPLICATIONS
 """
 import os
 import platform
+import re
 import shutil
 import subprocess
 import threading
@@ -118,7 +119,7 @@ def _launch_windows(app_name: str) -> bool:
     # Checked before ":" appears anywhere else — a Windows path has one too,
     # at index 1, and that is a file, not a scheme.
     scheme, _, rest = app_name.partition(":")
-    if rest and scheme and scheme.isalnum() and len(scheme) > 1:
+    if rest and len(scheme) > 1 and re.fullmatch(r"[A-Za-z][A-Za-z0-9+.-]*", scheme):
         try:
             os.startfile(app_name)               # noqa: S606 — no shell involved
             return True

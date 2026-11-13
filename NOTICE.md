@@ -79,6 +79,14 @@ foreground_context, watchers and games modules/plugins/tests. They reuse
 existing launcher, WMI, config, undo and untrusted-content interfaces.
 No external implementation was ported; no Brahma code was used.
 
+Expansion tasks 3.1–3.4: office/optional_packages, youtube_summary, meeting,
+flight_search modules, adapters, UI indicator and tests are original JINX code.
+No external feature source was ported. Optional python-pptx, python-docx,
+openpyxl, pypdf, youtube-transcript-api and SoundCard are used through their
+public APIs; no library source is vendored and their own licenses apply.
+Existing upstream Mark attribution and the phase-one authorized port credits
+remain intact. No Brahma assets are included in the new commits.
+
 JINX is a modified, **non-commercial** derivative of **Mark-LVII**
 ("MARK LVII") by FatihMakes:
 

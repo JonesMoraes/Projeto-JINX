@@ -1,6 +1,8 @@
 """Explicit settings-only installation with a bounded, hashed PyPI plan."""
 import importlib
+import importlib.util
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -10,6 +12,7 @@ from urllib.parse import urlsplit
 
 GROUPS = {"office": ("python-pptx", "python-docx", "openpyxl", "pypdf"),
           "youtube": ("youtube-transcript-api",), "meeting": ("SoundCard>=0.4,<1",)}
+MODULES = {"office": ("pptx", "docx", "openpyxl", "pypdf"), "youtube": ("youtube_transcript_api",), "meeting": ("soundcard",)}
 
 
 def install(group):
@@ -31,7 +34,7 @@ def install(group):
                 with urllib.request.urlopen(urllib.request.Request(url, method="HEAD"), timeout=10) as response:
                     size = int(response.headers.get("Content-Length", 0))
                 digest = info.get("archive_info", {}).get("hashes", {}).get("sha256", "")
-                if size <= 0 or len(digest) != 64:
+                if size <= 0 or not re.fullmatch(r"[a-fA-F0-9]{64}", digest):
                     raise ValueError("Size/hash unverified")
                 total += size
                 artifacts.append(url + "#sha256=" + digest)
@@ -43,6 +46,8 @@ def install(group):
                 if result.returncode:
                     return False, "Instalação falhou; confira o ambiente / Installation failed; check environment"
             importlib.invalidate_caches()
+            if not all(importlib.util.find_spec(m) is not None for m in MODULES[group]):
+                return False, "Pacote não detectado após instalação / Package not detected after installation"
             return True, f"Dependências verificadas ({total / 1048576:.2f} MB baixados) / Dependencies checked"
     except Exception:
         return False, "Instalação não verificada / Installation unverified"

@@ -1,5 +1,19 @@
 # Histórico de alterações
 
+## 2026-11-13 — Fase 3 e parada antes da Fase 4
+- Documentos PPTX/DOCX/XLSX e PDF com arquivos verificados e undo; dependências
+  opcionais sob demanda na UI, sem aumentar requirements padrão.
+- Legendas YouTube pela API atual e resumo no painel; reprodução preservada.
+- Reuniões mic/loopback com início/parada explícitos, indicador persistente,
+  STT configurado e resumo/itens via ladder. Sem download automático de modelos.
+- Pesquisa de voos pelos modos web existentes, fontes no painel e status honesto.
+- 187 testes passaram, HUD/cartões/indicador e pipeline sintético PT-BR/EN
+  verificados. HTTP/CoinGecko reais passaram; YouTube exemplo indisponível.
+- pypdf (0,40 MB) e SoundCard (0,04 MB) instalados opcionalmente. LibreOffice
+  ausente: conversão requer instalação posterior ou Exportar PDF no Office.
+- Fase 4 não iniciada por solicitação do usuário; envio GitHub autorizado.
+  Limites de validação registrados em PHASE_3_VALIDATION.md.
+
 ## 2026-11-13 — Tarefas 2.3–2.6
 - Brilho por monitor WMI com readback/undo; captura real de lista verificada.
 - Contexto de janela opt-in sem screenshots, com limite untrusted e envio não final.

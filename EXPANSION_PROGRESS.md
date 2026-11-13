@@ -1,5 +1,10 @@
 # Execução local — Fases 2 e 3
 
+Estado: parada antes da Fase 4 a pedido do usuário. Validação final:
+PHASE_3_VALIDATION.md. Ajustes de integração: protocolo Epic com pontos,
+catálogo Groq legado, indicador de gravação em toolbar e tamanho/hash de
+dependências opcionais. Suíte final: 187 testes passaram.
+
 ## 3.4 — Pesquisa de voos
 - core/flight_search.py, actions/flight_finder.py e tests/test_flight_search.py.
 - Rota/data validadas, modos search/price/research existentes, painel com fontes e link de busca codificado; remove rota/data fixa embutida no URL antigo. Datas inválidas não viram “hoje” silenciosamente. save mantém relatório Desktop com undo.
@@ -24,7 +29,7 @@
 - core/office.py, core/optional_packages.py, plugins/office_suite.py, tests/test_office.py.
 - PPTX com layouts e notas; DOCX com títulos/listas/tabelas; XLSX com fórmulas reais e recálculo no Excel. Conteúdo por JSON ou ladder configurada, sem modelos fixos. PDFs merge/split por seleção de páginas/extract; arquivos novos sem sobrescrever, reabertos antes da entrega, undo por hash.
 - Testar “Crie uma apresentação de cinco slides sobre eletrônica” / “Create a five-slide presentation about electronics”; “Una estes PDFs”. Saída padrão Documentos/JINX, configurável no cartão DOCUMENTOS.
-- Sete testes com arquivos reais temporários. python-pptx/python-docx/openpyxl já instalados; pypdf opcional instalado sob demanda pelo callback do cartão (0,40 MB). Instalador só aceita plano PyPI com hashes e <=20 MB; requirements padrão inalterado.
+- Oito testes com arquivos reais temporários e recusa de quantidade errada de slides. python-pptx/python-docx/openpyxl já instalados; pypdf opcional instalado sob demanda pelo callback do cartão (0,40 MB). Instalador só aceita plano PyPI com hashes e <=20 MB; requirements padrão inalterado.
 - Conversão automática Office→PDF depende de LibreOffice instalado (ausente nesta máquina). Alternativa: exportar PDF no Office. Nenhum pacote pesado instalado. Excel recalcula fórmulas ao abrir; não foi alegado cálculo pelo openpyxl. Conteúdo gerado por LLM/voz real depende da configuração/conta do usuário.
 
 ## 2.6 — Jogos instalados

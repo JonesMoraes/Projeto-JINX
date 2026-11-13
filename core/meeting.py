@@ -15,7 +15,7 @@ from memory.config_manager import get_pipeline, get_provider_config, get_input_d
 def stt_provider():
     from providers import registry
     pid = str(get_pipeline().get("stt") or "")
-    cfg = {**registry.defaults(pid), **get_provider_config(pid)} if pid else {}
+    cfg = {**registry.defaults(pid), **registry.catalog_entry(pid).get("values", {}), **get_provider_config(pid)} if pid else {}
     if pid == "groq_stt" or (pid.startswith("whisper") and cfg.get("backend") == "api" and
                             cfg.get("base_url", "").rstrip("/") == "https://api.groq.com/openai/v1"):
         if not cfg.get("api_key"): raise RuntimeError("Cadastre SUA chave STT Groq / Enter YOUR Groq STT key")
