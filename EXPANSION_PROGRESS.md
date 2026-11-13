@@ -1,5 +1,11 @@
 # Execução local — Fases 2 e 3
 
+## 2.6 — Jogos instalados
+- core/games.py, plugins/game_launcher.py, tests/test_games.py: Steam registro/libraryfolders/manifests, Epic registro/manifests, Riot associated_client local (VALORANT/League).
+- Usa launcher existente para URIs Steam/Epic; Riot Client com argumentos fixos. Nome/ID exato, verificação de instalação e observação de processo na pasta do jogo. Sem instalar/comprar jogos.
+- Testar “Liste meus jogos instalados” / “List installed games”, “Abra o jogo [nome exato]”. Quatro testes de manifests/escape/ambiguidade; sem lançar jogo real. Nenhum pacote novo.
+- Formatos não reconhecidos/lojas ausentes podem produzir lista vazia; timeout de 3 s é unverified, não falha presumida. Riot depende de metadata associando executável e cliente. Voz real pendente.
+
 ## 2.5 — Watchers de preço, site e RAM
 - core/watchers.py, plugins/system_watchers.py, main.py e tests/test_watchers.py.
 - Dez monitores opt-in no máximo, consulta >=60 s, timeout 5 s, deduplicação por episódio; alertas respeitam quiet hours/mute/conversa. Site usa HEAD sem redirecionar; rede privada recusada pelo limite existente. Cota/erro de API nunca vira cotação.
