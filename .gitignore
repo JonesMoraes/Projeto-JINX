@@ -1,0 +1,64 @@
+# ── JINX — what never belongs in the repository ──────────────────────────
+# Everything listed here is created by the app on first run. A fresh clone with
+# none of it present boots straight to the setup screen, which is the intended
+# first experience — so nothing here needs to be committed, and some of it must
+# never be.
+
+# ── Secrets. Committing any of these publishes them. ──────────────────────────
+config/api_keys.json
+config/certs/
+config/whatsapp_web/
+**/token*.json
+**/client_secret*.json
+*credentials*.json
+.env
+.env.*
+
+# ── Personal data the assistant accumulates about you ─────────────────────────
+memory/long_term.json
+memory/routines.json
+memory/*.db
+
+# ── Python build noise ────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Editors and operating systems ─────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Runtime output ────────────────────────────────────────────────────────────
+*.log
+logs/
+downloads/
+screenshots/
+
+# Brahma-Ai-Evo's license prohibits mirroring its source on Git hosting.
+assets/third_party/brahma_evo/
+assets/third_party/brahma_echo/
+
+# Local import archives and personal/runtime state are never source code.
+*.rar
+*.zip
+Lista*.csv
+config/*
+!config/__init__.py
+!config/jinx.ico
+memory/*.json
+config/learned_rules.json
