@@ -1,5 +1,13 @@
 # Histórico de alterações
 
+## 2026-11-13 — Validação integrada de voz
+
+- Usuário confirmou os quatro comandos no app atualizado: consulta de memória,
+  início/fim do foco e pergunta de horário em inglês.
+- Regressão PT-BR/EN e controle do foco aceitos. Permanecem pendentes as
+  integrações que exigem credenciais próprias e síntese/escuta reais do Edge.
+- Nenhum código, dependência ou configuração de conta alterado neste registro.
+
 ## 2026-11-13 — Tarefa 1.8
 
 - Provedor Edge TTS opcional no seletor de voz, padrão PT-BR Antonio,
