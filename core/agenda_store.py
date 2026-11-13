@@ -27,9 +27,9 @@ def save(events):
     os.replace(temp, PATH)
 
 
-def all_events():
+def all_events(include_archived=False):
     with lock:
-        return copy.deepcopy(load())
+        return copy.deepcopy([e for e in load() if include_archived or not e.get("archived")])
 
 
 def upsert(title, due, event_id=None):
@@ -49,3 +49,14 @@ def upsert(title, due, event_id=None):
         event.update(title=title, due=due, dirty=True)
         save(events)
         return copy.deepcopy(event)
+
+
+def archive(event_id, archived=True):
+    with lock:
+        events = load()
+        item = next((e for e in events if e["id"] == event_id), None)
+        if item is None:
+            raise ValueError("Evento não encontrado / Event not found")
+        item.update(archived=bool(archived), dirty=True)
+        save(events)
+        return copy.deepcopy(item)

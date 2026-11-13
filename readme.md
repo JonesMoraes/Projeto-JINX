@@ -1048,6 +1048,35 @@ account is active?”. Não há dependência adicional.
 
 ### Trello e agenda (expansão 1.2)
 
+### Organizador local (expansão 1.3)
+
+Em ⚙ → AGENDA / SCHEDULE, escolha Tarefas ou Eventos. A tabela permite
+selecionar um item para alterar, concluir, reabrir ou arquivar. Prioridades:
+baixa, normal e alta. Filtros: abertos, hoje, amanhã, atrasados, concluídos e
+todos (inclui arquivados). Eventos têm data/hora obrigatória; tarefas podem
+ficar sem prazo. Arquivamento preserva o item e pode ser desfeito.
+
+Depois de reiniciar para carregar o plugin, exemplos por voz:
+
+- “Crie uma tarefa Revisar orçamento com prioridade alta para amanhã às 17h.”
+- “Mostre minhas tarefas abertas.” / “Show my open tasks.”
+- “Conclua a tarefa Revisar orçamento.” / “Complete the task Review budget.”
+- “Reabra a tarefa Revisar orçamento.”
+- “Marque Dentista amanhã às 15h na agenda.”
+- “Mude o Dentista para 17h.” / “Reschedule Dentist to 5 PM.”
+- “O que tenho na agenda amanhã?”
+- “Arquive a tarefa Revisar orçamento.” e “Desfaça a última ação.”
+
+Títulos ambíguos exigem escolher um item; IDs permitem selecionar títulos
+repetidos. Tarefas ficam em memory/organizer.json e eventos no arquivo
+memory/agenda.json já existente, ambos fora do Git. O organizador funciona
+sem conta ou internet; somente a sincronização Trello opcional usa rede.
+Lembretes falados temporizados continuam na ferramenta de lembretes existente;
+criar um item no organizador não agenda um alerta automaticamente nesta versão.
+Não há dependência adicional.
+
+### Configuração do Trello
+
 Reinicie para descobrir os plugins. Em ⚙ → CONFIGURAÇÕES DOS PLUGINS →
 TRELLO, informe **sua** chave e **seu** token; use TESTAR CONEXÃO.
 Crie credenciais no portal oficial https://trello.com/apps/admin.

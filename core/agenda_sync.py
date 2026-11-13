@@ -49,6 +49,29 @@ def sync_now():
             linked = set()
             for event in events:
                 cid = event.get("trello_id")
+                if event.get("archived"):
+                    if cid:
+                        linked.add(cid)
+                        if event.get("dirty"):
+                            current = api.card(cid)
+                            if current.get("idList") != list_id or snapshot(current) != event.get("shadow"):
+                                event["sync_issue"] = "Conflito ao arquivar / Archive conflict"
+                                conflicts += 1
+                                continue
+                            api.update(cid, {"closed": True})
+                            event["dirty"] = False
+                            store.save(events)
+                    continue
+                if cid and event.get("restore_remote"):
+                    current = api.card(cid)
+                    if current.get("idList") != list_id or snapshot(current) != event.get("shadow"):
+                        event["sync_issue"] = "Conflito ao restaurar / Restore conflict"
+                        conflicts += 1
+                        linked.add(cid)
+                        continue
+                    current = api.update(cid, {"closed": False})
+                    remote[cid] = current
+                    event.pop("restore_remote", None)
                 if not cid:
                     marker = "JINX agenda:" + event["id"]
                     matches = [c for c in remote_list if marker in str(c.get("desc") or "")]

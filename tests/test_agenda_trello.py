@@ -135,6 +135,18 @@ class AgendaTest(unittest.TestCase):
         undo.undo_last()
         self.assertEqual(self.remote["card1"]["idList"], "later")
 
+    def test_event_archive_and_restore_sync(self):
+        event = self.event()
+        sync.sync_now()
+        result = agenda.run({"action": "archive", "id": event["id"]})
+        self.assertIn("status=done", result)
+        self.assertTrue(self.remote["card1"]["closed"])
+        self.assertEqual(store.all_events(), [])
+        undo.undo_last()
+        sync.sync_now()
+        self.assertFalse(self.remote["card1"]["closed"])
+        self.assertEqual(len(store.all_events()), 1)
+
 
 class ClientTest(unittest.TestCase):
     def test_transport_error_never_exposes_key(self):

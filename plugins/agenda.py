@@ -5,8 +5,10 @@ from core import agenda_store as store, agenda_sync
 
 PLUGIN = {"name": "agenda_sync", "description": "Agenda: list, add, reschedule by title; sync with user's Trello list.",
     "parameters": {"type": "OBJECT", "properties": {
-        "action": {"type": "STRING", "enum": ["list", "add", "reschedule", "sync"]},
+        "action": {"type": "STRING", "enum": ["list", "add", "reschedule", "archive", "sync"]},
         "title": {"type": "STRING"},
+        "id": {"type": "STRING"},
+        "new_title": {"type": "STRING"},
         "due": {"type": "STRING", "description": "ISO datetime, e.g. 2026-11-14T17:00:00-03:00; rescheduling must retain the event date"}},
         "required": ["action"]}}
 
@@ -33,23 +35,34 @@ def run(parameters, player=None, session_memory=None):
             return agenda_sync.sync_now()
         if action == "list":
             return outcome.done("agenda", data=outcome.untrusted("agenda", json.dumps(store.all_events(), ensure_ascii=False)))
-        if action not in ("add", "reschedule"):
+        if action not in ("add", "reschedule", "archive"):
             return outcome.failed("agenda", "Ação desconhecida / Unknown action")
         previous = None
-        if action == "reschedule":
-            matches = [e for e in store.all_events() if e["title"].casefold() == str(p.get("title", "")).casefold()]
+        if action in ("reschedule", "archive"):
+            matches = [e for e in store.all_events() if e["id"] == p["id"]] if p.get("id") else [
+                e for e in store.all_events() if e["title"].casefold() == str(p.get("title", "")).casefold()]
             if len(matches) != 1:
                 return outcome.failed("agenda", "Título ausente ou ambíguo / Missing or ambiguous title")
             previous = matches[0]
-        event = store.upsert(p.get("title"), p.get("due"), previous["id"] if previous else None)
+            p = {**p, "title": previous["title"]}
+        if action == "archive":
+            event = store.archive(previous["id"])
+        else:
+            event = store.upsert(p.get("new_title") or p.get("title"),
+                                 p.get("due") or (previous["due"] if previous else None),
+                                 previous["id"] if previous else None)
         def restore():
             with store.lock:
                 events = store.load()
                 item = next((e for e in events if e["id"] == event["id"]), None)
-                if not item or item.get("title") != event["title"] or item.get("due") != event["due"]:
+                if (not item or any(item.get(k) != event.get(k) for k in ("title", "due"))
+                        or bool(item.get("archived")) != bool(event.get("archived"))):
                     return outcome.failed("agenda_undo", "Evento mudou / Event changed")
                 if previous:
-                    item.update(title=previous["title"], due=previous["due"], dirty=True)
+                    item.update(title=previous["title"], due=previous["due"],
+                                archived=previous.get("archived", False), dirty=True)
+                    if action == "archive" and item.get("trello_id"):
+                        item["restore_remote"] = True
                 elif item.get("trello_id"):
                     from core import trello_client as api
                     import hashlib

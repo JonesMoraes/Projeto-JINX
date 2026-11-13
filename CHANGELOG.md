@@ -1,5 +1,17 @@
 # Histórico de alterações
 
+## 2026-11-13 — Tarefa 1.3
+
+- Organizador local de tarefas: criar, listar, alterar título/prazo/prioridade/
+  nota, concluir, reabrir e arquivar; filtros e consulta combinada com eventos.
+- Eventos usam a agenda existente; edição e arquivamento por ID evitam
+  ambiguidades; desfazer e restauração de cartão Trello testados com mocks.
+- Painel em tabela, seleção de item, filtros e controles de tarefas/eventos.
+- 38 testes passaram; smoke headless confirmou criação, seleção, conclusão e
+  filtro no painel. Voz do novo plugin ainda não verificada; precisa reiniciar.
+- Sem dependências novas e sem conta obrigatória; dados pessoais ignorados
+  pelo Git. Nenhuma alteração em confirm.py, undo.py ou sandbox.
+
 ## 2026-11-13 — Tarefa 1.2 (integração real pendente)
 
 - Plugins Trello e agenda: quadros/listas/cartões, criação, movimentação,

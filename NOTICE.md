@@ -13,6 +13,12 @@ adapted from plugins/trello_control.py and core/agenda_sync.py in the same
 jgm-source commit above (João Gabriel, CC BY-NC 4.0). The JINX adaptation
 separates transport/store/UI, adds verified readback and undo, preserves
 conflicts instead of deleting events and uses no upstream accounts or servers.
+
+Expansion task 1.3: local organizer adapted from plugins/organizer.py in
+jgm-source/jarvis-opensource, commit 87d9ea2bfd600e189ba849a0653039e8c505c978
+(João Gabriel; original Mark attribution retained; CC BY-NC 4.0). The JINX
+adaptation uses a compact task/event interface, existing shared agenda storage,
+atomic writes, per-item undo and soft archive. No account data was imported.
 Brahma assets present on this machine are excluded from Git and are not
 relicensed by this notice. Their existing HUD integration is a recorded
 remediation item; it is not represented as an independently authored visual.

@@ -102,4 +102,11 @@ Relatório por tarefa: (1) implementado em 1–3 linhas; (2) arquivos; (3) coman
 
 ## Próximo passo após revisão
 
+Atualização de execução: Fase 0 aceita pelo usuário; tarefas 1.1, 1.2 e 1.3
+implementadas na branch feature/phase-1-ports. A tarefa 1.3 passou em 38 testes
+incluindo regressões de 1.1/1.2 e smoke headless do painel. Aceitação por voz
+das funcionalidades novas e integração Trello real seguem pendentes; não
+confundir conclusão de implementação com conclusão da Fase 1. Próxima tarefa:
+1.4, Cakto, com campos vazios para configuração manual pelo usuário.
+
 Executar 0.2: baseline controlado e Git local, registrar conflitos de licença/dependências e proposta reversível para o HUD. Não iniciar 1.1 antes de finalizar a Fase 0. Nenhuma alteração de segurança ou exclusão é autorizada por este documento.
