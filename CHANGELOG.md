@@ -1,5 +1,18 @@
 # Histórico de alterações
 
+## 2026-11-13 — Tarefa 1.4
+
+- Plugin Cakto para vendas brutas pagas de hoje/mês, pedidos recentes,
+  consulta de pedido por ID e produtos; campos de conta vazios na interface.
+- API oficial, somente leitura de negócio; autenticação OAuth2 por token em
+  memória com cache por credencial, renovação e proteção contra redirects.
+- Cálculos Decimal, BRL/USD separados e filtro por pagamento; limites de
+  páginas/tempo, duplicatas e dados inconsistentes produzem resultado parcial.
+- Consultas longas rodam em segundo plano e entregam resultado no painel/voz.
+- 55 testes passaram, incluindo regressões. Sem dependências novas.
+- Conta real e comandos falados continuam não verificados até configuração
+  manual e reinício do app para carregar o plugin.
+
 ## 2026-11-13 — Tarefa 1.3
 
 - Organizador local de tarefas: criar, listar, alterar título/prazo/prioridade/

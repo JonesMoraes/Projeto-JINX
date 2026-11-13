@@ -19,6 +19,14 @@ jgm-source/jarvis-opensource, commit 87d9ea2bfd600e189ba849a0653039e8c505c978
 (João Gabriel; original Mark attribution retained; CC BY-NC 4.0). The JINX
 adaptation uses a compact task/event interface, existing shared agenda storage,
 atomic writes, per-item undo and soft archive. No account data was imported.
+
+Expansion task 1.4: Cakto sales integration adapted from plugins/cakto_sales.py
+in jgm-source/jarvis-opensource at commit
+87d9ea2bfd600e189ba849a0653039e8c505c978 (João Gabriel; CC BY-NC 4.0).
+Adaptations: separate read-only client, exact decimal totals, payment-date
+filters, currency isolation, bounded pagination with explicit partial results,
+credential-specific in-memory token cache and minimized order summaries.
+No source credentials, customer diagnostic files or private servers imported.
 Brahma assets present on this machine are excluded from Git and are not
 relicensed by this notice. Their existing HUD integration is a recorded
 remediation item; it is not represented as an independently authored visual.

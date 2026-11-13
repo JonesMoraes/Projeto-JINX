@@ -1035,6 +1035,38 @@ and CHANGELOG.md for task reports and verification limits. -->
 
 ### Contas Gemini adicionais (expansão 1.1)
 
+### Vendas Cakto (expansão 1.4)
+
+Depois de reiniciar o app, abra ⚙ → CONFIGURAÇÕES DOS PLUGINS → CAKTO.
+Os campos vêm vazios. Cadastre **seu Client ID e seu Client Secret**, gerados
+no seu painel Cakto em Integrações → Cakto API. Permissões necessárias:
+`read` e `orders`; adicione `products` se quiser consultar produtos.
+Use TESTAR CONEXÃO; não envie suas credenciais pelo chat.
+Referência: [autenticação oficial](https://docs.cakto.com.br/authentication).
+
+Exemplos: “Quanto vendi hoje na Cakto?”, “Qual foi meu faturamento na Cakto
+em outubro de 2026?”, “Mostre meus últimos cinco pedidos na Cakto” e
+“Liste meus produtos na Cakto”. Em inglês: “Show my Cakto sales this month”
+ou “Show my last five Cakto orders”. Moeda padrão BRL; peça USD explicitamente
+para vendas em dólar. Não são somadas moedas distintas.
+
+O faturamento representa a soma bruta dos pedidos pagos pela data de
+pagamento, excluindo estornos/cancelamentos; não representa lucro nem saldo
+disponível. Valores seguem a unidade monetária da API, sem divisão por 100.
+Referência: [listagem oficial de pedidos](https://docs.cakto.com.br/api-reference/orders/list).
+Leituras incompletas, repetidas ou inconsistentes aparecem como PARCIAIS,
+sem afirmar o total do período. A consulta percorre até 10 páginas de 100
+pedidos, com janela de aproximadamente 40 segundos mais a chamada em andamento.
+
+Consultas de faturamento em uso normal rodam em segundo plano; o resultado
+chega ao painel e ao canal de voz do JINX. O botão TESTAR consulta apenas uma
+página de pedidos e não salva amostras com dados de clientes. A integração
+usa somente a API oficial; tokens ficam em memória e segredos na configuração
+local ignorada pelo Git. Sem dependências novas. A validação real depende de
+configurar sua conta manualmente; os testes internos usam respostas simuladas.
+
+### Configuração das contas Gemini
+
 Em ⚙ → configurações de plugins → CONTAS GEMINI / GEMINI ACCOUNTS,
 cadastre a segunda e a terceira chave e use TESTAR CHAVES. As chaves ficam
 somente na configuração local ignorada pelo Git. Após reiniciar o app uma
