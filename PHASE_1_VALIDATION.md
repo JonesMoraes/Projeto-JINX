@@ -1,6 +1,9 @@
 # Validação da Fase 1 — 13/11/2026
 
-Estado: implementações 1.1–1.8 registradas; fase ainda não concluída/mesclada.
+Estado: implementações 1.1–1.8 registradas; avanço para Fase 2 autorizado pelo
+usuário em 13/11/2026 (“vamos seguir, depois eu faço isso”). Validações reais
+dependentes de conta e Edge permanecem explicitamente adiadas, não aprovadas
+como se tivessem passado. Integração local autorizada com essas pendências.
 
 | Verificação | Resultado e evidência |
 |---|---|

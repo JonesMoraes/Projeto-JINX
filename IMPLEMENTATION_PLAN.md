@@ -119,6 +119,8 @@ Tarefa 1.8 implementada: Edge TTS opcional com vozes/teste/instalador pela UI;
 110 testes passaram. Dependências opcionais ainda ausentes, síntese/escuta
 reais e validação integrada da Fase 1 pendentes. Não mesclar nem declarar a
 Fase 1 concluída sem registrar essas verificações. Próxima etapa: concluir
-smoke integrado e aceitação da Fase 1 antes da Fase 2.
+smoke integrado e aceitação da Fase 1 antes da Fase 2. Atualização: usuário
+confirmou regressão por voz e autorizou seguir para Fase 2 deixando credenciais
+e testes opcionais para depois; pendências preservadas em PHASE_1_VALIDATION.md.
 
 Executar 0.2: baseline controlado e Git local, registrar conflitos de licença/dependências e proposta reversível para o HUD. Não iniciar 1.1 antes de finalizar a Fase 0. Nenhuma alteração de segurança ou exclusão é autorizada por este documento.
