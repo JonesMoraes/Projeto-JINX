@@ -63,6 +63,11 @@ Brahma assets present on this machine are excluded from Git and are not
 relicensed by this notice. Their existing HUD integration is a recorded
 remediation item; it is not represented as an independently authored visual.
 
+Expansion task 2.1: actions/process_manager.py and its tests are original JINX
+integration code. They reuse existing core.appidentity, core.confirm and
+core.outcome interfaces without changing the safety modules. psutil is an
+existing external dependency, not vendored source. No Brahma code was used.
+
 JINX is a modified, **non-commercial** derivative of **Mark-LVII**
 ("MARK LVII") by FatihMakes:
 

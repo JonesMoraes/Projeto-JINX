@@ -102,6 +102,17 @@ Relatório por tarefa: (1) implementado em 1–3 linhas; (2) arquivos; (3) coman
 
 ## Próximo passo após revisão
 
+### Execução da Fase 2
+
+Branch feature/phase-2-system; tarefa 2.1 implementada em
+actions/process_manager.py, com testes em tests/test_process_manager.py.
+125 testes passaram, incluindo 15 novos sobre amostragem, confirmação,
+cancelamento, proteção do JINX, reutilização de PID e force separado.
+Consultas reais somente leitura de CPU/RAM e descoberta/dispatch das 20 ações
+passaram. Nenhum processo real foi encerrado; aceite por voz do novo recurso
+pendente de reinício. Sem nova dependência nem mudanças em confirm.py/undo.py.
+Próxima tarefa: 2.2, bateria e alertas de carga com limites honestos do SO.
+
 Atualização de execução: Fase 0 aceita pelo usuário; tarefas 1.1, 1.2 e 1.3
 implementadas na branch feature/phase-1-ports. A tarefa 1.3 passou em 38 testes
 incluindo regressões de 1.1/1.2 e smoke headless do painel. Aceitação por voz

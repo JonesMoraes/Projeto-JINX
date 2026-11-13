@@ -1,5 +1,19 @@
 # Histórico de alterações
 
+## 2026-11-13 — Tarefa 2.1
+
+- Nova ação process_manager: consulta de CPU/RAM por processo, nome exato ou PID,
+  com tabela no painel. CPU amostrada por 250 ms e normalizada à capacidade total;
+  RAM RSS pode incluir memória compartilhada.
+- Fechamento exige confirmação da interface; no Windows envia WM_CLOSE sem
+  fallback para término forçado. Force exige tentativa anterior e nova confirmação.
+- Protege JINX, seus executáveis e processos críticos; revalida identidade após
+  aprovação para impedir atingir outro processo que reutilizou o PID.
+- 125 testes passaram (15 novos); consultas reais de CPU/RAM e descoberta das
+  20 ações passaram. Encerramentos testados somente com processos simulados.
+- Sem dependências novas, contas ou alteração dos módulos centrais de segurança.
+  Teste por voz do novo recurso depende de reiniciar o app.
+
 ## 2026-11-13 — Validação integrada de voz
 
 - Usuário confirmou os quatro comandos no app atualizado: consulta de memória,

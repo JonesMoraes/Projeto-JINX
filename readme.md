@@ -1,4 +1,25 @@
 # ⚙️ JINX
+
+### Expansão 2.1 — Gerenciador de processos
+
+Após reiniciar o JINX, diga “Quem está consumindo minha RAM?” ou
+“Quais processos usam mais CPU?”. Em inglês: “Which processes use the most RAM?”
+ou “Show the top CPU processes”. A tabela mostra nome, PID e RAM RSS em MiB;
+CPU representa a parcela da capacidade total, amostrada por 250 ms.
+Memória compartilhada pode aparecer em mais de um processo.
+
+“Feche o Bloco de Notas” solicita confirmação na interface. No Windows,
+o gerenciador pede o fechamento da janela; pode haver diálogo de salvar.
+Se continuar aberto, “Force o encerramento do processo PID 1234” exige outra
+confirmação e uma tentativa normal anterior. Use o PID real da tabela.
+Em inglês: “Close Notepad” / “Force quit process PID 1234”.
+JINX e processos críticos são protegidos; nomes ambíguos são recusados.
+Encerramento não tem desfazer e pode perder trabalho não salvo.
+
+Sem contas ou pacotes novos: usa psutil já instalado. Foram verificados
+125 testes e consultas reais sem encerrar aplicativos. Fechamento/force foram
+testados com simulações; aceitação por voz do novo recurso permanece pendente.
+
 ### The Ultimate Cross-Platform Personal AI Assistant — based on Mark-LVII, by FatihMakes
 
 > ⚠️ **Attribution & license:** JINX is a modified, non-commercial derivative of [Mark-LVII](https://github.com/FatihMakes/Mark-LVII) by **FatihMakes**, licensed under **CC BY-NC 4.0** — same as the original. You may not use it commercially, and the original author's credit stays with the project.
