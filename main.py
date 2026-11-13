@@ -2478,6 +2478,25 @@ class JinxLive:
             except Exception as exc:
                 print(f"[Battery] Monitor unavailable: {type(exc).__name__}")
 
+    async def _run_foreground_context(self):
+        from core import foreground_context as foreground
+        previous = None
+        while True:
+            await asyncio.sleep(5)
+            if not foreground.enabled():
+                previous = None
+                continue
+            if not self.session or not self._awake:
+                continue
+            try:
+                reading = await asyncio.to_thread(foreground.capture)
+                if reading and reading != previous and foreground.enabled():
+                    await self.session.send_client_content(turns={"role": "user", "parts": [
+                        {"text": foreground.context(reading)}]}, turn_complete=False)
+                    previous = reading
+            except Exception as exc:
+                print(f"[Foreground] Context unavailable: {type(exc).__name__}")
+
     async def _run_focus_reminders(self):
         from memory.config_manager import get_plugin_config
         clock = _preferences.FocusClock()
@@ -2899,6 +2918,7 @@ class JinxLive:
                     tg.create_task(self._play_audio())
                     tg.create_task(self._run_system_monitor())
                     tg.create_task(self._run_battery_monitor())
+                    tg.create_task(self._run_foreground_context())
                     tg.create_task(self._run_focus_reminders())
                     if self._routines is None:
                         # Routines did not load: the fixed schedules they replaced.

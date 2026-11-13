@@ -338,6 +338,9 @@ class PipelineEngine:
         # there. The engine matches it — the transcript is emitted where speech
         # is actually recognised, in `flush_microphone`.
         self._history.append({"role": "user", "content": content})
+        if not turn_complete:
+            # Metadata context, like the Live API: retain it without speaking.
+            return
         self._done_calls.clear()
         self._rounds = 0
         self._queue_generation()
