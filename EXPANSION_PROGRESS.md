@@ -1,5 +1,11 @@
 # Execução local — Fases 2 e 3
 
+## 3.4 — Pesquisa de voos
+- core/flight_search.py, actions/flight_finder.py e tests/test_flight_search.py.
+- Rota/data validadas, modos search/price/research existentes, painel com fontes e link de busca codificado; remove rota/data fixa embutida no URL antigo. Datas inválidas não viram “hoje” silenciosamente. save mantém relatório Desktop com undo.
+- Testar “Pesquise voos de GRU para Lisboa em 1 de fevereiro de 2030” / “Search flights from GRU to Lisbon on February 1, 2030”. Quatro testes, busca externa simulada e limites verificáveis. Nenhuma dependência/conta nova.
+- Preços/disponibilidade continuam unverified até consultar companhia; snippets ou links não viram reserva/cotação confirmada. Nenhuma compra ou abertura automática de navegador. A busca real depende dos backends públicos e do provedor configurado.
+
 ## 3.3 — Assistente de reuniões
 - core/meeting.py, plugins/meeting_assistant.py, indicador Qt em gui/window.py/ui.py, tests/test_meeting.py.
 - Start/stop/status explícitos; captura só após confirmação técnica de exibição do indicador PARAR. Duas trilhas mic/loopback iniciadas por barreira, redução 48k→16k, PCM em disco temporário com RAM limitada, máximo 30 min. Áudio bruto removido após processamento; transcript/resumo no diretório de documentos com undo por hash.

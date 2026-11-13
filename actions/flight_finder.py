@@ -38,51 +38,8 @@ _RELATIVE_MAP_KEYS = {
 
 
 def _parse_date(raw: str) -> str:
-
-    raw   = raw.strip()
-    lower = raw.lower()
-    today = datetime.now()
-
-    if re.match(r"\d{4}-\d{2}-\d{2}", raw):
-        return raw
-    for fmt in ("%d/%m/%Y", "%m/%d/%Y", "%d.%m.%Y", "%d-%m-%Y"):
-        try:
-            return datetime.strptime(raw, fmt).strftime("%Y-%m-%d")
-        except ValueError:
-            pass
-
-    relative = {
-        "today": today,
-        "tomorrow": today + timedelta(days=1),
-    }
-    for key, val in relative.items():
-        if key in lower:
-            return val.strftime("%Y-%m-%d")
-
-    try:
-        from core import gemini
-        result = gemini.text(
-            f"Today is {today.strftime('%Y-%m-%d')}. "
-            f"Convert this date expression to YYYY-MM-DD: '{raw}'. "
-            f"Return ONLY the date string, nothing else.",
-            tier=gemini.FAST,
-        )
-        if re.match(r"\d{4}-\d{2}-\d{2}", result):
-            return result
-    except Exception as e:
-        print(f"[FlightFinder] ⚠️ Gemini date parse failed: {e}")
-
-    for month_name, month_num in _MONTH_MAP.items():
-        if month_name in lower:
-            day_match = re.search(r"\d{1,2}", raw)
-            if day_match:
-                day  = int(day_match.group())
-                year = today.year if month_num >= today.month else today.year + 1
-                return f"{year}-{month_num:02d}-{day:02d}"
-
-    # Last resort: today
-    print(f"[FlightFinder] ⚠️ Could not parse date '{raw}' — using today.")
-    return today.strftime("%Y-%m-%d")
+    from core.flight_search import normalize_date
+    return normalize_date(raw)
 
 _CABIN_CODE: dict[str, str] = {
     "economy":  "1",
@@ -92,31 +49,9 @@ _CABIN_CODE: dict[str, str] = {
 }
 
 
-def _build_google_flights_url(
-    origin:      str,
-    destination: str,
-    date:        str,
-    return_date: str | None = None,
-    passengers:  int        = 1,
-    cabin:       str        = "economy",
-) -> str:
-    cabin_code = _CABIN_CODE.get(cabin.lower(), "1")
-    base       = "https://www.google.com/travel/flights"
-
-    # Google Flights accepts these query params for pre-filling
-    if return_date:
-        trip = f"Flights+from+{origin}+to+{destination}+on+{date}+returning+{return_date}"
-    else:
-        trip = f"Flights+from+{origin}+to+{destination}+on+{date}"
-
-    return (
-        f"{base}"
-        f"?q={trip}"
-        f"&tfs=CBwQAhoeEgoyMDI1LTAzLTE1agcIARIDSVNUcgcIARIDTEhS"   
-        f"&curr=USD"
-        f"&cabin={cabin_code}"
-        f"&adults={passengers}"
-    )
+def _build_google_flights_url(origin, destination, date, return_date=None, passengers=1, cabin="economy") -> str:
+    from core.flight_search import booking_url
+    return booking_url(origin, destination, date, return_date, passengers, cabin)
 
 
 
@@ -294,78 +229,18 @@ def _save_to_desktop(content: str, origin: str, destination: str) -> str:
 
 
 def flight_finder(parameters: dict, player=None, speak=None) -> str:
-    params = parameters or {}
-
-    origin      = params.get("origin",      "").strip()
-    destination = params.get("destination", "").strip()
-    date_raw    = params.get("date",        "").strip()
-    return_raw  = (params.get("return_date") or "").strip()
-    passengers  = max(1, int(params.get("passengers", 1)))
-    cabin       = params.get("cabin", "economy").strip().lower()
-    save        = bool(params.get("save", False))
-
-    if not origin or not destination:
-        return "Please provide both origin and destination, sir."
-    if not date_raw:
-        return "Please provide a departure date, sir."
-
-    # Normalise cabin value
-    if cabin not in _CABIN_CODE:
-        cabin = "economy"
-
-    date        = _parse_date(date_raw)
-    return_date = _parse_date(return_raw) if return_raw else None
-
-    if player:
-        player.write_log(f"[FlightFinder] {origin} → {destination} on {date}")
-
-    if speak:
-        speak(f"Searching flights from {origin} to {destination} on {date}, sir.")
-
-    print(
-        f"[FlightFinder] ▶️ {origin} → {destination} | {date}"
-        f"{' → ' + return_date if return_date else ''}"
-        f" | {cabin} | {passengers} pax"
-    )
-
-    try:
-        raw_text, page_url = _search_flights_browser(
-            origin, destination, date, return_date, passengers, cabin
-        )
-
-        if not raw_text:
-            return "Could not retrieve flight data, sir. The page may not have loaded."
-
-        if speak:
-            speak("Analysing the results now, sir.")
-
-        flights = _parse_flights_with_gemini(raw_text, origin, destination, date)
-        spoken  = _format_spoken(flights, origin, destination, date)
-
-        if speak:
-            speak(spoken)
-
-        result = spoken
-
-        if save and flights:
-            report     = _format_text_report(flights, origin, destination, date, return_date, page_url)
-            saved_path = _save_to_desktop(report, origin, destination)
-            result    += f" Results saved to Desktop: {saved_path}"
-
-        return result
-
-    except Exception as e:
-        print(f"[FlightFinder] ❌ {e}")
-        return f"Flight search failed, sir: {e}"
+    from core.flight_search import run
+    return run(parameters, player)
 
 
 # ── Tool declaration (auto-discovered by core/action_loader.py) ──────────────
 TOOL = {
     "name": "flight_finder",
-    "description": "Searches Google Flights and speaks the best options.",
+    "description": "Research flights by route/date through existing web search; panel sources and search links, never a verified fare or booking.",
     "parameters": {
         "type": "OBJECT",
         "properties": {
+            "mode": {"type": "STRING", "enum": ["search", "price", "research"], "description": "Existing web search mode; default price"},
             "origin": {
                 "type": "STRING",
                 "description": "Departure city or airport code"
@@ -376,7 +251,7 @@ TOOL = {
             },
             "date": {
                 "type": "STRING",
-                "description": "Departure date (any format)"
+                "description": "Departure date ISO or DD/MM/YYYY; never assume today"
             },
             "return_date": {
                 "type": "STRING",
@@ -392,7 +267,7 @@ TOOL = {
             },
             "save": {
                 "type": "BOOLEAN",
-                "description": "Save results to Notepad"
+                "description": "Save research report to Desktop"
             }
         },
         "required": [
