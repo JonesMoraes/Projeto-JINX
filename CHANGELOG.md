@@ -1,5 +1,13 @@
 # Histórico de alterações
 
+## 2026-11-13 — Tarefas 2.3–2.6
+- Brilho por monitor WMI com readback/undo; captura real de lista verificada.
+- Contexto de janela opt-in sem screenshots, com limite untrusted e envio não final.
+- Watchers opt-in de cripto, HTTP e RAM; jogos Steam/Epic/Riot por manifests locais.
+- 160 testes passaram. Jogos detectáveis nesta máquina: lista vazia; nenhum jogo lançado.
+- Testes de efeitos de brilho/alertas/launch simulados. Não representam escuta real
+  PT-BR/EN. Detalhes, arquivos e comandos em EXPANSION_PROGRESS.md.
+
 ## 2026-11-13 — Tarefa 2.2
 
 - Plugin de bateria: carga, tomada e autonomia estimada; consulta WMI Windows

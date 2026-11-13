@@ -118,7 +118,12 @@ O driver não expôs capacidade de projeto válida, portanto saúde/desgaste
 permanecem unverified. Plugin/cartão/dispatch verificados, alertas opt-in,
 silêncio e undo existentes preservados. Sem nova dependência nem mudança
 nos módulos de segurança. Voz PT-BR/EN e escuta dos alertas pendentes.
-Próxima tarefa: 2.3, brilho por monitor no Windows e limites dos dispositivos.
+Tarefas 2.3–2.6 implementadas; 160 testes passaram e HUD real iniciado em modo
+offscreen, com sinal de conteúdo processado na thread Qt. Relatórios completos
+em EXPANSION_PROGRESS.md. Usuário autorizou execução contínua até Fase 3 e
+testes internos; voz/escuta reais das funções novas permanecem unverified,
+assim como efeitos externos testados apenas com simulação. Integração local
+para seguir Fase 3 preserva essas pendências; não é declaração de aceite por voz.
 
 Atualização de execução: Fase 0 aceita pelo usuário; tarefas 1.1, 1.2 e 1.3
 implementadas na branch feature/phase-1-ports. A tarefa 1.3 passou em 38 testes

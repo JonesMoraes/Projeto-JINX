@@ -1,5 +1,11 @@
 # ⚙️ JINX
 
+Expansão local: tarefas 2.3–2.6 (brilho por monitor, privacidade da janela,
+watchers e jogos) documentadas em [EXPANSION_PROGRESS.md](EXPANSION_PROGRESS.md),
+com comandos PT-BR/EN, arquivos e limites de verificação. Todas usam dependências
+existentes; contexto de janela e alertas começam desligados. Reinicie o aplicativo
+para carregar novos plugins. Os testes internos não substituem a escuta real.
+
 ### Expansão 2.2 — Bateria e alertas
 
 Após reiniciar, diga “Como está a bateria?” / “How is my battery?”. Mostra carga,

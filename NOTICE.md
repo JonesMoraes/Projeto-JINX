@@ -74,6 +74,11 @@ integration code. They reuse existing core.appidentity, core.confirm and
 core.outcome interfaces without changing the safety modules. psutil is an
 existing external dependency, not vendored source. No Brahma code was used.
 
+Expansion tasks 2.3–2.6 are original JINX code: monitor_brightness,
+foreground_context, watchers and games modules/plugins/tests. They reuse
+existing launcher, WMI, config, undo and untrusted-content interfaces.
+No external implementation was ported; no Brahma code was used.
+
 JINX is a modified, **non-commercial** derivative of **Mark-LVII**
 ("MARK LVII") by FatihMakes:
 
