@@ -1,5 +1,12 @@
 # Execução local — Fases 2 e 3
 
+## 2.5 — Watchers de preço, site e RAM
+- core/watchers.py, plugins/system_watchers.py, main.py e tests/test_watchers.py.
+- Dez monitores opt-in no máximo, consulta >=60 s, timeout 5 s, deduplicação por episódio; alertas respeitam quiet hours/mute/conversa. Site usa HEAD sem redirecionar; rede privada recusada pelo limite existente. Cota/erro de API nunca vira cotação.
+- Testar: “Monitore RAM acima de 90%”, “Ative os alertas dos monitores”; “Monitore bitcoin acima de 500000 reais” / “Watch RAM above 90 percent”. Remover pelo ID/listar e desfazer suportados.
+- Sete testes específicos; rede simulada para alertas. Nenhum pacote novo. CoinGecko público pode limitar acesso; sites que bloqueiam HEAD podem parecer indisponíveis. HTTP 2xx/3xx significa resposta HTTP, não integridade da página. Nenhuma negociação.
+- Monitor de notícias legado preservado; novo plugin é a rota explícita de cripto, conforme backlog. Endpoint: https://coingecko-api-v3.readme.io/v3.0.1/reference/simple-price. Testes reais de serviço/voz pendentes.
+
 ## 2.4 — Contexto da janela ativa
 - core/foreground_context.py, plugins/foreground_context.py, main.py e providers/engine_pipeline.py; tests/test_foreground_context.py.
 - Privacidade opt-in via cartão/voz e undo; somente app/título/PID, sem screenshot. Metadados não confiáveis enviados a cada mudança (amostra 5 s), sem gerar fala espontânea no pipeline.

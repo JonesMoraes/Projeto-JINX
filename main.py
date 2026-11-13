@@ -2478,6 +2478,16 @@ class JinxLive:
             except Exception as exc:
                 print(f"[Battery] Monitor unavailable: {type(exc).__name__}")
 
+    async def _run_system_watchers(self):
+        from core import watchers
+        monitor = watchers.Monitor()
+        while True:
+            await asyncio.sleep(30)
+            try:
+                await watchers.poll(self, monitor)
+            except Exception as exc:
+                print(f"[Watchers] Check unavailable: {type(exc).__name__}")
+
     async def _run_foreground_context(self):
         from core import foreground_context as foreground
         previous = None
@@ -2918,6 +2928,7 @@ class JinxLive:
                     tg.create_task(self._play_audio())
                     tg.create_task(self._run_system_monitor())
                     tg.create_task(self._run_battery_monitor())
+                    tg.create_task(self._run_system_watchers())
                     tg.create_task(self._run_foreground_context())
                     tg.create_task(self._run_focus_reminders())
                     if self._routines is None:
