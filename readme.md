@@ -1039,6 +1039,45 @@ and CHANGELOG.md for task reports and verification limits. -->
 
 ### Rastracking de vendas e rastreamento de encomendas (expansão 1.5)
 
+### Foco, humor e frases ignoradas (expansão 1.6)
+
+Reinicie uma vez para carregar os três plugins. As preferências ficam em
+⚙ → CONFIGURAÇÕES DOS PLUGINS. Foco e humor vêm desligados; a lista de
+frases e o endereço de playlist vêm vazios. Nenhuma conta é necessária.
+
+- “Ative o modo foco” / “Start focus mode”: respostas mais objetivas, agenda
+  de hoje e pausa nos check-ins por ociosidade. “Encerre o modo foco” desativa.
+- Lembretes de água são opcionais, desligados por padrão, com intervalo
+  configurável entre 5 e 240 minutos. Só são enviados com sessão ativa,
+  assistente acordado, sem mudo/fala em andamento e fora dos horários silenciosos.
+- Uma playlist HTTPS sua pode ser aberta ao iniciar o foco. Isso é uma
+  abertura no navegador, não reprodução confirmada: login/autoplay e pausa
+  continuam sob seu controle. Encerrar o foco não fecha nem pausa a página.
+- “Ative o modo humor” / “Turn humor on”; “Desative o modo humor” volta ao
+  tom normal. O humor é breve e leve; assuntos sérios permanecem sérios.
+  Foco tem prioridade e nenhum modo altera permissões ou confirmações.
+- “Bloqueie a frase abra o navegador”; “Quais frases estão bloqueadas?”;
+  “Desbloqueie a frase abra o navegador”. Em inglês: “Ignore the phrase open
+  browser” / “List blocked phrases”. O filtro compara a frase inteira,
+  ignorando caixa, acentos, pontuação e prefixo com o nome do assistente.
+  Uma frase maior contendo o trecho não é bloqueada. Na UI, separe frases
+  com ponto e vírgula. As alterações por voz podem ser desfeitas pelo undo.
+
+**Limite do Gemini Live:** o áudio nativo já foi enviado ao servidor quando a
+transcrição chega. Nesse modo, a lista é orientação ao modelo, sem garantia
+de impedir resposta, ferramenta ou envio do áudio. O bloqueio determinístico
+antes do modelo está disponível para STT separado e para comandos digitados
+ou enviados por texto no dashboard. A lista não é uma fronteira de segurança.
+
+Mudanças por voz retornam orientação para a sessão atual; o motor local
+também relê o estilo a cada geração. Para alterações manuais de humor/frases
+na UI surtirem efeito no prompt do Gemini Live, reinicie/reconecte a sessão.
+O foco e seu temporizador leem a configuração local em execução. Sem
+dependências adicionais. Testes internos usam armazenamento temporário;
+o teste falado das novas preferências ainda está pendente.
+
+### Configuração dos rastreamentos
+
 São dois plugins distintos. Reinicie o JINX para carregá-los. Nenhum recebe
 conta pronta; todos os segredos são preenchidos em ⚙ → CONFIGURAÇÕES DOS
 PLUGINS e persistidos apenas na configuração local ignorada pelo Git.

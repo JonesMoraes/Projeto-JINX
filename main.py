@@ -72,6 +72,7 @@ from memory.memory_manager import (
 # (screen_process, close_camera, save_memory, manage_monitor, shutdown_jinx,
 # system_status).
 from core import outcome
+from core import session_preferences as _preferences
 from core.action_loader import strip_meta
 from actions.screen_processor  import _capture_camera, _capture_screen
 from actions.system_monitor    import SystemMonitor, get_system_status
@@ -1013,7 +1014,7 @@ class JinxLive:
 
     async def _routine_checkin(self, options: dict) -> None:
         """The proactive check-in, when the routine says the moment has come."""
-        if not self.session:
+        if not self.session or _preferences.enabled("focus"):
             return
         self._proactive.mark_triggered()
         try:
@@ -1222,6 +1223,9 @@ class JinxLive:
                 getattr(self._dashboard, "_bind_error", "") or "")
 
     def _on_text_command(self, text: str):
+        if _preferences.blocked(text):
+            self.ui.write_log("SYS: Frase ignorada conforme sua lista / Phrase ignored by your list.")
+            return
         if not self._loop or not self.session:
             return
         # Respect wake-word sleep: a typed command must not be answered while
@@ -1468,6 +1472,7 @@ class JinxLive:
         if mem_str:
             parts.append(mem_str)
         parts.append(sys_prompt)
+        parts.append(_preferences.guidance())
 
         cfg = dict(
             response_modalities=["AUDIO"],
@@ -2463,6 +2468,19 @@ class JinxLive:
 
     # ── Proactive mode ──────────────────────────────────────────────────────────
 
+    async def _run_focus_reminders(self):
+        from memory.config_manager import get_plugin_config
+        clock = _preferences.FocusClock()
+        while True:
+            await asyncio.sleep(5)
+            cfg = get_plugin_config("focus")
+            active = _preferences.enabled("focus") and cfg.get("water_enabled") is True
+            allowed = bool(self.session and self._awake and not self.ui.muted and not self._is_speaking)
+            if self._routines is not None:
+                allowed = allowed and not self._routines.in_quiet(datetime.now())
+            if clock.due(active, cfg.get("water_minutes", 30), allowed):
+                self.plugin_say("[FOCUS REMINDER] Briefly remind the user to take a water break, in their language. Do not call tools.")
+
     async def _run_proactive_mode(self) -> None:
         """
         Background task: periodically checks if the user has been silent long enough,
@@ -2471,6 +2489,9 @@ class JinxLive:
         """
         while True:
             await asyncio.sleep(60)   # evaluate once per minute
+
+            if _preferences.enabled("focus"):
+                continue
 
             if not self.session or not self._awake:
                 continue
@@ -2536,6 +2557,9 @@ class JinxLive:
                     self._dashboard._command_queue.get(), timeout=0.5
                 )
                 if not text:
+                    continue
+                if _preferences.blocked(text):
+                    self.ui.write_log("SYS: Comando remoto ignorado pela lista / Remote command ignored by phrase list.")
                     continue
                 # Wait up to 8s for session to become ready after a wake
                 for _ in range(80):
@@ -2864,6 +2888,7 @@ class JinxLive:
                     tg.create_task(self._receive_audio())
                     tg.create_task(self._play_audio())
                     tg.create_task(self._run_system_monitor())
+                    tg.create_task(self._run_focus_reminders())
                     if self._routines is None:
                         # Routines did not load: the fixed schedules they replaced.
                         tg.create_task(self._run_background_monitor())

@@ -36,6 +36,14 @@ Decimal aggregates, bounded cursor pagination and explicit partial results,
 support subjects only on explicit request, no diagnostic files or credentials.
 Parcel tracking is a separate original implementation against the published
 Correios API contract, not a feature ported from the Rastracking source.
+
+Expansion task 1.6: focus_mode.py, humor_mode.py and phrase_blocklist.py
+adapted from the identically named plugins in jgm-source/jarvis-opensource,
+commit 87d9ea2bfd600e189ba849a0653039e8c505c978 (João Gabriel; CC BY-NC 4.0).
+JINX adaptations: shared preference persistence and undo, local STT/text
+exact-phrase filtering, explicit native-Live limitation, optional focus water
+clock with quiet-hours support, no bundled playlist/account, browser handoff
+instead of importing the source music engine or personal playlist.
 Brahma assets present on this machine are excluded from Git and are not
 relicensed by this notice. Their existing HUD integration is a recorded
 remediation item; it is not represented as an independently authored visual.

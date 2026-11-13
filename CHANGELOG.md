@@ -1,5 +1,21 @@
 # Histórico de alterações
 
+## 2026-11-13 — Tarefa 1.6
+
+- Três plugins: foco, humor e frases ignoradas, configuráveis em ⚙ e por voz;
+  persistência via config_manager e desfazer via API existente.
+- Foco mostra agenda, orienta respostas concisas, suprime check-ins de
+  ociosidade e permite lembrete de água opcional (respeita quiet hours).
+- Humor leve, desligado por padrão, com prioridade do foco e sem alterar
+  confirmação/segurança. Motor local atualiza estilo a cada geração.
+- Frases inteiras normalizadas são descartadas em texto/STT local antes do
+  modelo. No áudio nativo Gemini Live o comportamento é orientativo, sem
+  garantia de bloquear ações ou impedir transmissão do áudio.
+- Playlist do usuário opcional abre no navegador; reprodução não verificada
+  e pausa manual. Não há playlist/servidor/conta de origem configurados.
+- 87 testes passaram; voz real e reprodução musical não verificadas.
+  Nenhuma dependência nova ou alteração em módulos de segurança protegidos.
+
 ## 2026-11-13 — Tarefa 1.5
 
 - Divergência do backlog confirmada com o usuário: o plugin de origem é de

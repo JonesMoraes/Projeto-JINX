@@ -110,6 +110,8 @@ confundir conclusão de implementação com conclusão da Fase 1. Próxima taref
 1.4 implementada: Cakto com campos vazios para configuração manual, 55 testes
 passando e aceitação real/voz pendente. Tarefa 1.5 implementada com os dois
 recursos separados conforme escolha explícita do usuário: 71 testes passando,
-contas reais e voz pendentes. Próxima tarefa: 1.6, foco/humor/blocklist.
+contas reais e voz pendentes. Tarefa 1.6 implementada: foco/humor/blocklist,
+87 testes e limites explícitos para áudio nativo Live e playlist via navegador.
+Sem dependências novas; aceitação por voz pendente. Próxima tarefa: 1.7, Groq STT.
 
 Executar 0.2: baseline controlado e Git local, registrar conflitos de licença/dependências e proposta reversível para o HUD. Não iniciar 1.1 antes de finalizar a Fase 0. Nenhuma alteração de segurança ou exclusão é autorizada por este documento.

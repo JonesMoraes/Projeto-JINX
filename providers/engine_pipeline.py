@@ -38,7 +38,8 @@ NO LANGUAGE LOGIC ANYWHERE IN THIS FILE
     Not a keyword, not a greeting, not a locale check. What language the
     assistant speaks is decided by the system prompt and the model, exactly as
     it is on Gemini. The STT is asked to detect rather than told what to expect,
-    and the transcript is passed through without being inspected.
+and the transcript is passed through except for the user's explicit exact-phrase
+ignore preference, checked locally before the model call.
 """
 from __future__ import annotations
 
@@ -220,7 +221,9 @@ class PipelineEngine:
 
     # ── history ──────────────────────────────────────────────────────────────
     def _messages(self) -> list[dict]:
-        msgs = [{"role": "system", "content": self._system}] if self._system else []
+        from core.session_preferences import guidance
+        system = self._system + "\n" + guidance(include_blocklist=False)
+        msgs = [{"role": "system", "content": system}]
         return msgs + self._trimmed()
 
     def _trimmed(self) -> list[dict]:
@@ -772,6 +775,11 @@ class PipelineEngine:
             self._report("speech recognition", self._stt, e)
             return ""
         self._timing["stt"] = time.monotonic() - t0
+        if text:
+            from core.session_preferences import blocked
+            if blocked(text):
+                self._log("SYS: Frase ignorada antes do modelo / Phrase ignored before the model.")
+                return ""
         if text:
             # THIS is what the user said, and the only thing that should reach
             # the activity log as "You:". Emitted here rather than in
