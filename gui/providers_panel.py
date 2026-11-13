@@ -90,6 +90,7 @@ class ProvidersOverlay(_HudOverlay):
     # (provider id, [(value, label), ...]) from a worker that went and asked an
     # endpoint what it offers.
     _models_ready = pyqtSignal(str, list)
+    _hearing_test_ready = pyqtSignal(str, bool, str)
     _OW = 760                       # the window's own minimum is 820
 
     # Which provider fills each slot, and what the slot is FOR — in the words
@@ -122,6 +123,9 @@ class ProvidersOverlay(_HudOverlay):
         # nothing in this folder may run before somebody opens it.
         self._live_ready.connect(self._on_live_ready)
         self._models_ready.connect(self._on_models_ready)
+        self._hearing_test_ready.connect(self._on_hearing_test_ready)
+        self._hearing_tests = set()
+        self._hearing_cancels = {}
         self._model_cache: dict[str, list] = {}
         self._fetching: set = set()
         for _kind in ("tts", "stt", "llm"):
@@ -760,6 +764,8 @@ class ProvidersOverlay(_HudOverlay):
 
         brow = QHBoxLayout(); brow.setSpacing(6)
         brow.addWidget(self._btn("TESTAR", lambda _=0, p=pid: self._test(p), C.PRI))
+        if decl.get("id") == "groq_stt":
+            brow.addWidget(self._btn("🎙 GRAVAR 4 S E TESTAR / RECORD", lambda _=0, p=pid: self._test_hearing(p, True), C.ACC2))
         # Not "LIST" any more: the list arrives on its own when a service is
         # chosen. This is the button for when it did not — the server was
         # starting up, or a model has just been pulled.
@@ -1040,6 +1046,9 @@ class ProvidersOverlay(_HudOverlay):
             lb.setStyleSheet(f"color: {colour}; background: transparent; border: none;")
 
     def _test(self, pid: str) -> None:
+        if pid.split("@", 1)[0] == "groq_stt":
+            self._test_hearing(pid, False)
+            return
         # Read the boxes BEFORE letting Qt run. `processEvents` will happily
         # deliver a queued rebuild, which deletes the very widgets this is
         # about to read — and a deleted QWidget raises rather than returning
@@ -1068,6 +1077,45 @@ class ProvidersOverlay(_HudOverlay):
             entry = self._edits.get(pid, {}).get("vision")
             if entry is not None and isinstance(entry[0], QComboBox):
                 entry[0].setCurrentIndex(1 if seen else 0)
+
+    def _test_hearing(self, pid: str, record: bool = False):
+        if pid in self._hearing_tests:
+            return
+        values = self._values(pid)
+        if self._registry.missing_fields(pid, values):
+            self._say(pid, "Cadastre SUA chave antes de testar / Enter YOUR key before testing", C.RED)
+            return
+        self._hearing_tests.add(pid)
+        cancel = threading.Event()
+        self._hearing_cancels[pid] = cancel
+        self._say(pid, ("🔴 GRAVANDO 4 S — diga uma frase; áudio enviado à Groq / RECORDING; audio sent to Groq"
+                        if record else "Verificando conexão e modelo / Checking connection and model…"), C.ACC)
+        def work():
+            try:
+                # A fresh test instance avoids changing the live recognizer's language state.
+                from providers.stt_groq import GroqSTT
+                inst = GroqSTT(values)
+                ok, message = inst.record_test(cancel) if record else inst.probe()
+            except Exception:
+                ok, message = False, "Teste não verificado; confira chave/modelo/microfone / Test unverified; check key/model/microphone"
+            try:
+                self._hearing_test_ready.emit(pid, ok, message)
+            except RuntimeError:
+                pass
+        threading.Thread(target=work, name="groq-hearing-test", daemon=True).start()
+
+    def _on_hearing_test_ready(self, pid: str, ok: bool, message: str):
+        self._hearing_tests.discard(pid)
+        self._hearing_cancels.pop(pid, None)
+        label = self._status.get(pid)
+        if label is not None:
+            label.setTextFormat(Qt.TextFormat.PlainText)
+        self._say(pid, ("✓ " if ok else "✕ ") + message, C.GREEN if ok else C.RED)
+
+    def hideEvent(self, event):
+        for cancel in getattr(self, "_hearing_cancels", {}).values():
+            cancel.set()
+        super().hideEvent(event)
 
     def _list(self, pid: str) -> None:
         values = self._values(pid)          # before processEvents — see _test

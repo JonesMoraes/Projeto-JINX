@@ -44,6 +44,14 @@ JINX adaptations: shared preference persistence and undo, local STT/text
 exact-phrase filtering, explicit native-Live limitation, optional focus water
 clock with quiet-hours support, no bundled playlist/account, browser handoff
 instead of importing the source music engine or personal playlist.
+
+Expansion task 1.7: Groq hearing configuration/status adapted from
+plugins/groq_listen.py in jgm-source/jarvis-opensource, commit
+87d9ea2bfd600e189ba849a0653039e8c505c978 (João Gabriel; CC BY-NC 4.0).
+JINX adaptation uses the existing provider/Whisper contract rather than the
+source's separate microphone loop: dedicated lazy provider, manual secret
+entry, explicit connection vs microphone-transcription tests and Qt signals.
+Legacy whisper@groq remains supported. No source credentials were imported.
 Brahma assets present on this machine are excluded from Git and are not
 relicensed by this notice. Their existing HUD integration is a recorded
 remediation item; it is not represented as an independently authored visual.

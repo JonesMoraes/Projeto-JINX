@@ -112,6 +112,9 @@ passando e aceitação real/voz pendente. Tarefa 1.5 implementada com os dois
 recursos separados conforme escolha explícita do usuário: 71 testes passando,
 contas reais e voz pendentes. Tarefa 1.6 implementada: foco/humor/blocklist,
 87 testes e limites explícitos para áudio nativo Live e playlist via navegador.
-Sem dependências novas; aceitação por voz pendente. Próxima tarefa: 1.7, Groq STT.
+Sem dependências novas; aceitação por voz pendente. Tarefa 1.7 implementada:
+Groq STT dedicado, legado preservado e teste explícito de microfone; 98 testes
+e smoke do sinal Qt passaram. Chave vazia e transcrição real pendente.
+Próxima tarefa: 1.8, Edge TTS como provedor de voz.
 
 Executar 0.2: baseline controlado e Git local, registrar conflitos de licença/dependências e proposta reversível para o HUD. Não iniciar 1.1 antes de finalizar a Fase 0. Nenhuma alteração de segurança ou exclusão é autorizada por este documento.

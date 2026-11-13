@@ -1041,6 +1041,38 @@ and CHANGELOG.md for task reports and verification limits. -->
 
 ### Foco, humor e frases ignoradas (expansão 1.6)
 
+### Audição Groq (expansão 1.7)
+
+Em ⚙ → MECANISMO E PROVEDORES, selecione sua configuração própria e,
+em AUDIÇÃO / HEARING, escolha **Groq — audição / hearing**. Cadastre **sua**
+chave, escolha o modelo e deixe o idioma vazio para detectar PT-BR/EN,
+ou use `pt`/`en`. A chave vem vazia. Endpoint fixo da API oficial, sem servidor
+pessoal ou chave do port. O preset antigo `whisper@groq` continua funcionando.
+
+**TESTAR** consulta conexão/modelo, sem gravar. **GRAVAR 4 S E TESTAR / RECORD**
+grava quatro segundos do microfone selecionado e envia esse trecho à Groq
+para mostrar a transcrição. O painel mostra um indicador durante a gravação.
+Ocultar/fechar o painel cancela a captura antes do envio; áudio já enviado não
+pode ser retirado. Se o microfone estiver ocupado ou indisponível, o teste
+informa falha. Nenhuma captura ocorre apenas por abrir o painel ou testar conexão.
+
+Para testar, clique em GRAVAR e diga “Este é um teste de audição em português”.
+Repita com “This is an English speech recognition test”. Compare a transcrição
+com o que disse. Depois selecione também os seus provedores de pensamento e
+voz e clique APLICAR. O STT faz parte do motor de provedores; não substitui
+automaticamente o áudio nativo da sessão Gemini Live. O comando “Como você
+está me ouvindo?” consulta a configuração e a presença da chave, sem afirmar
+que uma transcrição real já funcionou.
+
+Não é necessário instalar o SDK Groq nem baixar Whisper: HTTP/WAV usam
+bibliotecas já existentes. O áudio é transcrito na nuvem, não neste computador;
+requer internet e cota da sua conta. Contrato e modelos conferidos na
+[documentação oficial de fala da Groq](https://console.groq.com/docs/speech-to-text).
+Testes internos usam respostas e gravações simuladas; a validação real com
+sua chave/voz fica pendente até você configurar e testar na interface.
+
+### Configuração das preferências de foco e humor
+
 Reinicie uma vez para carregar os três plugins. As preferências ficam em
 ⚙ → CONFIGURAÇÕES DOS PLUGINS. Foco e humor vêm desligados; a lista de
 frases e o endereço de playlist vêm vazios. Nenhuma conta é necessária.

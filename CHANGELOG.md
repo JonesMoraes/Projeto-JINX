@@ -1,5 +1,19 @@
 # Histórico de alterações
 
+## 2026-11-13 — Tarefa 1.7
+
+- Groq STT dedicado no seletor de audição, dois modelos multilíngues,
+  idioma automático/pt/en e chave vazia para cadastro manual.
+- Preservada configuração antiga whisper@groq; nenhuma seleção ou chave
+  do usuário alterada automaticamente e nenhum modelo local instalado.
+- TESTAR verifica conexão/modelo; GRAVAR 4 S E TESTAR registra áudio
+  explicitamente e mostra transcrição. Captura cancela ao ocultar o painel
+  antes do envio; requisição já enviada não pode ser desfeita.
+- Trabalho de rede/captura fora da thread Qt; resultado por sinal, texto
+  da transcrição exibido como texto simples. Sem SDK ou dependências novas.
+- 98 testes passaram e smoke do sinal Qt verificado. Teste real com chave,
+  gravação e conversa PT-BR/EN continua pendente.
+
 ## 2026-11-13 — Tarefa 1.6
 
 - Três plugins: foco, humor e frases ignoradas, configuráveis em ⚙ e por voz;
