@@ -75,15 +75,15 @@ class SetupOverlay(QWidget):
             w.setStyleSheet(f"color: {color}; background: transparent;")
             return w
 
-        layout.addWidget(_lbl("◈  INITIALISATION REQUIRED", 13, True))
-        layout.addWidget(_lbl("Configure JINX. before first boot.", 9, color=C.PRI_DIM))
+        layout.addWidget(_lbl("◈  CONFIGURAÇÃO INICIAL NECESSÁRIA", 13, True))
+        layout.addWidget(_lbl("Configure o JINX antes de iniciar.", 9, color=C.PRI_DIM))
         layout.addSpacing(6)
 
         sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER};"); layout.addWidget(sep)
         layout.addSpacing(4)
 
-        layout.addWidget(_lbl("GEMINI API KEY", 8, color=C.TEXT_DIM,
+        layout.addWidget(_lbl("CHAVE DE API DO GEMINI", 8, color=C.TEXT_DIM,
                                align=Qt.AlignmentFlag.AlignLeft))
         self._key_input = QLineEdit()
         self._key_input.setEchoMode(QLineEdit.EchoMode.Password)
@@ -104,10 +104,10 @@ class SetupOverlay(QWidget):
         sep2.setStyleSheet(f"color: {C.BORDER};"); layout.addWidget(sep2)
         layout.addSpacing(4)
 
-        layout.addWidget(_lbl("OPERATING SYSTEM", 8, color=C.TEXT_DIM,
+        layout.addWidget(_lbl("SISTEMA OPERACIONAL", 8, color=C.TEXT_DIM,
                                align=Qt.AlignmentFlag.AlignLeft))
         det_name = {"windows": "Windows", "mac": "macOS", "linux": "Linux"}[detected]
-        layout.addWidget(_lbl(f"Auto-detected: {det_name}", 8, color=C.ACC2,
+        layout.addWidget(_lbl(f"Detectado automaticamente: {det_name}", 8, color=C.ACC2,
                                align=Qt.AlignmentFlag.AlignLeft))
 
         os_row = QHBoxLayout(); os_row.setSpacing(6)
@@ -124,7 +124,7 @@ class SetupOverlay(QWidget):
         self._sel(detected)
         layout.addSpacing(12)
 
-        init_btn = QPushButton("▸  INITIALISE SYSTEMS")
+        init_btn = QPushButton("▸  INICIALIZAR SISTEMA")
         init_btn.setFont(hud_font(10, QFont.Weight.Bold))
         init_btn.setFixedHeight(36)
         init_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -142,7 +142,7 @@ class SetupOverlay(QWidget):
 
         # Gemini is not required. Somebody running a model on their own machine,
         # or out of free quota, has to be able to start without a key.
-        local_btn = QPushButton("NO KEY — USE A LOCAL MODEL")
+        local_btn = QPushButton("SEM CHAVE — USAR MODELO LOCAL")
         local_btn.setFont(hud_font(9, QFont.Weight.Bold))
         local_btn.setFixedHeight(30)
         local_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -319,7 +319,7 @@ class CustomizeOverlay(QWidget):
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
         lay.addWidget(sep)
 
-        lay.addWidget(_lbl("ASSISTANT NAME", 8, color=C.TEXT_DIM,
+        lay.addWidget(_lbl("NOME DO ASSISTENTE", 8, color=C.TEXT_DIM,
                             align=Qt.AlignmentFlag.AlignLeft))
         self._name_input = QLineEdit(assistant_name)
         self._name_input.setFont(hud_font(10))
@@ -337,29 +337,31 @@ class CustomizeOverlay(QWidget):
         self._user_input.setStyleSheet(_fs)
         lay.addWidget(self._user_input)
 
-        # ── Assistant voice — Gemini prebuilt voices ─────────────────────────
-        # Names are language-neutral proper nouns, so the row reads the same in
-        # every locale. Selecting one and applying rebuilds the Live session.
-        from memory.config_manager import AVAILABLE_VOICES, DEFAULT_VOICE
+        # ── Assistant voice — Gemini Live prebuilt voices ───────────────────
+        # Selecting one and applying rebuilds the Live session. The names and
+        # styles come from the supported-voice catalog in config_manager.
+        from memory.config_manager import AVAILABLE_VOICES, DEFAULT_VOICE, VOICE_STYLES
         lay.addSpacing(4)
-        lay.addWidget(_lbl("ASSISTANT VOICE", 8, color=C.TEXT_DIM,
+        lay.addWidget(_lbl("VOZ DO ASSISTENTE  —  PT-BR", 8, color=C.TEXT_DIM,
                             align=Qt.AlignmentFlag.AlignLeft))
         self._sel_voice   = (voice or DEFAULT_VOICE)
         if self._sel_voice not in AVAILABLE_VOICES:
             self._sel_voice = DEFAULT_VOICE
-        self._voice_btns: dict[str, QPushButton] = {}
-        voice_row = QHBoxLayout(); voice_row.setSpacing(4)
+        self._voice_combo = QComboBox()
+        self._voice_combo.setFixedHeight(32)
+        self._voice_combo.setFont(hud_font(9))
+        self._voice_combo.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._voice_combo.setStyleSheet(
+            f"QComboBox {{ background: #000d12; color: {C.TEXT}; "
+            f"border: 1px solid {C.BORDER}; border-radius: 3px; padding: 4px 8px; }}"
+            f"QComboBox:hover {{ border-color: {C.BORDER_B}; }}"
+            f"QComboBox QAbstractItemView {{ background: #000d12; color: {C.TEXT}; "
+            f"selection-background-color: {C.PRI_GHO}; border: 1px solid {C.BORDER}; }}")
         for _v in AVAILABLE_VOICES:
-            b = QPushButton(_v)
-            b.setCheckable(True)
-            b.setFixedHeight(28)
-            b.setFont(hud_font(8, QFont.Weight.Bold))
-            b.setCursor(Qt.CursorShape.PointingHandCursor)
-            b.clicked.connect(lambda _=False, name=_v: self._on_voice_pick(name))
-            self._voice_btns[_v] = b
-            voice_row.addWidget(b)
-        lay.addLayout(voice_row)
-        self._refresh_voice_btns()
+            self._voice_combo.addItem(f"{_v}  —  {VOICE_STYLES[_v]}", _v)
+        self._voice_combo.setCurrentIndex(
+            max(0, self._voice_combo.findData(self._sel_voice)))
+        lay.addWidget(self._voice_combo)
 
         # ── UI colour — colour wheel ─────────────────────────────────────────
         lay.addSpacing(4)
@@ -367,7 +369,7 @@ class CustomizeOverlay(QWidget):
         clr_hdr.addWidget(_lbl("COR DA INTERFACE  —  arraste o seletor", 8,
                                color=C.TEXT_DIM, align=Qt.AlignmentFlag.AlignLeft))
         clr_hdr.addStretch()
-        df_btn = QPushButton("DEFAULT")
+        df_btn = QPushButton("PADRÃO")
         df_btn.setFixedSize(64, 20)
         df_btn.setFont(hud_font(7, QFont.Weight.Bold))
         df_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -404,7 +406,7 @@ class CustomizeOverlay(QWidget):
         lay.addSpacing(6)
         btn_row = QHBoxLayout(); btn_row.setSpacing(8)
 
-        save_btn = QPushButton("▸  APPLY CHANGES")
+        save_btn = QPushButton("▸  APLICAR ALTERAÇÕES")
         save_btn.setFixedHeight(34)
         save_btn.setFont(hud_font(9, QFont.Weight.Bold))
         save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -418,7 +420,7 @@ class CustomizeOverlay(QWidget):
         save_btn.clicked.connect(self._save)
         btn_row.addWidget(save_btn)
 
-        cancel_btn = QPushButton("CANCEL")
+        cancel_btn = QPushButton("CANCELAR")
         cancel_btn.setFixedHeight(34)
         cancel_btn.setFont(hud_font(9))
         cancel_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -432,28 +434,6 @@ class CustomizeOverlay(QWidget):
         cancel_btn.clicked.connect(self._cancel)
         btn_row.addWidget(cancel_btn)
         lay.addLayout(btn_row)
-
-    # ── voice selection ──────────────────────────────────────────────────────
-    def _on_voice_pick(self, name: str):
-        self._sel_voice = name
-        self._refresh_voice_btns()
-
-    def _refresh_voice_btns(self):
-        """Highlight the selected voice pill; dim the rest."""
-        for name, b in self._voice_btns.items():
-            on = (name == self._sel_voice)
-            b.setChecked(on)
-            if on:
-                b.setStyleSheet(f"""
-                    QPushButton {{ background: {C.PRI_GHO}; color: {C.PRI};
-                        border: 1px solid {C.PRI}; border-radius: 3px; }}
-                """)
-            else:
-                b.setStyleSheet(f"""
-                    QPushButton {{ background: transparent; color: {C.TEXT_MED};
-                        border: 1px solid {C.BORDER}; border-radius: 3px; }}
-                    QPushButton:hover {{ color: {C.TEXT}; border-color: {C.BORDER_B}; }}
-                """)
 
     # ── colour flow ──────────────────────────────────────────────────────────
     def _set_color(self, hx: str, update_wheel: bool = True, preview: bool = True):
@@ -496,12 +476,13 @@ class CustomizeOverlay(QWidget):
     def _save(self):
         name = self._name_input.text().strip() or "JINX"
         user = self._user_input.text().strip()
-        self.saved.emit(name, user, self._sel_color or DEFAULT_UI_COLOR, self._sel_voice)
+        voice = self._voice_combo.currentData() or self._sel_voice
+        self.saved.emit(name, user, self._sel_color or DEFAULT_UI_COLOR, voice)
         self.hide()
 
 
 class PluginManagerOverlay(QWidget):
-    """Floating overlay — lists discovered plugins with per-plugin ON/OFF toggles."""
+    """Floating overlay — lists discovered plugins with per-plugin ATIVADO/DESATIVADO toggles."""
 
     _OW = 420
 
@@ -521,7 +502,7 @@ class PluginManagerOverlay(QWidget):
         lay.setContentsMargins(20, 16, 20, 16)
         lay.setSpacing(6)
 
-        hdr = QLabel("🧩  PLUGIN MANAGER")
+        hdr = QLabel("🧩  GERENCIADOR DE PLUGINS")
         hdr.setFont(hud_font(12, QFont.Weight.Bold))
         hdr.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         lay.addWidget(hdr)
@@ -530,7 +511,7 @@ class PluginManagerOverlay(QWidget):
         lay.addWidget(sep)
 
         if not plugins:
-            empty = QLabel("No plugins found in /plugins.")
+            empty = QLabel("Nenhum plugin encontrado em /plugins.")
             empty.setFont(hud_font(8))
             empty.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
             lay.addWidget(empty)
@@ -539,7 +520,7 @@ class PluginManagerOverlay(QWidget):
             lay.addLayout(self._build_row(p))
 
         lay.addSpacing(4)
-        close_btn = QPushButton("CLOSE")
+        close_btn = QPushButton("FECHAR")
         close_btn.setFixedHeight(30)
         close_btn.setFont(hud_font(9))
         close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -569,7 +550,7 @@ class PluginManagerOverlay(QWidget):
         btn.setFixedSize(72, 24)
         btn.setFont(hud_font(7, QFont.Weight.Bold))
         if not p["valid"]:
-            btn.setText("BROKEN")
+            btn.setText("COM ERRO")
             btn.setEnabled(False)
             btn.setStyleSheet(f"""
                 QPushButton {{
@@ -586,7 +567,7 @@ class PluginManagerOverlay(QWidget):
 
     def _style_toggle(self, btn: QPushButton, enabled: bool):
         if enabled:
-            btn.setText("ON")
+            btn.setText("ATIVADO")
             btn.setStyleSheet(f"""
                 QPushButton {{
                     background: #001a08; color: {C.GREEN};
@@ -595,7 +576,7 @@ class PluginManagerOverlay(QWidget):
                 QPushButton:hover {{ background: #002010; }}
             """)
         else:
-            btn.setText("OFF")
+            btn.setText("DESATIVADO")
             btn.setStyleSheet(f"""
                 QPushButton {{
                     background: transparent; color: {C.TEXT_DIM};
@@ -662,7 +643,7 @@ class ConfirmBanner(_HudOverlay):
         lay.setContentsMargins(20, 16, 20, 16)
         lay.setSpacing(8)
 
-        hdr = QLabel("⚠  CONFIRM")
+        hdr = QLabel("⚠  CONFIRMAÇÃO")
         hdr.setFont(hud_font(11, QFont.Weight.Bold))
         hdr.setStyleSheet(f"color: {C.ACC}; background: transparent;")
         lay.addWidget(hdr)
@@ -682,7 +663,7 @@ class ConfirmBanner(_HudOverlay):
 
         row = QHBoxLayout(); row.setSpacing(8)
 
-        yes = QPushButton("▸  CONFIRM")
+        yes = QPushButton("▸  CONFIRMAR")
         yes.setFixedHeight(32)
         yes.setFont(hud_font(9, QFont.Weight.Bold))
         yes.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -694,7 +675,7 @@ class ConfirmBanner(_HudOverlay):
         yes.clicked.connect(lambda: self.answered.emit(True))
         row.addWidget(yes)
 
-        no = QPushButton("CANCEL")
+        no = QPushButton("CANCELAR")
         no.setFixedHeight(32)
         no.setFont(hud_font(9))
         no.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -707,7 +688,7 @@ class ConfirmBanner(_HudOverlay):
         row.addWidget(no)
         lay.addLayout(row)
 
-        # Default focus on CANCEL: if someone hits Enter without reading, the
+        # Default focus on CANCELAR: if someone hits Enter without reading, the
         # safe answer wins.
         no.setDefault(True)
         no.setFocus()
@@ -760,7 +741,7 @@ class AudioDeviceOverlay(_HudOverlay):
         lay.setContentsMargins(20, 16, 20, 16)
         lay.setSpacing(6)
 
-        hdr = QLabel("🎧  AUDIO DEVICES")
+        hdr = QLabel("🎧  DISPOSITIVOS DE ÁUDIO")
         hdr.setFont(hud_font(12, QFont.Weight.Bold))
         hdr.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         lay.addWidget(hdr)
@@ -822,7 +803,7 @@ class AudioDeviceOverlay(_HudOverlay):
             # `ses_testi.py` in the project root that nobody would ever find.
             btn_row = QHBoxLayout(); btn_row.setSpacing(6)
             btn_row.addWidget(box, 1)
-            test = QPushButton("TEST")
+            test = QPushButton("TESTAR")
             test.setFixedSize(64, 30)
             test.setFont(hud_font(8, QFont.Weight.Bold))
             test.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -888,7 +869,7 @@ class AudioDeviceOverlay(_HudOverlay):
             pass
 
         if _vol_now is not None:
-            vcap = QLabel("OUTPUT VOLUME")
+            vcap = QLabel("VOLUME DE SAÍDA")
             vcap.setFont(hud_font(8))
             vcap.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
             lay.addSpacing(4)
@@ -932,7 +913,7 @@ class AudioDeviceOverlay(_HudOverlay):
         lay.addWidget(note)
 
         row = QHBoxLayout(); row.setSpacing(8)
-        ok = QPushButton("▸  APPLY")
+        ok = QPushButton("▸  APLICAR")
         ok.setFixedHeight(32)
         ok.setFont(hud_font(9, QFont.Weight.Bold))
         ok.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -944,7 +925,7 @@ class AudioDeviceOverlay(_HudOverlay):
         ok.clicked.connect(self._apply)
         row.addWidget(ok)
 
-        cancel = QPushButton("CLOSE")
+        cancel = QPushButton("FECHAR")
         cancel.setFixedHeight(32)
         cancel.setFont(hud_font(9))
         cancel.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1027,7 +1008,7 @@ class AudioDeviceOverlay(_HudOverlay):
                     res = audio_devices.measure_input(
                         name,
                         on_level=lambda f: self._level_seen.emit(int(f * 100)))
-                    text = f"pico {res['peak']}  —  {res['verdict']}"
+                    text = f"Nível máximo {res['peak']}  —  {res['verdict']}"
                 else:
                     res = audio_devices.play_tone(name)
                     text = res["verdict"]
@@ -1168,7 +1149,7 @@ class MemoryOverlay(_HudOverlay):
 
         from memory.memory_manager import all_entries_for_ui
 
-        hdr = QLabel("🧠  WHAT JINX REMEMBERS")
+        hdr = QLabel("🧠  O QUE O JINX LEMBRA")
         hdr.setFont(hud_font(12, QFont.Weight.Bold))
         hdr.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         self._lay.addWidget(hdr)
@@ -1188,7 +1169,7 @@ class MemoryOverlay(_HudOverlay):
         self._lay.addWidget(cap)
 
         if not rows:
-            empty = QLabel("Nothing stored yet.")
+            empty = QLabel("Ainda não há nada armazenado.")
             empty.setFont(hud_font(9))
             empty.setStyleSheet(f"color: {C.TEXT_MED}; background: transparent;")
             self._lay.addWidget(empty)
@@ -1241,7 +1222,7 @@ class MemoryOverlay(_HudOverlay):
             scroll.setWidget(inner)
             self._lay.addWidget(scroll)
 
-        close = QPushButton("CLOSE")
+        close = QPushButton("FECHAR")
         close.setFixedHeight(30)
         close.setFont(hud_font(9))
         close.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1322,7 +1303,7 @@ class ClipboardPanel(QWidget):
         lay.setSpacing(4)
 
         hdr = QHBoxLayout(); hdr.setSpacing(4)
-        icon_lbl = QLabel("◈  CLIPBOARD DETECTED")
+        icon_lbl = QLabel("◈  TEXTO COPIADO")
         icon_lbl.setFont(hud_font(7, QFont.Weight.Bold))
         icon_lbl.setStyleSheet(f"color: {C.ACC2}; background: transparent;")
         hdr.addWidget(icon_lbl); hdr.addStretch()
@@ -1350,10 +1331,10 @@ class ClipboardPanel(QWidget):
                f"border: 1px solid {C.BORDER}; border-radius: 2px; }}"
                f"QPushButton:hover {{ color: {C.PRI}; border-color: {C.BORDER_B}; }}")
         for label, cmd_fmt in [
-            ("TRANSLATE", "Translate this text to English: {text}"),
-            ("SUMMARISE", "Summarise this: {text}"),
-            ("EXPLAIN",   "Explain this: {text}"),
-            ("FIX",       "Fix grammar and spelling: {text}"),
+            ("TRADUZIR", "Translate this text to English: {text}"),
+            ("RESUMIR", "Summarise this: {text}"),
+            ("EXPLICAR",   "Explain this: {text}"),
+            ("CORRIGIR",       "Corrija a gramática e a ortografia: {text}"),
         ]:
             b = QPushButton(label)
             b.setFixedHeight(22)
@@ -1451,7 +1432,7 @@ class PluginSettingsOverlay(QWidget):
         # ── bottom buttons ───────────────────────────────────────────────────
         btn_row = QHBoxLayout(); btn_row.setSpacing(8)
         if self._sections:
-            save_btn = QPushButton("▸  SAVE")
+            save_btn = QPushButton("▸  SALVAR")
             save_btn.setFixedHeight(34)
             save_btn.setFont(hud_font(9, QFont.Weight.Bold))
             save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1463,7 +1444,7 @@ class PluginSettingsOverlay(QWidget):
             save_btn.clicked.connect(self._save_all)
             btn_row.addWidget(save_btn)
 
-        close_btn = QPushButton("CLOSE")
+        close_btn = QPushButton("FECHAR")
         close_btn.setFixedHeight(34)
         close_btn.setFont(hud_font(9))
         close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1544,7 +1525,7 @@ class PluginSettingsOverlay(QWidget):
         action = sec.get("action")
         if isinstance(action, dict) and callable(action.get("run")):
             form.addSpacing(2)
-            ab = QPushButton(str(action.get("label") or "TEST"))
+            ab = QPushButton(str(action.get("label") or "TESTAR"))
             ab.setFixedHeight(30)
             ab.setFont(hud_font(8, QFont.Weight.Bold))
             ab.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1566,7 +1547,7 @@ class PluginSettingsOverlay(QWidget):
 
     def _style_toggle(self, btn: QPushButton):
         on = btn.isChecked()
-        btn.setText("ON" if on else "OFF")
+        btn.setText("ATIVADO" if on else "DESATIVADO")
         if on:
             btn.setStyleSheet(f"QPushButton {{ background: {C.PRI_GHO}; color: {C.PRI}; "
                               f"border: 1px solid {C.PRI}; border-radius: 3px; }}")
@@ -1600,7 +1581,7 @@ class PluginSettingsOverlay(QWidget):
                 self._save_ns(ns)
                 lbl = self._status_labels.get(ns)
                 if lbl:
-                    lbl.setText("Saved ✓")
+                    lbl.setText("Salvo ✓")
                     lbl.setStyleSheet(f"color: {C.PRI}; background: transparent;")
 
     def _run_action(self, ns: str):
@@ -1615,7 +1596,7 @@ class PluginSettingsOverlay(QWidget):
         values = self._gather(ns)
         lbl = self._status_labels.get(ns)
         if lbl:
-            lbl.setText("Testing…")
+            lbl.setText("Testando…")
             lbl.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
 
         def worker():
@@ -1678,7 +1659,7 @@ class RemoteKeyOverlay(QWidget):
             w.setWordWrap(True)
             return w
 
-        lay.addWidget(_lbl("◈  REMOTE ACCESS", 12, True))
+        lay.addWidget(_lbl("◈  ACESSO REMOTO", 12, True))
         sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 1px 0;")
         lay.addWidget(sep)
@@ -1769,7 +1750,7 @@ class RemoteKeyOverlay(QWidget):
         lay.addWidget(self._timer_lbl)
 
         btn_row = QHBoxLayout(); btn_row.setSpacing(8)
-        new_btn = QPushButton("NEW KEY")
+        new_btn = QPushButton("NOVA CHAVE")
         new_btn.setFixedHeight(32)
         new_btn.setFont(hud_font(8, QFont.Weight.Bold))
         new_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1783,7 +1764,7 @@ class RemoteKeyOverlay(QWidget):
         new_btn.clicked.connect(self._refresh_key)
         btn_row.addWidget(new_btn)
 
-        close_btn = QPushButton("DISMISS")
+        close_btn = QPushButton("FECHAR")
         close_btn.setFixedHeight(32)
         close_btn.setFont(hud_font(8, QFont.Weight.Bold))
         close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1852,7 +1833,7 @@ class RemoteKeyOverlay(QWidget):
     def mark_connected(self) -> None:
         """Call from any thread when a phone successfully connects."""
         self._ctimer.stop()
-        self._key_lbl.setText("CONNECTED")
+        self._key_lbl.setText("CONECTADO")
         self._key_lbl.setStyleSheet(f"""
             color: {C.GREEN};
             background: rgba(34,197,94,0.08);

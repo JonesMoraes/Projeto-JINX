@@ -142,9 +142,41 @@ def save_assistant_config(assistant_name: str, user_name: str) -> None:
 
 
 # ── Assistant voice ──────────────────────────────────────────────────────────
-# Gemini Live prebuilt voices. Names are proper nouns — identical in every
-# language, so this list is safe to show verbatim in any locale.
-AVAILABLE_VOICES = ["Charon", "Puck", "Kore", "Fenrir", "Aoede"]
+# Gemini Live prebuilt voices. Keep this catalog aligned with the documented
+# Live API list; the customization panel uses it to build the voice selector.
+VOICE_STYLES = {
+    "Achernar": "Suave",
+    "Achird": "Amigável",
+    "Algenib": "Grave",
+    "Algieba": "Suave",
+    "Alnilam": "Firme",
+    "Aoede": "Leve",
+    "Autonoe": "Brilhante",
+    "Callirrhoe": "Tranquila",
+    "Charon": "Informativa",
+    "Despina": "Suave",
+    "Enceladus": "Sussurrada",
+    "Erinome": "Clara",
+    "Fenrir": "Animada",
+    "Gacrux": "Madura",
+    "Iapetus": "Clara",
+    "Kore": "Firme",
+    "Laomedeia": "Alegre",
+    "Leda": "Jovem",
+    "Orus": "Firme",
+    "Puck": "Alegre",
+    "Pulcherrima": "Expressiva",
+    "Rasalgethi": "Informativa",
+    "Sadachbia": "Animada",
+    "Sadaltager": "Conhecedora",
+    "Schedar": "Equilibrada",
+    "Sulafat": "Acolhedora",
+    "Umbriel": "Descontraída",
+    "Vindemiatrix": "Gentil",
+    "Zephyr": "Brilhante",
+    "Zubenelgenubi": "Casual",
+}
+AVAILABLE_VOICES = tuple(VOICE_STYLES)
 DEFAULT_VOICE    = "Charon"
 
 
@@ -188,16 +220,13 @@ def save_push_to_talk_enabled(enabled: bool) -> None:
     _save_flag("push_to_talk_enabled", enabled)
 
 
-HUD_STYLES = ("face", "core")
+HUD_STYLES = ("face", "core", "brahma_evo", "brahma_echo")
 
 
 def get_hud_style() -> str:
-    """Which centrepiece the HUD draws: the animated head, or the reactor core.
+    """Which centrepiece the HUD draws: face, JINX core, or Brahma orbs.
 
-    Taste, not capability — both render in the same software painter and cost
-    about the same. Defaults to the head because that is what MARK LIV shipped
-    with; anyone who preferred the older look can switch back in ⚙ and the
-    choice survives a restart.
+    The selected style survives a restart.
     """
     v = str(load_api_keys().get("hud_style", "face")).strip().lower()
     return v if v in HUD_STYLES else "face"

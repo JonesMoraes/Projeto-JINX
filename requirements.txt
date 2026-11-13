@@ -10,7 +10,9 @@
 # PyQt6 and numpy also carry the holographic avatar: the head is rendered in
 # software with QPainter and posed with numpy, so the face costs no extra
 # package, no OpenGL and no GPU. Nothing below was added for it.
-PyQt6>=6.6,<7
+# Keep Qt and its WebEngine bindings on the same minor series.
+PyQt6>=6.11,<6.12
+PyQt6-WebEngine>=6.11,<6.12
 sounddevice>=0.4,<1
 numpy>=1.24,<3
 google-genai>=2.8.0,<3

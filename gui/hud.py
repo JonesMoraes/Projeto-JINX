@@ -4,6 +4,7 @@ Split out of ui.py in JINX; behaviour unchanged."""
 from __future__ import annotations
 
 import json
+import logging
 import math
 import os
 import platform
@@ -12,6 +13,7 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.request
 from pathlib import Path
 
 import psutil
@@ -33,6 +35,13 @@ from PyQt6.QtWidgets import (
     QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar, QSlider,
 )
 
+try:
+    from PyQt6.QtWebEngineCore import QWebEngineSettings
+    from PyQt6.QtWebEngineWidgets import QWebEngineView
+except Exception:  # Optional fallback keeps face/core usable without WebEngine.
+    QWebEngineSettings = None
+    QWebEngineView = None
+
 from gui.theme import (
     C,
     HoloAvatar,
@@ -45,6 +54,45 @@ try:
     from gui.reactor import Reactor3D
 except Exception:      # pragma: no cover — the classic core still draws
     Reactor3D = None
+
+
+class _OrbDownloadSignals(QObject):
+    ready = pyqtSignal(str, str)
+    failed = pyqtSignal(str, str)
+
+
+class _OrbAssetFetcher(threading.Thread):
+    """Fetch the EVO page directly from its official source when not bundled."""
+
+    FILES = {
+        "index.html": "https://raw.githubusercontent.com/titechprabhasolutions/Brahma-Ai-Evo/main/assets/web_background/index.html",
+        "LICENSE": "https://raw.githubusercontent.com/titechprabhasolutions/Brahma-Ai-Evo/main/LICENSE",
+    }
+
+    def __init__(self, destination: Path, signals: _OrbDownloadSignals):
+        super().__init__(name="jinx-evo-asset-fetch", daemon=True)
+        self.destination = destination
+        self.signals = signals
+
+    def run(self):
+        try:
+            self.destination.mkdir(parents=True, exist_ok=True)
+            for filename, url in self.FILES.items():
+                target = self.destination / filename
+                temp = target.with_suffix(target.suffix + ".download")
+                request = urllib.request.Request(
+                    url,
+                    headers={"User-Agent": "JINX-IA local asset loader"},
+                )
+                with urllib.request.urlopen(request, timeout=25) as response:
+                    data = response.read()
+                if not data:
+                    raise IOError(f"O arquivo {filename} veio vazio.")
+                temp.write_bytes(data)
+                os.replace(temp, target)
+            self.signals.ready.emit("brahma_evo", str(self.destination / "index.html"))
+        except Exception as exc:
+            self.signals.failed.emit("brahma_evo", str(exc))
 
 
 class HudCanvas(QWidget):
@@ -87,6 +135,34 @@ class HudCanvas(QWidget):
         except Exception:
             self.hud_style = "face"
         self._core_phase = 0.0
+
+        # The two Brahma visuals are local, offline WebGL pages. Keep their
+        # views alive while hidden so changing the selector is immediate.
+        self._orb_views = {}
+        self._orb_workers = {}
+        self._orb_signals = _OrbDownloadSignals(self)
+        self._orb_signals.ready.connect(self._on_orb_asset_ready)
+        self._orb_signals.failed.connect(self._on_orb_asset_failed)
+        self._last_orb_sync = 0.0
+        self._last_orb_state = None
+        self._last_orb_style = None
+        if QWebEngineView is not None:
+            for style in ("brahma_evo", "brahma_echo"):
+                view = QWebEngineView(self)
+                view.setGeometry(self.rect())
+                if QWebEngineSettings is not None:
+                    settings = view.settings()
+                    settings.setAttribute(
+                        QWebEngineSettings.WebAttribute.WebGLEnabled, True)
+                    settings.setAttribute(
+                        QWebEngineSettings.WebAttribute.Accelerated2dCanvasEnabled, True)
+                view._jinx_orb_loaded_once = False
+                view._jinx_orb_download_started = False
+                view.loadFinished.connect(
+                    lambda ok, orb_style=style: self._on_orb_loaded(orb_style, ok))
+                view.hide()
+                self._orb_views[style] = view
+        self._sync_hud_style()
 
         self._tick       = 0
         self._scale      = 1.0
@@ -198,6 +274,125 @@ class HudCanvas(QWidget):
             lv = 1.0
         if lv > self._live_amp:
             self._live_amp = lv
+
+    def _sync_hud_style(self) -> None:
+        """Show exactly the selected local orb, if its WebEngine is available."""
+        active = self.hud_style if self.hud_style in self._orb_views else None
+        for style, view in self._orb_views.items():
+            view.setGeometry(self.rect())
+            view.setVisible(style == active)
+            if (style != active and not view._jinx_orb_loaded_once
+                    and style not in self._orb_workers):
+                view._jinx_orb_download_started = False
+        self._last_orb_state = None
+        self._last_orb_style = None
+        if active:
+            view = self._orb_views[active]
+            if not view._jinx_orb_loaded_once:
+                page = self._orb_page_path(active)
+                if page.is_file():
+                    self._load_orb_page(view, active, page)
+                elif active == "brahma_evo" and not view._jinx_orb_download_started:
+                    view._jinx_orb_download_started = True
+                    view.setHtml(
+                        "<html><body style='background:#020306;color:#bdeaf7;"
+                        "font:14px Segoe UI;display:grid;place-items:center;height:90vh'>"
+                        "Preparando o orb EVO...</body></html>")
+                    self._start_evo_download()
+                elif not view._jinx_orb_download_started:
+                    view._jinx_orb_download_started = True
+                    view.setHtml(
+                        "<html><body style='background:#020306;color:#ef9891;"
+                        "font:14px Segoe UI;display:grid;place-items:center;height:90vh'>"
+                        "Arquivos do orb não encontrados.</body></html>")
+            view.raise_()
+
+    @staticmethod
+    def _orb_page_path(style: str) -> Path:
+        root = Path(__file__).resolve().parent.parent
+        bundled = root / "assets" / "third_party" / style / "index.html"
+        if bundled.is_file():
+            return bundled
+        if style == "brahma_evo":
+            base = Path(os.environ.get("LOCALAPPDATA", Path.home()))
+            return base / "JINX IA" / "assets" / "third_party" / style / "index.html"
+        return bundled
+
+    @staticmethod
+    def _load_orb_page(view, style: str, page: Path) -> None:
+        url = QUrl.fromLocalFile(str(page))
+        if style == "brahma_evo":
+            url.setQuery("quality=low")
+        view._jinx_orb_loaded_once = True
+        view.setUrl(url)
+
+    def _start_evo_download(self) -> None:
+        destination = self._orb_page_path("brahma_evo").parent
+        worker = _OrbAssetFetcher(destination, self._orb_signals)
+        self._orb_workers["brahma_evo"] = worker
+        worker.start()
+
+    def _on_orb_asset_ready(self, style: str, page: str) -> None:
+        self._orb_workers.pop(style, None)
+        view = self._orb_views.get(style)
+        if view is None:
+            return
+        view._jinx_orb_download_started = False
+        if self.hud_style == style:
+            self._load_orb_page(view, style, Path(page))
+
+    def _on_orb_asset_failed(self, style: str, reason: str) -> None:
+        self._orb_workers.pop(style, None)
+        logging.getLogger(__name__).warning("Falha ao baixar o asset EVO: %s", reason)
+        view = self._orb_views.get(style)
+        if view is not None:
+            view._jinx_orb_download_started = True
+            view.setHtml(
+                "<html><body style='background:#020306;color:#ef9891;"
+                "font:14px Segoe UI;padding:30px'>Não foi possível obter os arquivos "
+                "do EVO no repositório oficial. Verifique a conexão e tente novamente."
+                "</body></html>")
+
+    def _on_orb_loaded(self, _style: str, _ok: bool) -> None:
+        # The first state update may have arrived while Chromium was still
+        # parsing the local page. Re-send it on the next HUD tick after load.
+        self._last_orb_state = None
+        self._last_orb_style = None
+        if not _ok and _style == "brahma_evo":
+            view = self._orb_views.get(_style)
+            if view is not None:
+                view._jinx_orb_loaded_once = False
+                view._jinx_orb_download_started = True
+                view.setHtml(
+                    "<html><body style='background:#020306;color:#ef9891;"
+                    "font:14px Segoe UI;padding:30px'>O orb EVO não conseguiu "
+                    "iniciar. Alterne para outro HUD e tente novamente.</body></html>")
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        for view in self._orb_views.values():
+            view.setGeometry(self.rect())
+
+    def _sync_orb_state(self, now: float, amp: float) -> None:
+        if self.hud_style not in self._orb_views or now - self._last_orb_sync < 0.12:
+            return
+        self._last_orb_sync = now
+        state = ("MUTED" if self.muted else "SPEAKING" if self.speaking
+                 else str(self.state or "IDLE").upper())
+        view = self._orb_views[self.hud_style]
+        if self._last_orb_style != self.hud_style:
+            view.page().runJavaScript(
+                "if (window.resumeBrahmaBackground) window.resumeBrahmaBackground();")
+            self._last_orb_style = self.hud_style
+            self._last_orb_state = None
+        if state != self._last_orb_state:
+            view.page().runJavaScript(
+                "if (window.setBrahmaState) window.setBrahmaState(" +
+                json.dumps(state) + ");")
+            self._last_orb_state = state
+        view.page().runJavaScript(
+            "if (window.setAudioLevel) window.setAudioLevel(" +
+            f"{max(0.0, min(1.0, float(amp))):.4f}" + ");")
 
     def _make_grid(self, W: int, H: int) -> QPixmap:
         """Pre-render the static backdrop — atmosphere, workshop floor, bokeh
@@ -326,6 +521,7 @@ class HudCanvas(QWidget):
         self._live_amp *= 0.86
         self._amp_disp += (self._live_amp - self._amp_disp) * 0.45
         amp = self._amp_disp
+        self._sync_orb_state(now, amp)
 
         # The avatar animates off the very same smoothed level the waveform
         # uses — one audio source, so the mouth can never drift out of sync.
@@ -336,7 +532,9 @@ class HudCanvas(QWidget):
         # starts talking. Same lesson the head's sway taught.
         self._core_phase += min(0.10, max(0.0, dt))
 
-        if self._avatar is not None and self.hud_style == "face":
+        if self.hud_style in self._orb_views:
+            pass  # The selected WebEngine view renders the centrepiece.
+        elif self._avatar is not None and self.hud_style == "face":
             self._avatar.step(dt, amp, speaking=self.speaking,
                               muted=self.muted, state=self.state,
                               v_open=v_open, v_wide=v_wide or 0.0,
@@ -590,6 +788,9 @@ class HudCanvas(QWidget):
     def paintEvent(self, _):
         p = QPainter(self)
         if not p.isActive():      # device not ready (e.g. 0-size during layout) — skip cleanly
+            return
+        if self.hud_style in self._orb_views:
+            p.end()
             return
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         W, H = self.width(), self.height()

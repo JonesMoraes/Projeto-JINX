@@ -190,12 +190,12 @@ class MainWindow(QMainWindow):
         _cam_v.setSpacing(0)
         _cam_hdr = QHBoxLayout()
         _cam_hdr.setContentsMargins(8, 5, 8, 5)
-        _cam_title = QLabel("◈  CAMERA FEED")
+        _cam_title = QLabel("◈  CÂMERA AO VIVO")
         _cam_title.setFont(hud_font(8, QFont.Weight.Bold))
         _cam_title.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         _cam_hdr.addWidget(_cam_title)
         _cam_hdr.addStretch()
-        _cam_x = QPushButton("✕  CLOSE")
+        _cam_x = QPushButton("✕  FECHAR")
         _cam_x.setFont(hud_font(8, QFont.Weight.Bold))
         _cam_x.setCursor(Qt.CursorShape.PointingHandCursor)
         _cam_x.setStyleSheet(f"""
@@ -235,7 +235,7 @@ class MainWindow(QMainWindow):
         _vid_v.setSpacing(4)
 
         _vid_hdr = QHBoxLayout()
-        self._video_title = QLabel("▶  VIDEO")
+        self._video_title = QLabel("▶  VÍDEO")
         self._video_title.setFont(hud_font(9, QFont.Weight.Bold))
         self._video_title.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         _vid_hdr.addWidget(self._video_title)
@@ -257,11 +257,11 @@ class MainWindow(QMainWindow):
         # Muted is the default and the button says so, because a soundtrack
         # talking over JINX is the one way this feature could make the
         # assistant worse rather than better.
-        self._video_mute_btn = _vid_btn("🔇  SOUND OFF")
+        self._video_mute_btn = _vid_btn("🔇  SOM DESLIGADO")
         self._video_mute_btn.clicked.connect(self._toggle_video_mute)
         _vid_hdr.addWidget(self._video_mute_btn)
 
-        _vid_x = _vid_btn("✕  CLOSE")
+        _vid_x = _vid_btn("✕  FECHAR")
         _vid_x.clicked.connect(self.stop_video)
         _vid_hdr.addWidget(_vid_x)
         _vid_v.addLayout(_vid_hdr)
@@ -708,7 +708,7 @@ class MainWindow(QMainWindow):
     def _sync_video_mute_btn(self) -> None:
         out = self._video_sound_out if self._video_split else self._video_audio
         muted = bool(out and out.isMuted())
-        self._video_mute_btn.setText("🔇  SOUND OFF" if muted else "🔊  SOUND ON")
+        self._video_mute_btn.setText("🔇  SOM DESLIGADO" if muted else "🔊  SOM LIGADO")
 
     def _toggle_video_mute(self) -> None:
         out = self._video_sound_out if self._video_split else self._video_audio
@@ -1230,7 +1230,7 @@ class MainWindow(QMainWindow):
         self._title_lbl.setStyleSheet(f"color: {C.WHITE}; background: transparent;")
         self._title_lbl.setToolTip(self._subtitle(display))
         name_col.addWidget(self._title_lbl)
-        self._sub_lbl = QLabel(f"{APP_VERSION}  ·  PERSONAL AI SYSTEM")
+        self._sub_lbl = QLabel(f"{APP_VERSION}  ·  SISTEMA PESSOAL DE IA")
         self._sub_lbl.setFont(px_font(9, QFont.Weight.DemiBold, spacing=2.2))
         self._sub_lbl.setStyleSheet(f"color: {C.PRI_DIM}; background: transparent;")
         name_col.addWidget(self._sub_lbl)
@@ -1243,12 +1243,12 @@ class MainWindow(QMainWindow):
         # read at a glance.
         self._drawer_btn = IconButton("gear", 32)
         self._drawer_btn.setCheckable(True)
-        self._drawer_btn.setToolTip("Setup — things you set once")
+        self._drawer_btn.setToolTip("Configurações — opções definidas uma vez")
         self._drawer_btn.clicked.connect(self._toggle_drawer)
         lay.addWidget(self._drawer_btn)
         self._ctrl_btn = IconButton("sliders", 32)
         self._ctrl_btn.setCheckable(True)
-        self._ctrl_btn.setToolTip("Controls — the everyday switches")
+        self._ctrl_btn.setToolTip("Controles — ajustes do dia a dia")
         self._ctrl_btn.clicked.connect(self._toggle_controls)
         lay.addWidget(self._ctrl_btn)
         lay.addStretch()
@@ -1272,19 +1272,25 @@ class MainWindow(QMainWindow):
         lay.addLayout(clock_col)
         lay.addSpacing(4)
         self._fs_btn = IconButton("expand", 32)
-        self._fs_btn.setToolTip("Fullscreen  [F11]")
+        self._fs_btn.setToolTip("Tela cheia  [F11]")
         self._fs_btn.clicked.connect(self._toggle_fullscreen)
         lay.addWidget(self._fs_btn)
         return w
 
     def _tick_clock(self):
-        self._clock_lbl.setText(time.strftime("%H:%M:%S"))
-        self._date_lbl.setText(time.strftime("%a %d %b %Y"))
+        now = time.localtime()
+        self._clock_lbl.setText(time.strftime("%H:%M:%S", now))
+        weekdays = ("SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM")
+        months = ("JAN", "FEV", "MAR", "ABR", "MAI", "JUN",
+                  "JUL", "AGO", "SET", "OUT", "NOV", "DEZ")
+        self._date_lbl.setText(
+            f"{weekdays[now.tm_wday]} {now.tm_mday:02d} "
+            f"{months[now.tm_mon - 1]} {now.tm_year}")
 
     @staticmethod
     def _subtitle(display: str) -> str:
         return ("Sistema Extremamente Inteligente e Versátil"
-                if display.replace(".", "") == "JINX" else "Personal AI Assistant")
+                if display.replace(".", "") == "JINX" else "Assistente pessoal de IA")
 
     def _fit_side_columns(self) -> None:
         """Side columns grow with the window, within limits, so the centre keeps
@@ -1305,10 +1311,10 @@ class MainWindow(QMainWindow):
         try:
             from memory.config_manager import get_provider_mode, get_voice
             mode = str(get_provider_mode() or "gemini")
-            engine = "GEMINI LIVE" if mode == "gemini" else "LOCAL"
+            engine = "GEMINI AO VIVO" if mode == "gemini" else "LOCAL"
             voice = str(get_voice() or "--").upper()
         except Exception:
-            engine, voice = "GEMINI LIVE", "--"
+            engine, voice = "GEMINI AO VIVO", "--"
         self._engine_label = engine
         if hasattr(self, "_row_engine"):
             self._row_engine.set_value(engine, "PRI")
@@ -1318,11 +1324,11 @@ class MainWindow(QMainWindow):
     def _refresh_status_strip(self) -> None:
         if not hasattr(self, "_status_strip"):
             return
-        mic = ("MIC · MUTED", "MUTED_C") if self._muted else ("MIC · LIVE", "GREEN")
+        mic = ("MIC · MUDO", "MUTED_C") if self._muted else ("MIC · ATIVO", "GREEN")
         self._status_strip.set_items([
-            (f"ENGINE · {getattr(self, '_engine_label', 'GEMINI LIVE')}", "GREEN"),
+            (f"MECANISMO · {getattr(self, '_engine_label', 'GEMINI AO VIVO')}", "GREEN"),
             mic,
-            (f"PROTOCOL · {APP_PROTOCOL}", "PRI"),
+            (f"PROTOCOLO · {APP_PROTOCOL}", "PRI"),
         ])
 
     def _build_left_panel(self) -> QWidget:
@@ -1333,34 +1339,34 @@ class MainWindow(QMainWindow):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(10)
 
-        sysp = HoloPanel("SYSTEMS", "LIVE")
+        sysp = HoloPanel("SISTEMA", "AO VIVO")
         grid_w = QWidget()
         grid_w.setStyleSheet("background: transparent;")
         grid = QGridLayout(grid_w)
         grid.setContentsMargins(0, 0, 0, 0)
         grid.setSpacing(2)
         self._g_cpu = RingGauge("CPU")
-        self._g_mem = RingGauge("MEMORY")
+        self._g_mem = RingGauge("MEMÓRIA")
         self._g_gpu = RingGauge("GPU")
-        self._g_tmp = RingGauge("TEMP")
+        self._g_tmp = RingGauge("TEMP.")
         for i, g in enumerate((self._g_cpu, self._g_mem, self._g_gpu, self._g_tmp)):
             grid.addWidget(g, i // 2, i % 2)
         sysp.body.addWidget(grid_w)
         lay.addWidget(sysp)
 
-        self._net_panel = HoloPanel("NETWORK", "--")
+        self._net_panel = HoloPanel("REDE", "--")
         self._net_spark = Sparkline(samples=60, floor=0.25)
         self._net_panel.body.addWidget(self._net_spark)
         lay.addWidget(self._net_panel)
 
         stp = HoloPanel("STATUS", "")
         os_name = {"Windows": "WINDOWS", "Darwin": "MACOS", "Linux": "LINUX"}.get(_OS, _OS.upper())
-        self._row_uptime = DataRow("UPTIME", "--:--", "GREEN")
-        self._row_proc = DataRow("PROCESSES", "--")
-        self._row_net = DataRow("NETWORK", "--")
-        self._row_os = DataRow("PLATFORM", os_name)
-        self._row_engine = DataRow("ENGINE", "--", "PRI")
-        self._row_voice = DataRow("VOICE", "--")
+        self._row_uptime = DataRow("TEMPO ATIVO", "--:--", "GREEN")
+        self._row_proc = DataRow("PROCESSOS", "--")
+        self._row_net = DataRow("REDE", "--")
+        self._row_os = DataRow("PLATAFORMA", os_name)
+        self._row_engine = DataRow("MECANISMO", "--", "PRI")
+        self._row_voice = DataRow("VOZ", "--")
         for row in (self._row_uptime, self._row_proc, self._row_net, self._row_os,
                     self._row_engine, self._row_voice):
             stp.body.addWidget(row)
@@ -1368,7 +1374,7 @@ class MainWindow(QMainWindow):
 
         # Background tasks (core/tasks). Read from the engine every two seconds —
         # an in-memory list, no disk — and hidden rows cost nothing to paint.
-        self._tasks_panel = HoloPanel("TASKS", "")
+        self._tasks_panel = HoloPanel("TAREFAS", "")
         rows_box = QWidget()
         rows_box.setStyleSheet("background: transparent;")
         rows_lay = QVBoxLayout(rows_box)
@@ -1381,7 +1387,7 @@ class MainWindow(QMainWindow):
             row.hide()
             rows_lay.addWidget(row)
             self._task_rows.append(row)
-        self._tasks_empty = QLabel("No background tasks yet.")
+        self._tasks_empty = QLabel("Ainda não há tarefas em segundo plano.")
         self._tasks_empty.setFont(px_font(10))
         self._tasks_empty.setWordWrap(True)
         self._tasks_empty.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
@@ -1416,8 +1422,8 @@ class MainWindow(QMainWindow):
             row.hide()
             r_lay.addWidget(row)
             self._routine_rows.append(row)
-        self._routines_empty = QLabel("No routines yet. Ask for one by voice — "
-                                      "\"every weekday at 08:30, tell me the weather\".")
+        self._routines_empty = QLabel("Ainda não há rotinas. Peça uma por voz — "
+                                      "\"todos os dias úteis às 08:30, diga a previsão do tempo\".")
         self._routines_empty.setFont(px_font(10))
         self._routines_empty.setWordWrap(True)
         self._routines_empty.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
@@ -1438,7 +1444,7 @@ class MainWindow(QMainWindow):
         self._tasks_stack.addWidget(r_scroll)
         self._tasks_panel.body.addWidget(self._tasks_stack)
 
-        self._panel_switch = QPushButton("ROUTINES")
+        self._panel_switch = QPushButton("ROTINAS")
         self._panel_switch.setFixedSize(76, 20)
         self._panel_switch.setFont(px_font(9, QFont.Weight.DemiBold))
         self._panel_switch.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1456,8 +1462,8 @@ class MainWindow(QMainWindow):
     def _flip_tasks_panel(self) -> None:
         to_routines = self._tasks_stack.currentIndex() == 0
         self._tasks_stack.setCurrentIndex(1 if to_routines else 0)
-        self._tasks_panel.set_title("ROUTINES" if to_routines else "TASKS")
-        self._panel_switch.setText("TASKS" if to_routines else "ROUTINES")
+        self._tasks_panel.set_title("ROTINAS" if to_routines else "TAREFAS")
+        self._panel_switch.setText("TAREFAS" if to_routines else "ROTINAS")
         self._refresh_tasks()
 
     def _refresh_routines(self) -> None:
@@ -1475,7 +1481,7 @@ class MainWindow(QMainWindow):
             except Exception:
                 text = ""
             if r["trigger"]["type"] == "time" and r.get("next_ts") and r.get("enabled"):
-                text = f"next {_time.strftime('%a %H:%M', _time.localtime(r['next_ts']))} · {text}"
+                text = f"próxima: {_time.strftime('%a %H:%M', _time.localtime(r['next_ts']))} · {text}"
             return text
 
         def order(r: dict):
@@ -1489,7 +1495,7 @@ class MainWindow(QMainWindow):
             row.setVisible(r is not None)
         self._routines_empty.setVisible(not items)
         on = sum(1 for r in items if r.get("enabled"))
-        self._tasks_panel.set_code(f"{on} ON" if items else "")
+        self._tasks_panel.set_code(f"{on} ATIVAS" if items else "")
 
     def _toggle_routine(self, rid: str, enabled: bool) -> None:
         try:
@@ -1582,7 +1588,7 @@ class MainWindow(QMainWindow):
             lines = [f"· {e['text']}" for e in (t.get("events") or [])[-14:]
                      if e.get("kind") in ("progress", "tool", "note", "state", "finding")]
             body = head + "\n\n" + "\n".join(lines)
-        self._show_content("BACKGROUND TASK", body[:4000])
+        self._show_content("TAREFA EM SEGUNDO PLANO", body[:4000])
 
     def _build_right_panel(self) -> QWidget:
         w = QWidget()
@@ -1592,17 +1598,17 @@ class MainWindow(QMainWindow):
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(10)
 
-        comm = HoloPanel("COMMUNICATIONS", "LOG")
+        comm = HoloPanel("COMUNICAÇÃO", "REGISTRO")
         self._log = LogWidget()
         comm.body.addWidget(self._log)
         lay.addWidget(comm, stretch=1)
 
-        cmd = HoloPanel("COMMAND", "INPUT")
+        cmd = HoloPanel("COMANDO", "ENTRADA")
         self._drop_zone = FileDropZone()
         self._drop_zone.file_selected.connect(self._on_file_selected)
         cmd.body.addWidget(self._drop_zone)
 
-        self._file_hint = QLabel("No file loaded")
+        self._file_hint = QLabel("Nenhum arquivo carregado")
         self._file_hint.setFont(px_font(10))
         self._file_hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
         self._file_hint.setWordWrap(True)
@@ -1612,13 +1618,13 @@ class MainWindow(QMainWindow):
 
         row = QHBoxLayout()
         row.setSpacing(8)
-        self._mute_btn = IconButton("mic", 38, "MIC ACTIVE", "GREEN")
-        self._mute_btn.setToolTip("Mute or unmute the microphone  [F4]")
+        self._mute_btn = IconButton("mic", 38, "MICROFONE ATIVO", "GREEN")
+        self._mute_btn.setToolTip("Ativar ou silenciar o microfone  [F4]")
         self._mute_btn.clicked.connect(self._toggle_mute)
         self._style_mute_btn()
         row.addWidget(self._mute_btn, 1)
-        self._interrupt_btn = IconButton("stop", 38, "INTERRUPT", "MUTED_C")
-        self._interrupt_btn.setToolTip("Stop the assistant mid-sentence  [ESC]")
+        self._interrupt_btn = IconButton("stop", 38, "INTERROMPER", "MUTED_C")
+        self._interrupt_btn.setToolTip("Interromper o assistente  [ESC]")
         self._interrupt_btn.clicked.connect(self._do_interrupt)
         row.addWidget(self._interrupt_btn, 1)
         cmd.body.addLayout(row)
@@ -1628,7 +1634,7 @@ class MainWindow(QMainWindow):
     def _build_quick_drawer(self) -> QWidget:
         """Floating panel under the gear: the things you set once."""
         self._BTN_PRI, self._BTN_DIM = btn_css("primary"), btn_css("dim")
-        w = HoloPanel("SETUP", "", parent=self.centralWidget())
+        w = HoloPanel("CONFIGURAÇÕES", "", parent=self.centralWidget())
         w.setObjectName("QuickDrawer")
         w.hide()
         lay = w.body
@@ -1644,29 +1650,29 @@ class MainWindow(QMainWindow):
             lay.addWidget(b)
             return b
 
-        _btn("◉  REMOTE CONTROL", self._open_remote, self._BTN_PRI)
-        _btn("⊞  CREATE DESKTOP SHORTCUT", self._create_desktop_shortcut)
-        self._autostart_btn = _btn("◉  AUTO-START: OFF", self._toggle_autostart)
-        _btn("⚙  CUSTOMISE ASSISTANT", self._open_customize)
-        _btn("🎧  AUDIO DEVICES", self._open_audio_devices)
-        _btn("🧠  MEMORY", self._open_memory_panel)
+        _btn("◉  ACESSO REMOTO", self._open_remote, self._BTN_PRI)
+        _btn("⊞  CRIAR ATALHO NA ÁREA DE TRABALHO", self._create_desktop_shortcut)
+        self._autostart_btn = _btn("◉  INICIAR COM O SISTEMA: NÃO", self._toggle_autostart)
+        _btn("⚙  PERSONALIZAR ASSISTENTE", self._open_customize)
+        _btn("🎧  DISPOSITIVOS DE ÁUDIO", self._open_audio_devices)
+        _btn("🧠  MEMÓRIA", self._open_memory_panel)
         _btn("🧩  PLUGINS", self._open_plugin_manager)
-        _btn("⚙  PLUGIN SETTINGS", self._open_plugin_settings)
+        _btn("⚙  CONFIGURAÇÕES DOS PLUGINS", self._open_plugin_settings)
         # The button is built here with the rest of the drawer; the panel behind
         # it — and the whole providers package — is imported on the click. The
         # drawer used to stutter for a measured 2.104 seconds because a state
         # check imported openwakeword while it was being built, and adding a
         # second thing that does that would undo the fix rather than repeat it.
         # "&&": a single & in a button label is Qt's shortcut marker, and it
-        # was being drawn as an underscore — "ENGINE _PROVIDERS".
-        _btn("🔌  ENGINE && PROVIDERS", self._open_providers)
+        # was being drawn as an underscore — "MECANISMO _PROVIDERS".
+        _btn("🔌  MECANISMO && PROVEDORES", self._open_providers)
 
         w.adjustSize()
         return w
 
     def _build_controls_drawer(self) -> QWidget:
         """The switches that get flicked every day, in their own panel."""
-        w = HoloPanel("CONTROLS", "", parent=self.centralWidget())
+        w = HoloPanel("CONTROLES", "", parent=self.centralWidget())
         w.setObjectName("QuickDrawer")
         w.hide()
         lay = w.body
@@ -1681,7 +1687,7 @@ class MainWindow(QMainWindow):
             lay.addWidget(button)
             return button
 
-        fs_btn = _row(QPushButton("⛶  FULLSCREEN  [F11]"), self._BTN_DIM)
+        fs_btn = _row(QPushButton("⛶  TELA CHEIA  [F11]"), self._BTN_DIM)
         fs_btn.clicked.connect(self._toggle_fullscreen)
 
         self._brief_btn = _row(QPushButton())
@@ -1692,7 +1698,7 @@ class MainWindow(QMainWindow):
         self._wake_sleep_btn = _row(QPushButton())
         self._wake_sleep_btn.clicked.connect(self._tap_wake_manual)
         # Neutral until the real state lands from the background warm-up.
-        self._wake_btn.setText("🎙  WAKE WORD")
+        self._wake_btn.setText("🎙  PALAVRA DE ATIVAÇÃO")
         self._wake_btn.setStyleSheet(self._BTN_DIM)
         self._wake_sleep_btn.hide()
 
@@ -1789,7 +1795,7 @@ class MainWindow(QMainWindow):
         row.addWidget(prompt)
 
         self._input = QLineEdit()
-        self._input.setPlaceholderText("Type a command or question…")
+        self._input.setPlaceholderText("Digite um comando ou uma pergunta…")
         self._input.setFont(px_font(13))
         self._input.setStyleSheet(f"""
             QLineEdit {{
@@ -1802,7 +1808,7 @@ class MainWindow(QMainWindow):
         row.addWidget(self._input, stretch=1)
 
         send = IconButton("send", 32)
-        send.setToolTip("Send  [Enter]")
+        send.setToolTip("Enviar  [Enter]")
         send.clicked.connect(self._send)
         row.addWidget(send)
         return box
@@ -1821,7 +1827,7 @@ class MainWindow(QMainWindow):
         self._content_ts_lbl = PanelText(w, "code")
 
         dismiss = IconButton("close", 22)
-        dismiss.setToolTip("Dismiss")
+        dismiss.setToolTip("Fechar")
         dismiss.clicked.connect(w.hide)
         w.add_header_widget(dismiss)
 
@@ -2079,7 +2085,7 @@ class MainWindow(QMainWindow):
         self._quiz_count_lbl = PanelText(w, "code")
 
         quit_btn = IconButton("close", 22)
-        quit_btn.setToolTip("Dismiss")
+        quit_btn.setToolTip("Fechar")
         quit_btn.clicked.connect(self._hide_quiz)
         w.add_header_widget(quit_btn)
 
@@ -2108,7 +2114,7 @@ class MainWindow(QMainWindow):
 
         foot = QHBoxLayout()
         foot.addStretch()
-        self._quiz_next_btn = self._quiz_btn("NEXT  →", primary=True)
+        self._quiz_next_btn = self._quiz_btn("PRÓXIMA  →", primary=True)
         self._quiz_next_btn.setFixedWidth(120)
         self._quiz_next_btn.clicked.connect(self._quiz_next)
         self._quiz_next_btn.hide()
@@ -2176,7 +2182,7 @@ class MainWindow(QMainWindow):
                 }}
                 QLineEdit:focus {{ border-color: {C.PRI_DIM}; }}
             """)
-            send = self._quiz_btn("ANSWER", primary=True)
+            send = self._quiz_btn("RESPONDER", primary=True)
             send.setFixedWidth(90)
             field.returnPressed.connect(lambda: self._quiz_submit(field.text()))
             send.clicked.connect(lambda: self._quiz_submit(field.text()))
@@ -2224,7 +2230,7 @@ class MainWindow(QMainWindow):
         self._quiz_note_lbl.show()
 
         last = self._quiz["i"] >= len(self._quiz["questions"]) - 1
-        self._quiz_next_btn.setText("FINISH  →" if last else "NEXT  →")
+        self._quiz_next_btn.setText("CONCLUIR  →" if last else "PRÓXIMA  →")
         self._quiz_next_btn.show()
         self._quiz_next_btn.setFocus()
 
@@ -2435,7 +2441,7 @@ class MainWindow(QMainWindow):
     def _update_autostart_btn(self, enabled: bool):
         if not hasattr(self, '_autostart_btn'):
             return
-        self._autostart_btn.setText("◉  AUTO-START: ON" if enabled else "◉  AUTO-START: OFF")
+        self._autostart_btn.setText("◉  INICIAR COM O SISTEMA: SIM" if enabled else "◉  INICIAR COM O SISTEMA: NÃO")
         self._autostart_btn.setStyleSheet(btn_css("on" if enabled else "off"))
 
     def _toggle_brief(self):
@@ -2481,17 +2487,17 @@ class MainWindow(QMainWindow):
         _on, _off = btn_css("on"), btn_css("off")
         self._wake_btn.setEnabled(True)
         if not st["ready"]:
-            self._wake_btn.setText("⬇  WAKE WORD: DOWNLOAD")
+            self._wake_btn.setText("⬇  BAIXAR PALAVRA DE ATIVAÇÃO")
             self._wake_btn.setStyleSheet(_off)
             self._wake_sleep_btn.hide()
         elif st["enabled"]:
-            self._wake_btn.setText("🎙  WAKE WORD: ON")
+            self._wake_btn.setText("🎙  PALAVRA DE ATIVAÇÃO: ATIVADA")
             self._wake_btn.setStyleSheet(_on)
             self._wake_sleep_btn.show()
-            self._wake_sleep_btn.setText("😴  SLEEP NOW" if st["awake"] else "👂  WAKE NOW")
+            self._wake_sleep_btn.setText("😴  DORMIR AGORA" if st["awake"] else "👂  ATIVAR AGORA")
             self._wake_sleep_btn.setStyleSheet(_off)
         else:
-            self._wake_btn.setText("🎙  WAKE WORD: OFF")
+            self._wake_btn.setText("🎙  PALAVRA DE ATIVAÇÃO: DESATIVADA")
             self._wake_btn.setStyleSheet(_off)
             self._wake_sleep_btn.hide()
 
@@ -2503,44 +2509,49 @@ class MainWindow(QMainWindow):
         from memory.config_manager import get_push_to_talk_enabled
 
         ptt = get_push_to_talk_enabled()
-        self._ptt_btn.setText(f"🎚  PUSH-TO-TALK: {chord_label()}" if ptt
-                              else "🎚  PUSH-TO-TALK: OFF")
+        self._ptt_btn.setText(f"🎚  APERTE PARA FALAR: {chord_label()}" if ptt
+                              else "🎚  APERTE PARA FALAR: DESATIVADO")
         self._ptt_btn.setStyleSheet(btn_css("on" if ptt else "off"))
         self._ptt_btn.setToolTip(
-            "Microphone stays closed until you hold the key — nothing is sent "
-            "while you are not holding it." if ptt
+            "O microfone fica fechado até você manter a tecla pressionada — nada é enviado "
+            "enquanto você não estiver pressionando." if ptt
             else "Segure uma tecla para falar, em vez de manter o microfone ativo continuamente.")
 
     def _refresh_hud_btn(self):
         from memory.config_manager import get_hud_style
-        face = get_hud_style() == "face"
-        # Neither state is "off", so both read as active — this is a choice
-        # between two things, not a switch with a disabled side.
-        self._hud_btn.setText("🧑  HUD: ANIMATED FACE" if face
-                              else "◉  HUD: NÚCLEO REATOR")
+        names = {
+            "face": "🧑  HUD: ROSTO ANIMADO",
+            "core": "◉  HUD: NÚCLEO REATOR",
+            "brahma_evo": "✦  HUD: EVO",
+            "brahma_echo": "✧  HUD: ECHO",
+        }
+        style = get_hud_style()
+        next_style = {"face": "core", "core": "brahma_evo",
+                      "brahma_evo": "brahma_echo", "brahma_echo": "face"}.get(style, "face")
+        self._hud_btn.setText(names.get(style, names["face"]))
         self._hud_btn.setStyleSheet(btn_css("choice"))
-        self._hud_btn.setToolTip(
-            "Um rosto animado que fala suas palavras e mostra o que o JINX está "
-            "fazendo. Clique para mudar para o núcleo reator."
-            if face else
-            "Um núcleo reator 3D que gira conforme o estado e reage à sua "
-            "voz. Clique para mudar para o rosto animado.")
+        self._hud_btn.setToolTip("HUD atual: " + names.get(style, names["face"]).split("HUD: ", 1)[-1]
+                                 + ". Clique para alternar para "
+                                 + names.get(next_style, names["face"]).split("HUD: ", 1)[-1] + ".")
 
     def _toggle_hud_style(self):
         """Swap the centrepiece. Both objects stay in memory, so the change is
         instant and switching back costs nothing."""
         from memory.config_manager import get_hud_style, save_hud_style
-        want = "core" if get_hud_style() == "face" else "face"
+        styles = ("face", "core", "brahma_evo", "brahma_echo")
+        current = get_hud_style()
+        want = styles[(styles.index(current) + 1) % len(styles)]
         save_hud_style(want)
         try:
             self.hud.hud_style = want
+            self.hud._sync_hud_style()
             self.hud.update()
         except Exception:
             pass
         self._refresh_hud_btn()
-        self._log.append_log(
-            "SYS: HUD alterado para o rosto animado." if want == "face"
-            else "SYS: HUD alterado para o núcleo reator.")
+        labels = {"face": "rosto animado", "core": "núcleo reator",
+                  "brahma_evo": "EVO", "brahma_echo": "ECHO"}
+        self._log.append_log(f"SYS: HUD alterado para {labels[want]}.")
 
     def _toggle_ptt(self):
         from memory.config_manager import (get_push_to_talk_enabled,
@@ -2606,7 +2617,7 @@ class MainWindow(QMainWindow):
         st = self._wake_state()
         if not st["ready"]:
             # First time: download openwakeword + model in a worker thread.
-            self._wake_btn.setText("⬇  DOWNLOADING… (one-time)")
+            self._wake_btn.setText("⬇  BAIXANDO… (apenas uma vez)")
             self._wake_btn.setEnabled(False)
             def _work():
                 try:
@@ -2632,7 +2643,7 @@ class MainWindow(QMainWindow):
         self._refresh_wake_btns()
 
     def _on_wake_install_done(self, ok: bool, msg: str):
-        self._log_sig.emit(f"SYS: {'Wake word ready.' if ok else 'Wake word setup failed: ' + msg}")
+        self._log_sig.emit(f"SYS: {'Palavra de ativação pronta.' if ok else 'Falha ao configurar a palavra de ativação: ' + msg}")
         self._refresh_wake_btns()
 
     def _tap_wake_manual(self):
@@ -2646,7 +2657,7 @@ class MainWindow(QMainWindow):
     def _update_brief_btn(self, enabled: bool):
         if not hasattr(self, '_brief_btn'):
             return
-        self._brief_btn.setText("☀  MORNING BRIEF: ON" if enabled else "☀  MORNING BRIEF: OFF")
+        self._brief_btn.setText("☀  RESUMO DA MANHÃ: ATIVADO" if enabled else "☀  RESUMO DA MANHÃ: DESATIVADO")
         self._brief_btn.setStyleSheet(btn_css("on" if enabled else "off"))
 
     def _open_customize(self):
@@ -2897,16 +2908,16 @@ class MainWindow(QMainWindow):
         self._style_mute_btn()
         if muted:
             self._apply_state("MUTED")
-            self._log.append_log("SYS: Microphone muted." + (f" {note}" if note else ""))
+            self._log.append_log("SISTEMA: Microfone silenciado." + (f" {note}" if note else ""))
         else:
             self._apply_state("LISTENING")
-            self._log.append_log("SYS: Microphone active." + (f" {note}" if note else ""))
+            self._log.append_log("SISTEMA: Microfone ativado." + (f" {note}" if note else ""))
 
     def _style_mute_btn(self):
         if self._muted:
-            self._mute_btn.set_look("mic_off", "MIC MUTED", "MUTED_C")
+            self._mute_btn.set_look("mic_off", "MICROFONE MUDO", "MUTED_C")
         else:
-            self._mute_btn.set_look("mic", "MIC ACTIVE", "GREEN")
+            self._mute_btn.set_look("mic", "MICROFONE ATIVO", "GREEN")
         self._refresh_status_strip()
 
     def _send(self):

@@ -45,7 +45,8 @@ recognition, a language model and a voice, assembled from parts you pick in
 requests at a different model without touching the voice at all.
 
 The local model can be on your machine (Ollama, LM Studio, llama.cpp, vLLM) or
-somebody else's API (OpenAI, Groq, DeepSeek, Mistral, xAI, OpenRouter, Together).
+somebody else's API (OpenAI, Anthropic, Groq, DeepSeek, Mistral, xAI,
+OpenRouter, Together, Cohere, and many OpenAI-compatible providers and gateways).
 Both are the same setting, because all of them speak the same protocol.
 
 **None of it costs anything if you do not use it.** On a default install the
@@ -103,7 +104,7 @@ It's not just an assistant — it's an extension of your digital life.
 | 📺 Video on the HUD | Plays YouTube, a local file or any video URL **where the avatar sits** — starts muted, sound on request |
 | 🪜 Model Ladder | Every Gemini model the key can reach, in one measured order — a quota, a timeout, an outage or a retired model steps to the next rung instead of failing |
 | 🔌 Choose Your Engine | Gemini Live, or your own STT + LLM + TTS — picked in the UI, no file editing |
-| 🏠 Local & Third-Party Models | Ollama · LM Studio · llama.cpp · vLLM · OpenAI · Groq · DeepSeek · Mistral · xAI · OpenRouter — one setting, because they share a protocol |
+| 🏠 Local & Third-Party Models | Ollama · LM Studio · llama.cpp · vLLM · OpenAI · Anthropic · Groq · DeepSeek · Mistral · xAI · OpenRouter · Cohere · and many compatible providers — one setting, because they share a protocol |
 | 🗣️ Local Speech | Whisper on your CPU for hearing, Piper for speaking — **~50 languages**, neural, entirely offline |
 | 🌍 The Voice Follows You | Whisper hears which language you spoke; the answer comes back in that language's voice, switching mid-conversation |
 | 🤫 Reasoning Stays Private | `<think>` blocks from qwen3, deepseek-r1 and their distills are never read aloud |

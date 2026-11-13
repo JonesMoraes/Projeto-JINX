@@ -48,3 +48,6 @@ desktop.ini
 logs/
 downloads/
 screenshots/
+
+# Brahma-Ai-Evo's license prohibits mirroring its source on Git hosting.
+assets/third_party/brahma_evo/

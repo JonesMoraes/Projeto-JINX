@@ -1,4 +1,4 @@
-"""gui/providers_panel.py — ENGINE & PROVIDERS — the panel that chooses what holds the conversation.
+"""gui/providers_panel.py — MECANISMO & PROVEDORES — the panel that chooses what holds the conversation.
 
 Split out of ui.py in JINX; behaviour unchanged."""
 from __future__ import annotations
@@ -48,7 +48,7 @@ class ProvidersOverlay(_HudOverlay):
     """Choose what runs the assistant: Gemini Live, or your own stack.
 
     WHAT THE FIRST VERSION GOT WRONG, AND WHY IT IS WORTH WRITING DOWN
-        It listed the PROVIDERS, and a provider here covers thirteen services at
+        It listed the PROVEDORES, and a provider here covers thirteen services at
         once because they all speak the same protocol. That is the right shape
         for the code — it is why `llm_openai.py` is one file instead of thirteen
         — and it is the wrong shape for a person.
@@ -95,9 +95,9 @@ class ProvidersOverlay(_HudOverlay):
     # Which provider fills each slot, and what the slot is FOR — in the words
     # somebody configuring it would use, not the words the code uses.
     _SLOTS = (
-        ("stt", "①", "HEARING",  "turns what you say into words"),
-        ("llm", "②", "THINKING", "understands, decides, uses your tools"),
-        ("tts", "③", "SPEAKING", "reads the answer out loud"),
+        ("stt", "①", "HEARING",  "Transforma sua fala em texto." ),
+        ("llm", "②", "THINKING", "Interpreta, decide e usa suas ferramentas."),
+        ("tts", "③", "SPEAKING", "Lê a resposta em voz alta."),
     )
 
     def __init__(self, parent=None):
@@ -155,13 +155,13 @@ class ProvidersOverlay(_HudOverlay):
         outer.setContentsMargins(22, 18, 22, 18)
         outer.setSpacing(10)
 
-        title = QLabel("🔌  ENGINE  &  PROVIDERS")
+        title = QLabel("🔌  MECANISMO  E  PROVEDORES")
         title.setFont(hud_font(13, QFont.Weight.Bold))
         title.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         outer.addWidget(title)
 
-        sub = QLabel("Choose what powers the conversation. "
-                     "Gemini is the default and needs nothing set up here.")
+        sub = QLabel("Escolha o que alimenta a conversa. "
+                     "O Gemini é o padrão e não precisa de configuração neste painel.")
         sub.setWordWrap(True)
         sub.setFont(hud_font(8))
         sub.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
@@ -174,13 +174,13 @@ class ProvidersOverlay(_HudOverlay):
         self._mode = get_provider_mode()
         cards = QHBoxLayout(); cards.setSpacing(10)
         self._card_gemini = self._mode_card(
-            "☁  GEMINI LIVE",
+            "☁  GEMINI AO VIVO",
             "Uma conexão reúne sua voz, a voz do JINX, a transcrição e as "
             "ferramentas. É a opção mais rápida — cerca de meio segundo até "
             "a primeira resposta.",
             "gemini")
         self._card_local = self._mode_card(
-            "🖥  MY OWN SETUP",
+            "🖥  MINHA CONFIGURAÇÃO",
             "Escolha como o JINX ouve, pensa e fala. Pode funcionar totalmente "
             "neste computador, sem enviar dados para fora. É mais lento: de 1,5 a 4 segundos.",
             "pipeline")
@@ -231,7 +231,7 @@ class ProvidersOverlay(_HudOverlay):
         outer.addWidget(self._footer)
 
         row = QHBoxLayout(); row.setSpacing(8)
-        apply_btn = QPushButton("▸  SAVE  &&  APPLY")     # && — a lone & is a Qt shortcut marker
+        apply_btn = QPushButton("▸  SALVAR  &&  APLICAR")     # && — a lone & is a Qt shortcut marker
         apply_btn.setFixedHeight(34)
         apply_btn.setFont(hud_font(9, QFont.Weight.Bold))
         apply_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -243,7 +243,7 @@ class ProvidersOverlay(_HudOverlay):
         apply_btn.clicked.connect(self._apply)
         row.addWidget(apply_btn, 2)
 
-        close = QPushButton("CLOSE")
+        close = QPushButton("FECHAR")
         close.setFixedHeight(34)
         close.setFont(hud_font(9))
         close.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -620,6 +620,8 @@ class ProvidersOverlay(_HudOverlay):
         self._update_footer()
 
     def _slot_box(self, slot: str, num: str, name: str, what: str) -> QWidget:
+        name = {"HEARING": "ÁUDIO DE ENTRADA", "THINKING": "RACIOCÍNIO",
+                "SPEAKING": "ÁUDIO DE SAÍDA"}.get(name, name)
         head = self._label(f"{num}  {name}", 9, C.PRI, bold=True)
         w, lay = self._box([head, self._label(what, 7, C.TEXT_DIM)])
 
@@ -689,7 +691,11 @@ class ProvidersOverlay(_HudOverlay):
         # presence of the key is what put an empty "API address" box under
         # "Whisper on this computer", inviting somebody to fill in a field that
         # backend never reads.
-        custom = "base_url" not in entry_values
+        # Most catalog addresses are complete and stay out of the way. A few
+        # services require a tenant/resource identifier in the URL, so their
+        # preset deliberately contains `{...}` and must remain editable.
+        custom = ("base_url" not in entry_values
+                  or "{" in str(entry_values.get("base_url", "")))
 
         # Three buckets, tracked explicitly.
         #
@@ -753,7 +759,7 @@ class ProvidersOverlay(_HudOverlay):
         self._status[pid] = status
 
         brow = QHBoxLayout(); brow.setSpacing(6)
-        brow.addWidget(self._btn("TEST", lambda _=0, p=pid: self._test(p), C.PRI))
+        brow.addWidget(self._btn("TESTAR", lambda _=0, p=pid: self._test(p), C.PRI))
         # Not "LIST" any more: the list arrives on its own when a service is
         # chosen. This is the button for when it did not — the server was
         # starting up, or a model has just been pulled.

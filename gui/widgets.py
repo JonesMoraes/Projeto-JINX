@@ -118,7 +118,12 @@ class LogWidget(QTextEdit):
 
     _sig = pyqtSignal(str)
     # The short all-caps prefixes the app itself writes, shown as the label.
-    _TAGS = {"sys": "SYS", "err": "ERR", "file": "FILE", "quiz": "QUIZ"}
+    _TAGS = {
+        "sys": "SISTEMA", "sistema": "SISTEMA",
+        "err": "ERRO", "erro": "ERRO",
+        "file": "ARQUIVO", "arquivo": "ARQUIVO",
+        "quiz": "QUESTIONÁRIO", "questionário": "QUESTIONÁRIO",
+    }
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -162,15 +167,17 @@ class LogWidget(QTextEdit):
         head, sep, rest = text.partition(":")
         tl = text.lower()
         if tl.startswith(("you:", "você:")):
-            return "you", "YOU", rest.strip()
+            return "você", "VOCÊ", rest.strip()
         if sep and (tl.startswith(f"{self._ai_name_lc}:") or tl.startswith("jinx:")):
             return "ai", head.strip().upper(), rest.strip()
         key = head.strip().lower()
         if sep and key in self._TAGS:
-            tag = key if key in ("err", "file", "folder") else "sys"
+            tag = ("err" if key in ("err", "erro") else
+                   "file" if key in ("file", "arquivo") else "sys")
             return tag, self._TAGS[key], rest.strip()
         # Anything else keeps the old rule: an error if it says so.
-        return ("err" if "err" in tl else "sys"), "SYS", text.strip()
+        return ("err" if "err" in tl or "erro" in tl else "sys"), \
+               ("ERRO" if "err" in tl or "erro" in tl else "SISTEMA"), text.strip()
 
     @staticmethod
     def _colours(tag: str) -> tuple[QColor, QColor]:
@@ -442,13 +449,13 @@ class _DropCanvas(QWidget):
         p.setFont(px_font(11, QFont.Weight.DemiBold, spacing=1.4))
         p.setPen(QPen(qcol(C.TEXT) if hover else qcol(C.TEXT_MED)))
         p.drawText(QRectF(36, 0, W - 44, H), Qt.AlignmentFlag.AlignVCenter,
-                   p.fontMetrics().elidedText("DROP A FILE OR FOLDER  ·  OR CLICK",
+                   p.fontMetrics().elidedText("SOLTE UM ARQUIVO OU UMA PASTA  ·  OU CLIQUE",
                                               Qt.TextElideMode.ElideRight, int(W - 44)))
 
     def _paint_drag_over(self, p, W, H):
         p.setFont(px_font(12, QFont.Weight.DemiBold, spacing=2))
         p.setPen(QPen(qcol(C.PRI)))
-        p.drawText(QRectF(0, 0, W, H), Qt.AlignmentFlag.AlignCenter, "RELEASE TO LOAD")
+        p.drawText(QRectF(0, 0, W, H), Qt.AlignmentFlag.AlignCenter, "SOLTE PARA CARREGAR")
 
     def _paint_file(self, p, W, H):
         path = Path(self._z._current_file)
@@ -514,7 +521,7 @@ class _CameraPreview(QWidget):
         lay.setSpacing(4)
 
         hdr = QHBoxLayout()
-        title = QLabel("◈  VISUAL INPUT")
+        title = QLabel("◈  IMAGEM DA CÂMERA")
         title.setFont(hud_font(7, QFont.Weight.Bold))
         title.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         hdr.addWidget(title)
@@ -1034,8 +1041,14 @@ class StateChip(QWidget):
         p.drawEllipse(QPointF(22, H / 2), 3.5, 3.5)
         p.setFont(px_font(12, QFont.Weight.DemiBold, spacing=2.6))
         p.setPen(QPen(col))
+        state_text = {
+            "INITIALISING": "INICIALIZANDO", "SLEEPING": "EM ESPERA",
+            "LISTENING": "OUVINDO", "SPEAKING": "FALANDO",
+            "THINKING": "PENSANDO", "PROCESSING": "PROCESSANDO",
+            "MUTED": "MICROFONE MUDO",
+        }.get(self._state, self._state)
         p.drawText(QRectF(38, 0, W - 44, H), Qt.AlignmentFlag.AlignVCenter,
-                   p.fontMetrics().elidedText(self._state, Qt.TextElideMode.ElideRight, int(W - 44)))
+                   p.fontMetrics().elidedText(state_text, Qt.TextElideMode.ElideRight, int(W - 44)))
         p.end()
 
 

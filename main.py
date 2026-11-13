@@ -109,6 +109,7 @@ def get_base_dir():
 BASE_DIR        = get_base_dir()
 API_CONFIG_PATH = BASE_DIR / "config" / "api_keys.json"
 PROMPT_PATH     = BASE_DIR / "core" / "prompt.txt"
+SPEECH_LANGUAGE = "português brasileiro (pt-BR)"
 # The conversation's model. A NAME, not a decision: the ladder lives in
 # core/gemini.py and this is only whichever rung is currently in use, kept here
 # as a module attribute because plugins read it (chat_takeover asks main for it
@@ -1036,9 +1037,7 @@ class JinxLive:
             alerts = await asyncio.to_thread(monitor_check_all)
             if not alerts:
                 return
-            memory = load_memory()
-            lang_e = memory.get("identity", {}).get("language", {})
-            lang   = (lang_e.get("value", "") if isinstance(lang_e, dict) else str(lang_e)).strip() or "English"
+            lang = SPEECH_LANGUAGE
             for alert in alerts:
                 if not self.session:
                     return
@@ -2242,7 +2241,7 @@ class JinxLive:
             e = identity.get(k, {})
             return (e.get("value", "") if isinstance(e, dict) else str(e)).strip()
 
-        lang = _val("language")
+        lang = SPEECH_LANGUAGE
         name = _val("name")
         time_str = datetime.now().strftime("%H:%M")
 
@@ -2264,12 +2263,9 @@ class JinxLive:
             return
 
         # ── Phase 1: instant greeting ─────────────────────────────────────────
-        # The briefing fires before the user has said anything, so the
-        # remembered language is the only signal there is. It is a starting
-        # point, not a setting: the moment they reply, their language wins.
-        lang_clause = (f" Speak this greeting in {lang}, then follow the "
-                       f"user's own language from their first reply onward."
-                       if lang else "")
+        # This installation's spoken-language preference is fixed to Brazilian
+        # Portuguese, including the first greeting before the user speaks.
+        lang_clause = f" Speak in {lang}, using Brazilian Portuguese pronunciation and wording."
         name_clause = f" Address the user as {name}." if name else ""
 
         # Inject last session context if available — pop removes it so it's never repeated
@@ -2306,9 +2302,7 @@ class JinxLive:
         # ── Phase 2: fire as soon as Phase 1 audio is done ───────────────────
         async def _deliver_news():
             try:
-                lang_str = (f" Speak in {lang} unless the user has since "
-                            f"spoken another language, in which case use theirs."
-                            if lang else "")
+                lang_str = f" Speak in {lang}, using Brazilian Portuguese pronunciation and wording."
 
                 # Wait for news fetch (already running) and Phase 1 turn-complete
                 # in parallel — whichever takes longer determines the wait time
@@ -2393,10 +2387,7 @@ class JinxLive:
             return
         self._session_log = []    # reset immediately so the next session starts clean
 
-        memory = load_memory()
-        lang_entry = memory.get("identity", {}).get("language", {})
-        lang = (lang_entry.get("value", "") if isinstance(lang_entry, dict) else str(lang_entry)).strip()
-        lang = lang or "English"
+        lang = SPEECH_LANGUAGE
 
         convo = "\n".join(log[-40:])   # cap at last 40 turns to stay within token budget
         prompt = (
@@ -2450,9 +2441,7 @@ class JinxLive:
                 if not speaking and not recent_speech:
                     try:
                         alerts = await asyncio.to_thread(monitor_check_all)
-                        memory = load_memory()
-                        lang_e = memory.get("identity", {}).get("language", {})
-                        lang   = (lang_e.get("value", "") if isinstance(lang_e, dict) else str(lang_e)).strip() or "English"
+                        lang = SPEECH_LANGUAGE
                         for alert in alerts:
                             msg = (
                                 f"{alert}\n\n"

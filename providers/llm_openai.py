@@ -3,9 +3,8 @@ One file, every OpenAI-compatible endpoint — local servers and hosted APIs ali
 
 WHY ONE FILE COVERS SO MANY
     Ollama, LM Studio, llama.cpp's server, vLLM, LocalAI, KoboldCpp, Jan and
-    text-generation-webui all serve `/v1/chat/completions`, and so do OpenAI,
-    Groq, DeepSeek, Mistral, xAI, OpenRouter, Together, Fireworks, Perplexity,
-    Cerebras and DashScope. The difference between "a local model" and "somebody
+    text-generation-webui all serve `/v1/chat/completions`, as do many cloud
+    vendors and gateways. The difference between "a local model" and "somebody
     else's API" is a base URL and whether a key is sent.
 
     That is the single reason this folder is a handful of files rather than
@@ -67,7 +66,45 @@ PRESETS: dict[str, str] = {
     "Together":             "https://api.together.xyz/v1",
     "Cerebras":             "https://api.cerebras.ai/v1",
     "MiniMax":              "https://api.minimax.io/v1",
+    "MiniMax (China)":      "https://api.minimaxi.com/v1",
     "Google Gemini":        "https://generativelanguage.googleapis.com/v1beta/openai",
+    "Anthropic (Claude)":   "https://api.anthropic.com/v1",
+    "OpenRouter (EU)":      "https://eu.openrouter.ai/api/v1",
+    "Maritaca AI (Sabiá)":  "https://chat.maritaca.ai/api",
+    "Vercel AI Gateway":    "https://ai-gateway.vercel.sh/v1",
+    "Braintrust Gateway":   "https://api.braintrust.dev/ai/v1",
+    "AIML API":             "https://api.aimlapi.com/v1",
+    "AIHubMix":             "https://aihubmix.com/v1",
+    "Fireworks AI":         "https://api.fireworks.ai/inference/v1",
+    "SambaNova":            "https://api.sambanova.ai/v1",
+    "DeepInfra":            "https://api.deepinfra.com/v1/openai",
+    "Baseten":              "https://inference.baseten.co/v1",
+    "Hugging Face Router":  "https://router.huggingface.co/v1",
+    "Novita AI":            "https://api.novita.ai/openai/v1",
+    "GMI Cloud":            "https://api.gmicloud.ai/v1",
+    "Hyperbolic":           "https://api.hyperbolic.xyz/v1",
+    "Chutes":               "https://llm.chutes.ai/v1",
+    "Parasail":             "https://api.parasail.io/v1",
+    "Azure OpenAI":         "https://{seu-recurso}.openai.azure.com/openai/v1",
+    "NVIDIA NIM":           "https://integrate.api.nvidia.com/v1",
+    "Cloudflare Workers AI": "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1",
+    "OVHcloud AI Endpoints": "https://oai.endpoints.kepler.ai.cloud.ovh.net/v1",
+    "Scaleway Generative APIs": "https://api.scaleway.ai/llm/v1",
+    "Baidu Qianfan":        "https://qianfan.baidubce.com/v2",
+    "Z.ai / Zhipu (GLM)":   "https://api.z.ai/api/paas/v4",
+    "Zhipu (China)":        "https://open.bigmodel.cn/api/paas/v4",
+    "Z.ai Coding Plan":     "https://api.z.ai/api/coding/paas/v4",
+    "Moonshot AI (Kimi)":   "https://api.moonshot.ai/v1",
+    "Moonshot AI (China)":  "https://api.moonshot.cn/v1",
+    "01.AI (Yi)":           "https://api.01.ai/v1",
+    "Alibaba DashScope (Intl)": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    "Alibaba DashScope (China)": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    "Cohere Compatibility": "https://api.cohere.ai/compatibility/v1",
+    "AI21 Labs (Jamba)":    "https://api.ai21.com/studio/v1",
+    "Perplexity (Sonar)":   "https://api.perplexity.ai",
+    "Reka AI":              "https://api.reka.ai/v1",
+    "AionLabs":             "https://api.aionlabs.ai/v1",
+    "Sarvam AI":            "https://api.sarvam.ai/v2",
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -82,6 +119,9 @@ PRESETS: dict[str, str] = {
 #     there. Nobody looking for Ollama searches for the name of a protocol.
 #
 #     So the panel expands this list instead of showing the provider once.
+#     The catalog contains only services that can power the conversation
+#     through OpenAI Chat Completions; a video or image endpoint is not a model
+#     choice here, and a native-only API needs its own adapter.
 #     `local` decides the wording the interface puts next to it, because "on
 #     this computer" and "someone else's server" is the distinction people
 #     actually care about — and the one with privacy consequences.
@@ -114,6 +154,56 @@ _LOCAL_BUDGET = {"max_tools": "14", "max_tool_chars": "12000"}
 # user to a cloud model that has no use for it.
 _LOCAL = {"model": "", **_LOCAL_BUDGET}
 _CLOUD = {"model": "", "max_tools": "", "max_tool_chars": ""}
+
+# Names in the archive that offer an OpenAI Chat Completions endpoint. Services
+# for image/video generation, native-only APIs, and audio transcription are not
+# listed here: this selector is specifically the conversation model slot.
+_CLOUD_CATALOG = (
+    ("vercel", "Vercel AI Gateway", "Vercel AI Gateway", "nuvem · requer chave"),
+    ("braintrust", "Braintrust Gateway", "Braintrust Gateway", "nuvem · requer chave"),
+    ("aimlapi", "AIML API", "AIML API", "nuvem · requer chave"),
+    ("aihubmix", "AIHubMix", "AIHubMix", "nuvem · requer chave"),
+    ("fireworks", "Fireworks AI", "Fireworks AI", "nuvem · requer chave"),
+    ("sambanova", "SambaNova", "SambaNova", "nuvem · requer chave"),
+    ("deepinfra", "DeepInfra", "DeepInfra", "nuvem · requer chave"),
+    ("baseten", "Baseten", "Baseten", "nuvem · requer chave"),
+    ("huggingface", "Hugging Face Router", "Hugging Face Router", "nuvem · requer chave"),
+    ("novita", "Novita AI", "Novita AI", "nuvem · requer chave"),
+    ("gmi", "GMI Cloud", "GMI Cloud", "nuvem · requer chave"),
+    ("hyperbolic", "Hyperbolic", "Hyperbolic", "nuvem · requer chave"),
+    ("chutes", "Chutes", "Chutes", "nuvem · requer chave"),
+    ("parasail", "Parasail", "Parasail", "nuvem · requer chave"),
+    ("azure_openai", "Azure OpenAI", "Azure OpenAI", "nuvem · troque {seu-recurso}; use o nome do deployment como modelo"),
+    ("nvidia_nim", "NVIDIA NIM", "NVIDIA NIM", "nuvem · requer chave"),
+    ("cloudflare_workers", "Cloudflare Workers AI", "Cloudflare Workers AI", "nuvem · troque {account_id}; modelo no formato @cf/..."),
+    ("ovhcloud", "OVHcloud AI Endpoints", "OVHcloud AI Endpoints", "nuvem · requer chave"),
+    ("scaleway", "Scaleway Generative APIs", "Scaleway Generative APIs", "nuvem · requer chave"),
+    ("baidu_qianfan", "Baidu Qianfan", "Baidu Qianfan", "nuvem · informe o access token como chave"),
+    ("maritaca", "Maritaca AI (Sabiá)", "Maritaca AI (Sabiá)", "nuvem · modelos sabia-4 · requer chave"),
+    ("zai", "Z.ai / Zhipu (GLM)", "Z.ai / Zhipu (GLM)", "nuvem · requer chave"),
+    ("zhipu_cn", "Zhipu (China)", "Zhipu (China)", "nuvem · requer chave · endpoint China"),
+    ("zai_coding", "Z.ai Coding Plan", "Z.ai Coding Plan", "nuvem · requer chave do plano Coding"),
+    ("anthropic", "Anthropic (Claude)", "Anthropic (Claude)", "nuvem · requer chave; workspace ID opcional em MAIS"),
+    ("moonshot", "Moonshot AI (Kimi)", "Moonshot AI (Kimi)", "nuvem · requer chave"),
+    ("moonshot_cn", "Moonshot AI (China)", "Moonshot AI (China)", "nuvem · requer chave · endpoint China"),
+    ("minimax_cn", "MiniMax (China)", "MiniMax (China)", "nuvem · requer chave · endpoint China"),
+    ("yi", "01.AI (Yi)", "01.AI (Yi)", "nuvem · requer chave"),
+    ("dashscope_intl", "Alibaba DashScope (Intl)", "Alibaba DashScope (Intl)", "nuvem · requer chave"),
+    ("dashscope_cn", "Alibaba DashScope (China)", "Alibaba DashScope (China)", "nuvem · requer chave · endpoint China"),
+    ("cohere", "Cohere Compatibility", "Cohere Compatibility", "nuvem · requer chave"),
+    ("ai21", "AI21 Labs (Jamba)", "AI21 Labs (Jamba)", "nuvem · requer chave"),
+    ("perplexity", "Perplexity (Sonar)", "Perplexity (Sonar)", "nuvem · requer chave"),
+    ("reka", "Reka AI", "Reka AI", "nuvem · requer chave"),
+    ("aionlabs", "AionLabs", "AionLabs", "nuvem · requer chave"),
+    ("sarvam", "Sarvam AI", "Sarvam AI", "nuvem · requer chave"),
+)
+
+
+def _cloud_entry(provider_id: str, preset: str, label: str,
+                 note: str) -> dict:
+    return {"id": provider_id, "label": label, "note": note,
+            "local": False,
+            "values": {"base_url": PRESETS[preset], **_CLOUD}}
 
 CATALOG = (
     {"id": "ollama",     "label": "Ollama",
@@ -157,12 +247,15 @@ CATALOG = (
     {"id": "openrouter", "label": "OpenRouter",
       "note": "nuvem · vários modelos com uma única chave", "local": False,
      "values": {"base_url": PRESETS["OpenRouter"], **_CLOUD}},
+    _cloud_entry("openrouter_eu", "OpenRouter (EU)", "OpenRouter (EU)",
+                 "nuvem · endpoint europeu · requer chave"),
     {"id": "together",   "label": "Together",
      "note": "cloud · needs a key", "local": False,
      "values": {"base_url": PRESETS["Together"], **_CLOUD}},
     {"id": "cerebras",   "label": "Cerebras",
      "note": "cloud · needs a key", "local": False,
      "values": {"base_url": PRESETS["Cerebras"], **_CLOUD}},
+    *(_cloud_entry(*entry) for entry in _CLOUD_CATALOG),
      {"id": "custom",     "label": "Outro serviço",
       "note": "informe o endereço manualmente", "local": None,
      "values": {}},
@@ -192,6 +285,11 @@ def _normalise(url: str) -> str:
     url = f"{scheme}://{host}{slash}{path}".rstrip("/")
     # Only append /v1 when there is no path at all. An endpoint served under a
     # prefix (a reverse proxy, OpenRouter's /api/v1) must be left alone.
+    # Perplexity serves OpenAI-compatible routes directly at the origin rather
+    # than under /v1. Keep that base URL intact; its routes are
+    # /chat/completions and /models.
+    if not path and host.split(":")[0].lower() == "api.perplexity.ai":
+        return url
     if not path:
         url += "/v1"
     return url
@@ -360,6 +458,7 @@ class OpenAICompatLLM:
         self.base = _normalise(cfg.get("base_url") or "")
         self.model = (cfg.get("model") or "").strip()
         self.key = (cfg.get("api_key") or "").strip()
+        self.workspace_id = (cfg.get("workspace_id") or "").strip()
         if not self.key and "generativelanguage.googleapis.com" in self.base:
             # The Gemini entry needs no second key: the one Gemini Live already
             # uses is the natural choice, and a different key pasted here is how
@@ -418,7 +517,12 @@ class OpenAICompatLLM:
     def _headers(self) -> dict:
         h = {"Content-Type": "application/json"}
         if self.key:
-            h["Authorization"] = f"Bearer {self.key}"
+            if "openai.azure.com" in self.base:
+                h["api-key"] = self.key
+            else:
+                h["Authorization"] = f"Bearer {self.key}"
+        if self.workspace_id and "api.anthropic.com" in self.base:
+            h["anthropic-workspace-id"] = self.workspace_id
         return h
 
     def _body(self, messages: list[dict], tools: list[dict] | None,
@@ -740,6 +844,9 @@ PROVIDER = {
               hint="Carregado do servidor — toque em ATUALIZAR se a lista estiver vazia"),
         Field("api_key", "Chave da API", kind="secret", required=False,
               hint="Servidores locais geralmente não precisam de chave"),
+        Field("workspace_id", "Workspace ID da Anthropic", required=False,
+              advanced=True,
+              hint="Só para chaves Anthropic pessoais ou de serviço sem workspace"),
         # Filled in by TEST, not asked. The user is the wrong person to ask
         # whether a model is multimodal — see OpenAICompatLLM.can_see. Kept as a
         # field so the answer is stored and so somebody who knows better can
