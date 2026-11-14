@@ -1244,6 +1244,7 @@ class MainWindow(QMainWindow):
 
             # ── Windows ───────────────────────────────────────────────────────
             if _os == "Windows":
+                script = script.with_name('launch_jinx.pyw')
                 pythonw  = python.parent / "pythonw.exe"
                 target   = str(pythonw if pythonw.exists() else python)
                 lnk      = str(desktop / "JINX.lnk")
@@ -2660,6 +2661,7 @@ class MainWindow(QMainWindow):
                 else:
                     pythonw = Path(sys.executable).parent / "pythonw.exe"
                     exe = str(pythonw if pythonw.exists() else sys.executable)
+                    script = str(Path(script).with_name('launch_jinx.pyw'))
                     winreg.SetValueEx(reg, "JINX_AI", 0, winreg.REG_SZ,
                                       f'"{exe}" "{script}"')
                 winreg.CloseKey(reg)
