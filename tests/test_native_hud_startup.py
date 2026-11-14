@@ -24,7 +24,7 @@ class NativeHudTests(unittest.TestCase):
     def test_native_startup_does_not_construct_hidden_web_views(self):
         create = Mock(side_effect=AssertionError('WebEngine must not start for native HUD'))
         with patch.object(hud, 'QWebEngineView', create):
-            for style in ('face', 'core'):
+            for style in ('face', 'core', 'aurora'):
                 canvas = self.canvas(style)
                 self.assertEqual(canvas.hud_style, style)
                 self.assertEqual(canvas._orb_views, {})
@@ -33,7 +33,7 @@ class NativeHudTests(unittest.TestCase):
     def test_unavailable_saved_web_style_falls_back_without_changing_config(self):
         with patch.object(hud, 'QWebEngineView', None), \
                 patch('memory.config_manager.save_hud_style') as save:
-            self.assertEqual(hud.HudCanvas.available_styles(), ('face', 'core'))
+            self.assertEqual(hud.HudCanvas.available_styles(), ('face', 'core', 'aurora'))
             canvas = self.canvas('brahma_evo')
             self.assertEqual(canvas.hud_style, 'face')
             self.assertEqual(canvas._orb_views, {})

@@ -104,8 +104,8 @@ class HudCanvas(QWidget):
     @staticmethod
     def available_styles():
         if QWebEngineView is None:
-            return ('face', 'core')
-        return ('face', 'core', 'brahma_evo', 'brahma_echo')
+            return ('face', 'core', 'aurora')
+        return ('face', 'core', 'aurora', 'brahma_evo', 'brahma_echo')
 
     def __init__(self, face_path: str, assistant_name: str = "JINX", parent=None):
         super().__init__(parent)
@@ -653,6 +653,16 @@ class HudCanvas(QWidget):
     # for its own sake, which is what made the old glowing orb feel dead.
 
     def _core_colours(self):
+        if self.hud_style == 'aurora':
+            if self.muted:
+                return qcol(C.MUTED_C), qcol(C.MUTED_C)
+            if self.speaking:
+                return qcol(C.GREEN), qcol(C.ACC)
+            if self.state in ("THINKING", "PROCESSING"):
+                return qcol(C.GREEN), qcol(C.ACC2)
+            if self.state == "LISTENING":
+                return qcol(C.GREEN), qcol(C.GREEN_D)
+            return qcol(C.GREEN), qcol(C.GREEN_D)
         if self.muted:
             return qcol(C.MUTED_C), qcol(C.MUTED_C)
         if self.speaking:

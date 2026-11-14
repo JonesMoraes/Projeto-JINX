@@ -2789,6 +2789,7 @@ class MainWindow(QMainWindow):
         names = {
             "face": "🧑  HUD: ROSTO ANIMADO",
             "core": "◉  HUD: NÚCLEO REATOR",
+            "aurora": "◌  HUD: AURORA",
             "brahma_evo": "✦  HUD: EVO",
             "brahma_echo": "✧  HUD: ECHO",
         }
@@ -2804,7 +2805,7 @@ class MainWindow(QMainWindow):
         menu = QMenu(self)
         menu.setToolTipsVisible(True)
         for style, label in (('face', 'Rosto animado'), ('core', 'Núcleo reator'),
-                             ('brahma_evo', 'EVO'), ('brahma_echo', 'ECHO')):
+                             ('aurora', 'Aurora'), ('brahma_evo', 'EVO'), ('brahma_echo', 'ECHO')):
             available = style in self.hud.available_styles()
             action = menu.addAction(label if available else label + ' — indisponível nesta execução')
             action.setCheckable(True)
