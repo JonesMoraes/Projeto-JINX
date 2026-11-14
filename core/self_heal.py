@@ -17,10 +17,12 @@ ROOT = Path(__file__).resolve().parent.parent
 STATE = config.CONFIG_DIR / "self_heal"
 IMMUNE = set(boot_sentry.IMMUNE) | {"core/tasks/engine.py", "core/plugin_loader.py",
                                   "core/action_loader.py", "core/screenact.py",
-                                  "core/platform_support.py", "core/tls.py"}
+                                  "core/platform_support.py", "core/tls.py",
+                                  "core/_repair_check.py"}
 MAX_SOURCE = 1_000_000
 MAX_CANDIDATE = 12_000
 _lock = threading.RLock()
+_apply_lock = threading.Lock()
 _pending = {}
 
 
@@ -35,9 +37,11 @@ def set_enabled(value: bool) -> bool:
 
 def _target(relative: str) -> tuple[Path, str]:
     raw = str(relative or "").replace("\\", "/").strip()
-    target = (ROOT / raw).resolve()
-    rel = target.relative_to(ROOT).as_posix()
-    if (rel in IMMUNE or target.suffix.lower() != ".py" or not target.is_file()
+    root = ROOT.resolve()
+    target = (root / raw).resolve()
+    rel = target.relative_to(root).as_posix()
+    if (rel.casefold() in {p.casefold() for p in IMMUNE}
+            or target.suffix.lower() != ".py" or not target.is_file()
             or target.stat().st_size > MAX_SOURCE):
         raise ValueError("This file is outside the repairable project scope")
     return target, rel
@@ -101,7 +105,7 @@ def review(candidate_id: str, player) -> str:
                        [{"heading": f"Código · trecho {i+1}/{len(chunks)}", "detail": chunk,
                          "severity": "note"} for i, chunk in enumerate(chunks)])
 
-    def apply() -> str:
+    def apply_checked() -> str:
         if not enabled():
             return outcome.failed("self_heal", "Self-repair was disabled before confirmation")
         target, rel = _target(row["target"])
@@ -109,6 +113,11 @@ def review(candidate_id: str, player) -> str:
         if hashlib.sha256(original).hexdigest() != row["source_hash"]:
             return outcome.failed("self_heal", "Source changed; generate a fresh candidate")
         ast.parse(row["candidate"], filename=rel)
+        from core._repair_check import validate
+        checks = validate(ROOT, rel, row['candidate'], STATE / 'repair-validation.log')
+        # Validation can take time; do not overwrite edits made while it ran.
+        if not enabled() or target.read_bytes() != original:
+            return outcome.failed('self_heal', 'Source or repair setting changed during validation')
         STATE.mkdir(parents=True, exist_ok=True)
         backup_dir = STATE / "backups"
         backup_dir.mkdir(parents=True, exist_ok=True)
@@ -143,6 +152,14 @@ def review(candidate_id: str, player) -> str:
             restore.write_bytes(original); os.replace(restore, target)
             return outcome.done("self_heal_undo")
         undo.push_undo(f"self-repair {rel}", revert)
-        return outcome.done("self_heal", file=rel, backup=backup.name)
+        return outcome.done("self_heal", file=rel, backup=backup.name, validation=checks)
+    def apply() -> str:
+        if not _apply_lock.acquire(blocking=False):
+            return outcome.failed('self_heal', 'Another repair is being validated or applied')
+        try:
+            return apply_checked()
+        finally:
+            _apply_lock.release()
+
     return confirm.request("self_heal", f"Apply repair to {row['target']}",
-                           "Review the candidate in the HUD. This writes one Python file and can be undone.", apply)
+                           "Review the candidate in the HUD. After approval, Python import/tests run in a temporary source copy with your user permissions (not a security sandbox). Only passing checks allow replacement; a backup and undo are kept.", apply)

@@ -1,5 +1,21 @@
 # Histórico de alterações
 
+## 2026-11-14 — Correção e integração da expansão
+- Expansão da branch feature/expansion-2026-11-14 preparada para integração
+  ao main local, preservando dados pessoais e credenciais.
+- Atualizador: recuperação e confirmação de startup usam o mesmo marcador e
+  diretório de backups da aplicação; testes cobrem os caminhos de produção.
+- Autorreparo: após confirmação humana, baseline/candidato passam por import
+  em cópia temporária de fontes e testes específicos disponíveis antes da
+  troca; falha, timeout ou edição concorrente preservam o arquivo original.
+  Subprocesso não é sandbox. Snapshot não copia config, assets ou dados pessoais.
+- HUD: teste usa HTML temporário; falhas de página, renderer ou WebGL voltam
+  ao rosto nativo sem sobrescrever a preferência. Renderização real de assets
+  EVO/ECHO ainda requer validação na máquina; não houve adaptação dos assets.
+- Comentários inválidos do sketch Arduino corrigidos para //; estabilidade
+  dos testes Windows melhorada para caminhos curtos e encoding.
+- Escopo parcial e validações externas descritos em INTEGRACAO_EXPANSAO.md.
+
 ## 2026-11-14 — Esferas EVO/ECHO e prévia de vozes
 - Removido o opt-in global que havia ocultado as esferas na execução normal
   pelo Windows. Restrição mantida apenas em executor restrito, testes sem

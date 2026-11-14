@@ -99,6 +99,8 @@ class _OrbAssetFetcher(threading.Thread):
 
 
 class HudCanvas(QWidget):
+    visual_failed = pyqtSignal(str)
+
     @staticmethod
     def available_styles():
         if QWebEngineView is None:
@@ -284,6 +286,8 @@ class HudCanvas(QWidget):
                 settings.setAttribute(QWebEngineSettings.WebAttribute.Accelerated2dCanvasEnabled, True)
             view._jinx_orb_loaded_once = False
             view._jinx_orb_download_started = False
+            view.renderProcessTerminated.connect(
+                lambda *args, orb_style=style: self._fallback_orb(orb_style, 'renderer encerrado'))
             view.loadFinished.connect(lambda ok, orb_style=style: self._on_orb_loaded(orb_style, ok))
             view.hide()
             self._orb_views[style] = view
@@ -362,13 +366,25 @@ class HudCanvas(QWidget):
                 "font:14px Segoe UI;padding:30px'>Não foi possível obter os arquivos "
                 "do EVO no repositório oficial. Verifique a conexão e tente novamente."
                 "</body></html>")
+        self._fallback_orb(style, 'arquivos indisponíveis')
+
+    def _fallback_orb(self, style: str, reason: str) -> None:
+        if self.hud_style != style:
+            return
+        # Preserve the saved preference so a later manual retry remains possible.
+        self.hud_style = 'face'
+        self._sync_hud_style()
+        self.update()
+        message = f'Visual {style}: {reason}. Rosto nativo ativado nesta sessão.'
+        logging.getLogger(__name__).warning(message)
+        self.visual_failed.emit(message)
 
     def _on_orb_loaded(self, _style: str, _ok: bool) -> None:
         # The first state update may have arrived while Chromium was still
         # parsing the local page. Re-send it on the next HUD tick after load.
         self._last_orb_state = None
         self._last_orb_style = None
-        if not _ok and _style == "brahma_evo":
+        if not _ok:
             view = self._orb_views.get(_style)
             if view is not None:
                 view._jinx_orb_loaded_once = False
@@ -377,6 +393,18 @@ class HudCanvas(QWidget):
                     "<html><body style='background:#020306;color:#ef9891;"
                     "font:14px Segoe UI;padding:30px'>O orb EVO não conseguiu "
                     "iniciar. Alterne para outro HUD e tente novamente.</body></html>")
+            self._fallback_orb(_style, 'falha ao carregar a página')
+        elif self.hud_style == _style:
+            view = self._orb_views.get(_style)
+            if view is not None and view._jinx_orb_loaded_once:
+                # Generic browser capability check; no third-party asset code.
+                view.page().runJavaScript(
+                    "(() => { try { const c=document.createElement('canvas'); "
+                    "const g=c.getContext('webgl2') || c.getContext('webgl'); "
+                    "if (!g) return false; const e=g.getExtension('WEBGL_lose_context'); "
+                    "if (e) e.loseContext(); return true; } catch(e) { return false; } })()",
+                    lambda available: self._fallback_orb(_style, 'WebGL indisponível')
+                    if available is False else None)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

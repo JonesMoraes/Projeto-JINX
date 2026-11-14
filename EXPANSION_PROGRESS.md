@@ -1,5 +1,10 @@
 # Execução local — expansão JINX
 
+Estado após revisão de 14/11/2026: ver INTEGRACAO_EXPANSAO.md para correções,
+integração ao main e limites do escopo. A declaração histórica de conclusão
+local não representa aceite integral das Fases 4–8; APK nativo, painel de
+circuitos, globo/rotas e validações externas continuam pendentes.
+
 Histórico inicial da retomada (14/11/2026): o registro abaixo começou após
 5.1, 5.2 e 6.1. O estado atualizado das implementações 6.2–8.3 e suas
 pendências de validação está na última seção deste arquivo. Validações reais

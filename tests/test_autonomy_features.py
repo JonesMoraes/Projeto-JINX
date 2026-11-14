@@ -10,7 +10,7 @@ from core import boot_sentry, self_heal, skill_forge
 class SelfHealTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         (self.root / "core").mkdir()
         (self.root / "core" / "safe.py").write_text("VALUE = 1\n", encoding="utf-8")
         self.state = self.root / "config" / "self_heal"
@@ -67,6 +67,34 @@ class SelfHealTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self_heal.propose("core/safe.py", "repair this")
 
+    def test_failed_validation_does_not_install_or_create_recovery_marker(self):
+        with patch.object(self_heal, 'enabled', return_value=True), \
+                patch('core.gemini.text', return_value='VALUE = missing_name\n'):
+            row = self_heal.propose('core/safe.py', 'Fix value')
+        with patch.object(self_heal, 'enabled', return_value=True), \
+                patch.object(self_heal.confirm, 'pending_title', return_value=''), \
+                patch.object(self_heal.confirm, 'request', side_effect=lambda k,t,d,run: run()):
+            with self.assertRaisesRegex(ValueError, 'check failed'):
+                self_heal.review(row['id'], Mock())
+        self.assertEqual((self.root / 'core/safe.py').read_text(), 'VALUE = 1\n')
+        self.assertFalse(boot_sentry.MARKER.exists())
+
+    def test_changes_during_validation_are_preserved(self):
+        target = self.root / 'core/safe.py'
+        with patch.object(self_heal, 'enabled', return_value=True), \
+                patch('core.gemini.text', return_value='VALUE = 2\n'):
+            row = self_heal.propose('core/safe.py', 'Fix value')
+        def concurrent_edit(*args):
+            target.write_text('VALUE = 3\n')
+            return 'import'
+        with patch.object(self_heal, 'enabled', return_value=True), \
+                patch.object(self_heal.confirm, 'pending_title', return_value=''), \
+                patch.object(self_heal.confirm, 'request', side_effect=lambda k,t,d,run: run()), \
+                patch('core._repair_check.validate', side_effect=concurrent_edit):
+            result = self_heal.review(row['id'], Mock())
+        self.assertIn('failed', result)
+        self.assertEqual(target.read_text(), 'VALUE = 3\n')
+
 
 class SkillForgeTests(unittest.TestCase):
     def test_skill_draft_is_bounded_inert_markdown(self):
@@ -103,7 +131,7 @@ class DevAgentGateTests(unittest.TestCase):
     def test_generated_paths_and_run_commands_stay_inside_approved_folder(self):
         from actions import dev_agent
         with tempfile.TemporaryDirectory() as d:
-            root = Path(d) / "approved"
+            root = Path(d).resolve() / "approved"
             root.mkdir()
             self.assertEqual(dev_agent._project_file_path(root, "src/main.py"), root / "src" / "main.py")
             for path in ("../outside.py", "C:/outside.py", "src/../../outside.py"):

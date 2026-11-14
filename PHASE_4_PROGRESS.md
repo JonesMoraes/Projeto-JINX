@@ -1,5 +1,10 @@
 # Fase 4 — integrações de serviços
 
+Nota de 14/11/2026: este arquivo preserva o histórico das sessões anteriores.
+A expansão foi publicada em feature/expansion-2026-11-14 (5bfef86) e sua
+integração/correções estão descritas em INTEGRACAO_EXPANSAO.md. As menções
+abaixo a ausência de push e bloqueio do ambiente são históricas.
+
 Retomada autorizada pelo usuário em 13/11/2026. Implementação iniciada pela
 tarefa 4.1. Tarefa 4.2 implementada localmente; a Fase 4 permanece em andamento,
 com aceite real/voz pendente. 4.3 tem ponte de leitura/revisão local implementada.

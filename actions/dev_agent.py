@@ -338,7 +338,7 @@ def _open_vscode(project_dir: Path) -> bool:
     return False
 
 def _run_project(run_command: str, project_dir: Path, timeout: int = 30) -> str:
-    print(f"[DevAgent] 🚀 Running: {run_command}")
+    print(f"[DevAgent] Running: {run_command}")
     try:
         parts = _safe_run_argv(run_command, project_dir)
         if not parts:

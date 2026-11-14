@@ -20,9 +20,9 @@ def guide(board_voltage: str, sensor_form: str, board_variant: str):
              ["DHT11 pin 1 (VCC) → Pro Mini VCC", "DHT11 pin 2 (DATA) → D4",
               "DHT11 pin 3 → no connection", "DHT11 pin 4 (GND) → GND",
               "Add 4.7–10 kΩ pull-up from DATA to VCC if the bare sensor board lacks one"])
-    code = '''# Install the Adafruit DHT sensor library through Arduino Library Manager.
-# Confirm the exact board voltage and sensor pin order before powering.
-# Never connect an FTDI 5 V TX signal to a 3.3 V Pro Mini RX pin.
+    code = '''// Install the Adafruit DHT sensor library through Arduino Library Manager.
+// Confirm the exact board voltage and sensor pin order before powering.
+// Never connect an FTDI 5 V TX signal to a 3.3 V Pro Mini RX pin.
 #include <DHT.h>
 #define DHTPIN 4
 #define DHTTYPE DHT11

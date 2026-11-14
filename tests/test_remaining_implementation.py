@@ -33,6 +33,10 @@ class CircuitGuideTests(unittest.TestCase):
         self.assertTrue(any("DHT11 pin 3" in wire for wire in result["wires"]))
         self.assertIn("FTDI 5 V TX", result["code"])
         self.assertIn("No firmware was written", result["warning"])
+        # Unknown # directives made the delivered Arduino sketch uncompilable.
+        for line in result['code'].splitlines():
+            if line.startswith('#'):
+                self.assertTrue(line.startswith(('#include ', '#define ')), line)
 
 
 class RadarTests(unittest.TestCase):
@@ -78,7 +82,7 @@ class UpdaterTests(unittest.TestCase):
 
     def test_apply_rolls_back_on_next_boot_if_new_app_does_not_mark_healthy(self):
         with tempfile.TemporaryDirectory() as d:
-            root=Path(d); state=root/".jinx_update"; stage=state/"staging"/"v2"; stage.mkdir(parents=True)
+            root=Path(d).resolve(); state=root/".jinx_update"; stage=state/"staging"/"v2"; stage.mkdir(parents=True)
             target=root/"core"/"sample.py"; target.parent.mkdir(); target.write_text("VALUE=1\n")
             updated=b"VALUE=2\n"; (stage/"core").mkdir(); (stage/"core"/"sample.py").write_bytes(updated)
             manifest={"tag":"v2","files":[{"path":"core/sample.py","size":len(updated),
@@ -88,12 +92,27 @@ class UpdaterTests(unittest.TestCase):
                 proc.Popen.return_value=Mock()
                 update_apply.apply(root, stage, 999999999)
             self.assertEqual(target.read_bytes(), updated)
-            with patch.object(boot_sentry, "ROOT", root), patch.object(boot_sentry, "STATE", state), \
+            with patch.object(boot_sentry, "ROOT", root), patch.object(boot_sentry, "UPDATE_STATE", state), \
                     patch.object(boot_sentry, "UPDATE_MARKER", state/"pending-update.json"), \
                     patch.dict(os.environ, {}, clear=True):
                 self.assertTrue(boot_sentry._recover_update())
             self.assertEqual(target.read_text(), "VALUE=1\n")
             self.assertFalse((state/"pending-update.json").exists())
+
+    def test_production_marker_and_backup_root_match_writer(self):
+        self.assertEqual(boot_sentry.UPDATE_STATE, updater.ROOT / '.jinx_update')
+        self.assertEqual(boot_sentry.UPDATE_MARKER, boot_sentry.UPDATE_STATE / 'pending-update.json')
+
+    def test_healthy_update_clears_the_actual_marker(self):
+        with tempfile.TemporaryDirectory() as folder:
+            marker = Path(folder) / '.jinx_update' / 'pending-update.json'
+            marker.parent.mkdir()
+            marker.write_text('{}')
+            with patch.object(boot_sentry, 'UPDATE_MARKER', marker), \
+                    patch.dict(os.environ, {'JINX_UPDATE_ATTEMPT': '1'}):
+                boot_sentry.mark_update_healthy()
+                self.assertNotIn('JINX_UPDATE_ATTEMPT', os.environ)
+            self.assertFalse(marker.exists())
 
     def test_path_filter_blocks_keys_memories_builds_and_vendor_assets(self):
         for path in ("../main.py", "config/api_keys.json", "memory/food.json", "assets/third_party/source.html", ".git/config",

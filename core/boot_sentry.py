@@ -11,7 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 STATE = ROOT / "config" / "self_heal"
 MARKER = STATE / "pending.json"
-UPDATE_MARKER = STATE / "pending-update.json"
+UPDATE_STATE = ROOT / ".jinx_update"
+UPDATE_MARKER = UPDATE_STATE / "pending-update.json"
 IMMUNE = {"main.py", "ui.py", "setup.py", "core/boot_sentry.py",
           "core/self_heal.py", "core/confirm.py", "core/undo.py",
           "core/outcome.py", "memory/config_manager.py"}
@@ -67,8 +68,8 @@ def _recover_update() -> bool:
             if row.get("created") is True:
                 target.unlink(missing_ok=True)
             else:
-                backup = (STATE / str(row["backup"])).resolve()
-                if STATE not in backup.parents or not backup.is_file() or backup.stat().st_size > 20_000_000:
+                backup = (UPDATE_STATE / str(row["backup"])).resolve()
+                if UPDATE_STATE.resolve() not in backup.parents or not backup.is_file() or backup.stat().st_size > 20_000_000:
                     raise ValueError("invalid update backup")
                 target.parent.mkdir(parents=True, exist_ok=True)
                 tmp = target.with_name(target.name + ".update-rollback")

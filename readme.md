@@ -1,5 +1,11 @@
 # ⚙️ JINX
 
+Atualização de integração em 14/11/2026: a expansão posterior à Fase 3 está
+incorporada com correções de rollback, autorreparo, testes do HUD e exemplo
+Arduino. O escopo entregue e as pendências estão em
+[INTEGRACAO_EXPANSAO.md](INTEGRACAO_EXPANSAO.md). Código disponível não significa
+que todas as contas, dispositivos e funcionalidades do plano foram validados.
+
 ### Tela cheia: só o orb e avisos compactos
 
 - O aplicativo **sempre inicia em tela cheia**, diretamente no modo orb.

@@ -39,7 +39,8 @@ def check(path, timeout):
     try:
         result = subprocess.run(command, cwd=ROOT, capture_output=True, text=True,
                                 encoding='utf-8', errors='replace', timeout=timeout,
-                                env={**os.environ, 'QT_QPA_PLATFORM': 'offscreen'})
+                                env={**os.environ, 'QT_QPA_PLATFORM': 'offscreen',
+                                     'PYTHONIOENCODING': 'utf-8'})
         state = 'passed' if result.returncode == 0 else 'failed'
         output = result.stdout + result.stderr
         code = result.returncode
