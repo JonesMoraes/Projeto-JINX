@@ -831,6 +831,107 @@ def as_json(contents, tier: str = FAST, config=None,
     return value
 
 
+def preview_voice(voice: str, cancel=None):
+    """Return a short Gemini prebuilt-voice sample as (bytes, MIME), or None.
+
+    Separate from the active Live session: never applies or saves a voice.
+    All model calls still use this core's accounts, clients and deadlines.
+    """
+    from memory.config_manager import AVAILABLE_VOICES, get_plugin_config
+    from core.gemini_accounts import attempt
+
+    if voice not in AVAILABLE_VOICES:
+        return None
+    settings = get_plugin_config('voice_preview') or {}
+    configured = str(settings.get('models') or '').strip()
+    models = [m.strip() for m in configured.split(',') if m.strip()] if configured else [
+        'gemini-3.8-flash-lite-tts', 'gemini-3.1-flash-tts-preview', 'gemini-2.5-pro-preview-tts']
+    sample = 'Olá! Esta é uma prévia da minha voz. Como posso ajudar você hoje?'
+    deadline = time.monotonic() + 30
+    for model in models[:3]:
+        if (cancel is not None and cancel.is_set()) or time.monotonic() >= deadline:
+            return None
+        legacy = model.startswith(('gemini-2.5-', 'gemini-3.1-'))
+        voice_config = {'prebuilt_voice_config': {'voice_name': voice}} if legacy else {'voice': voice}
+        def generate(account):
+            if (cancel is not None and cancel.is_set()) or time.monotonic() >= deadline:
+                raise InterruptedError('Voice preview cancelled or expired')
+            session = client(timeout_ms=10_000, key=account)
+            try:
+                return session.models.generate_content(
+                    model=model,
+                    contents=('Fale em português brasileiro, de modo natural: ' + sample) if legacy else sample,
+                    config={'response_modalities': ['AUDIO'],
+                            'speech_config': {'language_code': 'pt-BR', 'voice_config': voice_config}})
+            finally:
+                close = getattr(session, 'close', None)
+                if callable(close):
+                    try: close()
+                    except Exception: pass
+        try:
+            response = attempt(generate)
+            if cancel is not None and cancel.is_set(): return None
+            for candidate in getattr(response, 'candidates', None) or []:
+                content = getattr(candidate, 'content', None)
+                for part in getattr(content, 'parts', None) or []:
+                    blob = getattr(part, 'inline_data', None)
+                    data, mime = getattr(blob, 'data', None), getattr(blob, 'mime_type', '')
+                    if isinstance(data, bytes) and 0 < len(data) <= 2_000_000 and str(mime).lower().startswith('audio/'):
+                        return data, mime
+        except Exception as exc:
+            print(f'[Gemini] Voice preview {model}: {type(exc).__name__}')
+    return None
+
+
+def generate_image(prompt: str):
+    """Image through the configured cloud image models, tried in order.
+
+    Returns (bytes, mime) or None. Off unless the user enabled image generation
+    in the settings panel, because it consumes API quota. Each model gets its
+    own throwaway client, closed afterwards; a model that answers with no image
+    (or fails) passes the job to the next one.
+    """
+    from memory.config_manager import get_plugin_config
+    from core.gemini_accounts import attempt
+
+    cfg = get_plugin_config("image_generation") or {}
+    if not cfg.get("enabled"):
+        return None
+    models = [m.strip() for m in str(cfg.get("models") or "").split(",") if m.strip()]
+    if not models or not str(prompt or "").strip():
+        return None
+
+    for model in models:
+        def generate(account, model=model):
+            session = client(key=account)
+            try:
+                return session.models.generate_content(
+                    model=model, contents=prompt,
+                    config={"response_modalities": ["TEXT", "IMAGE"]})
+            finally:
+                close = getattr(session, "close", None)
+                if close:
+                    try:
+                        close()
+                    except Exception:
+                        pass  # Cleanup must not replace the generation result or error.
+        try:
+            response = attempt(generate)
+        except Exception as e:
+            print(f"[Gemini] image {model}: {type(e).__name__}: {str(e)[:140]}")
+            continue
+        for candidate in (getattr(response, "candidates", None) or []):
+            content = getattr(candidate, "content", None)
+            for part in (getattr(content, "parts", None) or []):
+                blob = getattr(part, "inline_data", None)
+                data = getattr(blob, "data", None)
+                mime = getattr(blob, "mime_type", None)
+                if isinstance(data, bytes) and data and mime:
+                    return data, mime
+        print(f"[Gemini] image {model}: no image in the reply")
+    return None
+
+
 _MISSING = object()
 _THINK_RE = re.compile(r"(?is)<think(?:ing)?>.*?</think(?:ing)?>")
 _FENCE_RE = re.compile(r"```(?:json|JSON)?\s*(.*?)```", re.S)

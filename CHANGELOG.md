@@ -1,5 +1,82 @@
 # Histórico de alterações
 
+## 2026-11-14 — Esferas EVO/ECHO e prévia de vozes
+- Removido o opt-in global que havia ocultado as esferas na execução normal
+  pelo Windows. Restrição mantida apenas em executor restrito, testes sem
+  tela ou desativação explícita. Views continuam criadas apenas ao selecionar.
+- Menu de visual mostra as quatro escolhas e explica indisponibilidade.
+  Fullscreen preserva EVO/ECHO; mudança de esfera persiste ao sair dele.
+- Cada voz tem botão de prévia, sem aplicar/salvar. Síntese via core.gemini,
+  contas e deadlines centralizados; saída PCM na rota validada do aplicativo.
+  Parar/fechar cancela amostras tardias; fila mantém só o pedido mais recente.
+  Cache em RAM limitado a oito amostras. Microfone e fala Live pausam durante
+  reprodução, com restauração mesmo após falha ao fechar a saída.
+- 288 testes selecionados aprovados (incluindo testes Qt e respostas Gemini
+  simuladas). Reprodução online das prévias e renderização Chromium ainda
+  precisam ser conferidas na abertura normal; executor mantém WinError 10013.
+
+## 2026-11-14 — Roteamento de áudio e abertura sempre em tela cheia
+- “Padrão do sistema” e nomes salvos resolvem para IDs físicos validados.
+  Falta de dispositivo não retorna mais None silenciosamente. Fallback após
+  falha exclui a rota que falhou e exige transporte confirmado na alternativa.
+- Removidos aliases portugueses/ingleses do seletor; probes por dispositivo,
+  direção e taxa; cache invalidado ao mudar taxas e enumeração concorrente
+  serializada. Cache/picker aquecidos antes da conexão de voz, fora do Qt.
+- Probes incluem drenagem da saída e fecham streams mesmo após erro. Saída
+  serializa escrita/fechamento para impedir close durante write em worker.
+  Teste de tom usa o mesmo contrato RawOutputStream/24 kHz/mono/int16 do app.
+- Pico de entrada sem overflow int16, sem afirmar transcrição por amplitude.
+  Volume nomeado verifica leitura e desmuta quando o usuário aumenta o nível.
+- F8 abre os testes; evita testes simultâneos no mesmo painel. Encerramento
+  por voz fecha pelo sinal Qt e solicita saída do loop/liberação de streams.
+- JinxUI inicia sempre em fullscreen/orb; F11 continua restaurando a janela.
+- 279 testes selecionados passaram. Fluxo de saída detectado em loopback;
+  frase sintetizada localmente ouvida claramente pelo usuário. Conversa online
+  e suíte completa seguem não aprovadas no executor com WinError 10013.
+
+## 2026-11-14 — Tela cheia com orb e pop-ups compactos
+- F11 agora oculta painéis e mostra somente o orb nativo, centralizado, sem
+  labels/waveform. Restaura estilo, painéis, tamanhos e janela maximizada.
+- Avisos de 268×76, até três visíveis, abrem detalhes apenas por clique,
+  atalho ou comando; sete segundos e histórico de 24 entradas com conteúdo.
+- Pop-up flutuante recolhível/ampliável; conteúdo anterior preservado,
+  quiz com respostas mantidas e mídias na própria janela do aplicativo.
+- Plugin display_control, comandos PT/EN, Ctrl+O e Ctrl+Espaço. Emissão de
+  sinal pelo JinxUI e confirmação de processamento no Qt para tools workers.
+- Confirmações humanas/expiração preservadas; câmera ativa e parar gravação
+  continuam acessíveis. Sem novo QApplication, dependência ou asset externo.
+- 17 testes novos passaram; regressão selecionada: 261 testes em 23 módulos.
+  F11, abrir resultado, Esc e orb isolado verificados na janela real.
+  Voz física continua dependente da conexão bloqueada no executor.
+
+## 2026-11-14 — Correções de inicialização do HUD e diagnóstico de voz
+- HUD nativo por padrão; WebEngine não é mais importado/criado ocultamente
+  para rosto/núcleo. Views web opcionais são criadas só quando selecionadas.
+  Se indisponíveis, visual salvo recua para rosto sem sobrescrever config.
+  Botão HUD mostra o estilo realmente exibido e alterna só entre disponíveis.
+- core/voice_runtime.py verifica conexão local com prazo e validação de pares
+  antes de entrar no asyncio. Recusa/timeout aparece no painel e estado ERRO;
+  falhas de inicialização não encerram silenciosamente o worker de voz.
+- Comandos digitados também mostram o motivo quando a voz não pôde iniciar.
+  Sem troca de event loop, monkeypatch de sockets ou alteração de permissões.
+- INICIAR_JINX.cmd usa o ambiente local e preserva stdout/stderr em logs.
+- 244 testes selecionados passaram, incluindo 11 novos. Aplicativo reaberto
+  normalmente, sem flags de WebEngine, com diagnóstico WinError 10013 observado
+  no HUD. Voz real e suíte completa seguem bloqueadas neste executor.
+
+## 2026-11-14 — Retomada: interrupção por voz, navegador e preferências
+- 5.1: detector opt-in integrado ao microfone; início da fala preservado,
+  cancelamento no loop de voz e descarte de áudio antigo no pipeline.
+  Corrigida análise espectral de blocos mono (frames, 1) do sounddevice.
+- 5.2: perfil persistente exclusivo JINX para automação; ação snapshot
+  acessível e texto com fronteira untrusted; cancelamento de timeout e logs.
+- 6.1: propostas de preferências com revisão/aceite local, arquivo separado,
+  escrita atômica, listagem/rejeição/remoção e undo.
+- 233 testes selecionados passaram. Smoke Qt dos plugins sem warnings.
+  Suíte completa/voz física não aprovadas: diagnóstico mínimo de asyncio
+  bloqueado no Windows, registrado pelo preflight dos testes internos.
+- Nenhuma dependência instalada, conta conectada, commit ou push nesta etapa.
+
 ## 2026-11-13 — Fase 3 e parada antes da Fase 4
 - Documentos PPTX/DOCX/XLSX e PDF com arquivos verificados e undo; dependências
   opcionais sob demanda na UI, sem aumentar requirements padrão.

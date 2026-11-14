@@ -386,6 +386,7 @@ class PipelineEngine:
         self._closed = True
         if self._gen and not self._gen.done():
             self._gen.cancel()
+
         await self._queue.put(None)
 
     async def warmup(self) -> None:
@@ -418,6 +419,20 @@ class PipelineEngine:
         """
         if self._gen and not self._gen.done():
             self._gen.cancel()
+
+        # Already-produced frames must not refill main.py's drained playback
+        # queue. Keep tool calls/input: cancellation cannot undo a running tool.
+        kept = []
+        while not self._queue.empty():
+            msg = self._queue.get_nowait()
+            sc = getattr(msg, 'server_content', None)
+            if (msg is None or getattr(msg, 'tool_call', None)
+                    or getattr(sc, 'input_transcription', None)):
+                kept.append(msg)
+        self._queue.put_nowait(Msg.turn_end())
+        for msg in kept:
+            self._queue.put_nowait(msg)
+        self._followup = False
 
     # ── generation ───────────────────────────────────────────────────────────
     def _queue_generation(self) -> None:
@@ -1006,7 +1021,7 @@ def _console(text: str) -> None:
     emoji raised UnicodeEncodeError on a non-UTF-8 console - cp1254 on a Turkish
     Windows, cp1251 on a Russian one, cp932 on a Japanese one - and because the
     print sat outside the tool's own try/except it escaped into the receive loop
-    and took the session down. Mark LV fixed that occurrence.
+    and took the session down. An earlier JINX release fixed that occurrence.
 
     The first version of the timing report brought it straight back, with
     box-drawing characters, and made it worse: this print sits INSIDE

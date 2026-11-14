@@ -99,8 +99,9 @@ Original license (retained — see `LICENSE`):
 
 What was changed in this fork:
 
-  - The product and every identifier were renamed: `JARVIS` → `JINX`,
-    `Mark-LVII` / `MARK LVII` → `JINX`.
+  - Application-facing branding uses JINX. Required upstream credits and
+    pretrained model identifiers remain where attribution or compatibility
+    requires them.
   - README and setup texts were updated to JINX and to credit the original.
   - No functionality was removed or relicensed.
 
@@ -111,3 +112,9 @@ under the terms of CC BY-NC 4.0 and **may not be used commercially**.
 Wake word: the built-in "Hey Jarvis" wake phrase is provided by the
 pretrained openwakeword model `hey_jarvis`, which is why that name is
 retained in the code.
+
+2026-11-14 expansion: opt-in voice interruption integration, dedicated browser
+automation profiles/accessibility snapshots, and reviewed learned preferences
+were implemented locally from this project's functional requirements. No
+third-party repository or asset was copied for these additions. Existing
+upstream credits and license terms remain applicable.

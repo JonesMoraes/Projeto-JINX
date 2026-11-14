@@ -11,8 +11,10 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 GROUPS = {"office": ("python-pptx", "python-docx", "openpyxl", "pypdf"),
-          "youtube": ("youtube-transcript-api",), "meeting": ("SoundCard>=0.4,<1",)}
-MODULES = {"office": ("pptx", "docx", "openpyxl", "pypdf"), "youtube": ("youtube_transcript_api",), "meeting": ("soundcard",)}
+          "youtube": ("youtube-transcript-api",), "meeting": ("SoundCard>=0.4,<1",),
+          "fitness": ("mediapipe",)}
+MODULES = {"office": ("pptx", "docx", "openpyxl", "pypdf"), "youtube": ("youtube_transcript_api",),
+           "meeting": ("soundcard",), "fitness": ("mediapipe",)}
 
 
 def install(group):

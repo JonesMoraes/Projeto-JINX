@@ -883,6 +883,22 @@ class DashboardServer:
                     .replace("__PORT__", str(PORT)))
             return HTMLResponse(html)
 
+        @app.get("/manifest.webmanifest")
+        async def phone_manifest():
+            return FileResponse(STATIC_DIR / "manifest.webmanifest",
+                                media_type="application/manifest+json")
+
+        @app.get("/service-worker.js")
+        async def phone_service_worker():
+            from fastapi.responses import Response
+            return Response((STATIC_DIR / "service-worker.js").read_text(encoding="utf-8"),
+                            media_type="application/javascript",
+                            headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
+
+        @app.get("/icons/jinx.svg")
+        async def phone_icon():
+            return FileResponse(STATIC_DIR / "jinx.svg", media_type="image/svg+xml")
+
         @app.post("/login")
         async def login(req: Request):
             who  = _who(req)
@@ -986,6 +1002,25 @@ class DashboardServer:
                 {"type": "sys", "text": "Dispositivo conhecido reconectado automaticamente."}
             ))
             return JSONResponse({"ok": True, "token": tok, "key": session_key})
+
+        @app.post("/api/device-unpair")
+        async def device_unpair_ep(req: Request):
+            if not _auth(req):
+                return JSONResponse({"error": "Acesso não autorizado"}, status_code=401)
+            try: body = await req.json()
+            except Exception: body = {}
+            dev_tok = str(body.get("device_token") or "").strip()
+            removed = bool(dev_tok and self._device_sessions.pop(dev_tok, None))
+            return JSONResponse({"ok": True, "unpaired": removed})
+
+        @app.post("/api/logout")
+        async def logout_ep(req: Request):
+            token = req.headers.get("authorization", "").removeprefix("Bearer ").strip()
+            if not _auth(req):
+                return JSONResponse({"error": "Acesso não autorizado"}, status_code=401)
+            existed = self._tokens.pop(token, None) is not None
+            self._token_keys.pop(token, None)
+            return JSONResponse({"ok": True, "logged_out": existed})
 
         @app.post("/api/revoke-devices")
         async def revoke_devices(req: Request):

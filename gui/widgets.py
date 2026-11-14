@@ -1008,7 +1008,7 @@ class StateChip(QWidget):
     """What the assistant is doing, in the middle of the header."""
 
     _COLOURS = {"LISTENING": "GREEN", "SPEAKING": "ACC", "THINKING": "ACC2",
-                "PROCESSING": "ACC2", "MUTED": "MUTED_C"}
+                "PROCESSING": "ACC2", "MUTED": "MUTED_C", "ERROR": "RED"}
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1045,7 +1045,7 @@ class StateChip(QWidget):
             "INITIALISING": "INICIALIZANDO", "SLEEPING": "EM ESPERA",
             "LISTENING": "OUVINDO", "SPEAKING": "FALANDO",
             "THINKING": "PENSANDO", "PROCESSING": "PROCESSANDO",
-            "MUTED": "MICROFONE MUDO",
+            "MUTED": "MICROFONE MUDO", "ERROR": "ERRO",
         }.get(self._state, self._state)
         p.drawText(QRectF(38, 0, W - 44, H), Qt.AlignmentFlag.AlignVCenter,
                    p.fontMetrics().elidedText(state_text, Qt.TextElideMode.ElideRight, int(W - 44)))

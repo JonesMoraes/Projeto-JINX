@@ -54,6 +54,13 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 
+# Recover only an interrupted, explicitly confirmed repair before Qt/model imports.
+try:
+    from core.boot_sentry import recover as _recover_self_heal
+    _recover_self_heal()
+except Exception as _recovery_error:
+    print(f"[self-heal] boot recovery unavailable: {type(_recovery_error).__name__}")
+
 import sounddevice as sd
 import numpy as np
 from google import genai
@@ -93,6 +100,7 @@ from core                      import confirm as confirm_gate
 from core                      import audio_devices
 from core.action_loader        import discover_actions
 from core.echo                 import EchoGuard
+from core import barge_in
 from core.viseme               import VisemeStream
 from core.wake_word            import (
     WakeWordDetector, is_ready as wake_is_ready, install_and_download as wake_install,
@@ -633,6 +641,8 @@ class JinxLive:
         self._ptt                  = None    # core.hotkey.PushToTalk
         self._out_level            = 0.0     # level of the audio being played right now
         self._echo                 = EchoGuard()
+        barge_in.configure()
+        self._barge_gate            = barge_in.Gate()
         # `stream.write()` returns when the buffer accepts the audio, not when the
         # speaker has finished with it, so sound is still in the room after the
         # speaking flag drops. Streaming the microphone during that gap is how an
@@ -651,6 +661,12 @@ class JinxLive:
         self.ui.on_remote_clicked = self._make_remote_key
         self.ui.on_interrupt      = self.interrupt
         self.ui.on_voice_change   = self._on_voice_change     # voice picker → rebuild session
+        self._voice_preview_active = threading.Event()
+        self._voice_preview_until = 0.0
+        self.ui.on_voice_preview_state = self._on_voice_preview_state
+        from core import camera_observers as _camera_observers
+        self.ui.on_camera_frame = _camera_observers.feed
+        self.ui.on_camera_stopped = _camera_observers.stop
         self.ui.on_audio_device_change = self._on_audio_device_change
         self._reconnect_event: asyncio.Event | None = None
         self._reconnect_keep = True   # False → next rebuild drops the resumption handle
@@ -972,6 +988,12 @@ class JinxLive:
                 asyncio.run_coroutine_threadsafe(self._wrap_up(), loop).result(timeout)
             except Exception as e:
                 print(f"[JINX] wrap-up cut short: {e!r}")
+            self._exiting = True
+            if self._reconnect_event is not None:
+                loop.call_soon_threadsafe(self._reconnect_event.set)
+            stopped = getattr(self, '_runtime_stopped', None)
+            if stopped is not None and not stopped.wait(3.0):
+                print('[JINX] Voice cleanup exceeded 3 seconds; closing process.')
         self._stop_engines()
 
     # ── Routines (core/routines) ─────────────────────────────────────────────────
@@ -1137,6 +1159,15 @@ class JinxLive:
         if loop and ev is not None:
             loop.call_soon_threadsafe(ev.set)
 
+    def _on_voice_preview_state(self, active):
+        if active:
+            self._voice_preview_active.set()
+            self.interrupt()
+            return self._out_latency + .25
+        self._voice_preview_until = time.monotonic() + .4
+        self._voice_preview_active.clear()
+        return 0
+
     def _on_voice_change(self):
         """Voice picker applied.
 
@@ -1223,6 +1254,15 @@ class JinxLive:
                 getattr(self._dashboard, "_bind_error", "") or "")
 
     def _on_text_command(self, text: str):
+        from core.display_commands import parse as parse_display_command
+        display_command = parse_display_command(text)
+        if display_command:
+            self.ui.control_display(*display_command)
+            return
+        problem = getattr(self, '_startup_problem', '')
+        if problem:
+            self.ui.show_content('VOZ INDISPONÍVEL / VOICE UNAVAILABLE', problem)
+            return
         if _preferences.blocked(text):
             self.ui.write_log("SYS: Frase ignorada conforme sua lista / Phrase ignored by your list.")
             return
@@ -1335,6 +1375,14 @@ class JinxLive:
 
     def interrupt(self) -> None:
         """Stop JINX mid-speech: drain queued audio and open mic immediately."""
+        if self._loop is not None:
+            try:
+                current_loop = asyncio.get_running_loop()
+            except RuntimeError:
+                current_loop = None
+            if current_loop is not self._loop:
+                self._loop.call_soon_threadsafe(self.interrupt)
+                return
         self._interrupted = True
         q = self.audio_in_queue
         if q:
@@ -1362,6 +1410,25 @@ class JinxLive:
             except Exception:
                 pass
         self.ui.write_log("SYS: Interrupted — listening...")
+
+    def _voice_interruption_allowed(self):
+        return (barge_in.enabled() and not self.ui.muted
+                and not self._phone_active
+                and (not self._wake_enabled or self._awake)
+                and (not self._ptt_enabled or self._ptt_held))
+
+    def _interrupt_from_voice(self, audio, detected_ms):
+        """Runs on the voice loop, never on the microphone/Qt callback thread."""
+        with self._speaking_lock:
+            speaking = self._is_speaking
+        if not speaking or not self._voice_interruption_allowed():
+            return
+        self.interrupt()
+        for data in audio:
+            self.out_queue.put_nowait({"data": data, "mime_type": "audio/pcm"})
+        self._last_user_speech = time.monotonic()
+        self.ui.write_log(f"SYS: Voice interruption: detection {detected_ms:.0f} ms; "
+                          "device playback latency is additional.")
 
     def speak(self, text: str):
         if not self._loop or not self.session:
@@ -1706,8 +1773,7 @@ class JinxLive:
                         except Exception:
                             await asyncio.sleep(1.5)
                     await asyncio.gather(_goodbye(), self._wrap_up())
-                    self._stop_engines()
-                    _exit_process(0)
+                    self.ui.request_close()
                 self._keep_task(asyncio.create_task(_do_shutdown()))
 
             elif self._action_registry.has(name):
@@ -1804,6 +1870,8 @@ class JinxLive:
         loop = asyncio.get_event_loop()
 
         def callback(indata, frames, time_info, status):
+            if self._voice_preview_active.is_set() or time.monotonic() < self._voice_preview_until:
+                return
             # ── Wake-word gate ───────────────────────────────────────────────
             # While asleep, the mic audio NEVER goes to Gemini (nothing is
             # streamed, so JINX can't respond to speech not addressed to it and
@@ -1829,15 +1897,14 @@ class JinxLive:
             # the echo of what we are playing right now", sustained long enough
             # that a cough or a keystroke cannot trigger it.
             if jinx_speaking:
-                # Nothing is streamed while JINX talks.
-                #
-                # Interrupting by voice used to live here: `EchoGuard` can pick a
-                # user out from under our own echo, and `core/echo.py` still does
-                # that for the tail below. Re-enabling is small — classify each
-                # block here and call interrupt() after `required_blocks` of
-                # agreement — but it depends on the listener's room, so it stays
-                # out until it can be tried on real hardware.
+                if self._barge_gate.feed(
+                        self._echo, indata, SEND_SAMPLE_RATE, _pcm_level(indata),
+                        speaking=True, allowed=self._voice_interruption_allowed()):
+                    loop.call_soon_threadsafe(
+                        self._interrupt_from_voice, self._barge_gate.take_audio(),
+                        self._barge_gate.last_detection_ms)
                 return
+            self._barge_gate.reset()
 
             # ── Echo tail ────────────────────────────────────────────────────
             # The speaking flag has dropped but the speakers have not finished.
@@ -1879,7 +1946,7 @@ class JinxLive:
 
         try:
             def _open_mic(dev):
-                return sd.InputStream(
+                stream = sd.InputStream(
                     samplerate=SEND_SAMPLE_RATE,
                     channels=CHANNELS,
                     dtype="int16",
@@ -1887,13 +1954,17 @@ class JinxLive:
                     device=dev,
                     callback=callback,
                 )
+                try:
+                    stream.start()
+                except Exception:
+                    audio_devices._close_stream(stream)
+                    raise
+                return stream
 
-            # Which microphone. resolve() returns None for "system default" and
-            # for a saved device that is no longer present — so a headset
-            # unplugged since the last run falls back to the built-in mic
-            # instead of raising on startup and taking the session with it.
+            # Resolve the default too: every stream must use a physical
+            # endpoint whose transport was checked, not an untested alias.
             _mic_name = get_input_device()
-            _mic_dev  = audio_devices.resolve(_mic_name, "input")
+            _mic_dev  = await asyncio.to_thread(audio_devices.resolve, _mic_name, "input")
             if _mic_dev is not None:
                 print(f"[JINX] 🎤 Input device: {_mic_name}")
             try:
@@ -1909,12 +1980,15 @@ class JinxLive:
                 self.ui.write_log(
                     f"SYS: Microphone '{_mic_name}' unavailable — using system default."
                 )
-                _mic_stream = _open_mic(None)
+                fallback = await asyncio.to_thread(audio_devices.resolve, '', 'input', refresh=True, exclude=(_mic_dev,))
+                _mic_stream = _open_mic(fallback)
 
-            with _mic_stream:
+            try:
                 print("[JINX] 🎤 Mic stream open")
                 while True:
                     await asyncio.sleep(0.1)
+            finally:
+                audio_devices._close_stream(_mic_stream)
         except Exception as e:
             print(f"[JINX] ❌ Mic: {e}")
             raise
@@ -2003,6 +2077,14 @@ class JinxLive:
 
                     if response.server_content:
                         sc = response.server_content
+
+                        # Live may acknowledge an interruption without a
+                        # turn_complete. Do not discard the next whole reply.
+                        if getattr(sc, 'interrupted', False):
+                            self._interrupted = False
+                            out_buf = []
+                            self._visemes.reset()
+                            self.set_speaking(False)
 
                         if sc.output_transcription and sc.output_transcription.text:
                             txt = _clean_transcript(sc.output_transcription.text)
@@ -2100,7 +2182,7 @@ class JinxLive:
         print("[JINX] 🔊 Play started")
 
         _spk_name = get_output_device()
-        _spk_dev  = audio_devices.resolve(_spk_name, "output")
+        _spk_dev  = await asyncio.to_thread(audio_devices.resolve, _spk_name, "output")
         if _spk_dev is not None:
             print(f"[JINX] 🔊 Output device: {_spk_name}")
 
@@ -2112,8 +2194,12 @@ class JinxLive:
                 blocksize=CHUNK_SIZE,
                 device=dev,
             )
-            st.start()
-            return st
+            try:
+                st.start()
+            except Exception:
+                audio_devices._close_stream(st)
+                raise
+            return audio_devices.SerializedOutput(st)
 
         try:
             stream = _open_spk(_spk_dev)
@@ -2125,7 +2211,8 @@ class JinxLive:
                 raise
             print(f"[JINX] ⚠️  Output device '{_spk_name}' failed: {_e} — using default")
             self.ui.write_log(f"SYS: Speaker '{_spk_name}' unavailable — using system default.")
-            stream = _open_spk(None)
+            fallback = await asyncio.to_thread(audio_devices.resolve, '', 'output', refresh=True, exclude=(_spk_dev,))
+            stream = _open_spk(fallback)
 
         # Ask the device how far behind the speakers actually are, rather than
         # assuming. This is what the echo tail is sized from, so a machine with a
@@ -2157,6 +2244,8 @@ class JinxLive:
                         self._turn_done_event.clear()
                     continue
 
+                if self._voice_preview_active.is_set() or time.monotonic() < self._voice_preview_until:
+                    continue
                 self.set_speaking(True)
 
                 # Batch all immediately-available chunks into one write to reduce
@@ -2228,8 +2317,7 @@ class JinxLive:
             raise
         finally:
             self.set_speaking(False)
-            stream.stop()
-            stream.close()
+            audio_devices._close_stream(stream)
 
     # ── Morning briefing ────────────────────────────────────────────────────────
 
@@ -2772,6 +2860,7 @@ class JinxLive:
         # Enumerate audio devices off-thread. The settings drawer must never pay
         # for host-API enumeration on the Qt thread.
         audio_devices.prefetch()
+        await asyncio.to_thread(audio_devices.list_devices, 'input')
 
         # Start dashboard (optional — needs: pip install fastapi "uvicorn[standard]" cryptography)
         try:
@@ -2785,7 +2874,7 @@ class JinxLive:
             print(f"[Dashboard] Disabled: {e}")
             self._dashboard = None
 
-        while True:
+        while not getattr(self, '_exiting', False):
             try:
                 self._ensure_executor()
                 print("[JINX] Connecting...")
@@ -3122,16 +3211,16 @@ def _exit_process(code: int = 0) -> None:
 
 def main():
     ui = JinxUI("face.png")
+    try:
+        from core.boot_sentry import mark_update_healthy
+        mark_update_healthy()
+    except Exception:
+        pass
     holder: dict = {}
 
     def runner():
-        ui.wait_for_api_key()
-        jinx = JinxLive(ui)
-        holder["jinx"] = jinx
-        try:
-            asyncio.run(jinx.run())
-        except KeyboardInterrupt:
-            print("\n🔴 Shutting down...")
+        from core.voice_runtime import run_voice_session
+        run_voice_session(ui, JinxLive, lambda voice: holder.update(jinx=voice))
 
     threading.Thread(target=runner, daemon=True).start()
     ui.root.mainloop()

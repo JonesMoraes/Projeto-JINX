@@ -4,9 +4,10 @@ import hashlib
 import json
 import re
 import shutil
+import shlex
 import threading
 import time
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 
 def get_base_dir():
@@ -25,6 +26,43 @@ from core import gemini
 MODEL_PLANNER    = gemini.SMART
 MODEL_WRITER     = gemini.SMART
 
+
+def _project_file_path(project_dir: Path, relative: str) -> Path:
+    """Resolve one model-proposed file path strictly inside its approved project."""
+    raw = str(relative or "").replace("\\", "/").strip()
+    posix = PurePosixPath(raw)
+    if (not raw or posix.is_absolute() or ":" in raw or
+            any(part in ("", ".", "..") for part in posix.parts) or
+            any(any(ch in part for ch in '<>:"|?*') for part in posix.parts)):
+        raise ValueError("Generated file path must be a safe project-relative path")
+    root = project_dir.resolve()
+    target = (root / Path(*posix.parts)).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError as exc:
+        raise ValueError("Generated file path escaped the approved project") from exc
+    return target
+
+
+def _safe_run_argv(run_command: str, project_dir: Path) -> list[str] | None:
+    """Only run a single Python/Node entry file; never a model-supplied shell command."""
+    try:
+        parts = shlex.split(str(run_command or ""), posix=True)
+    except ValueError:
+        return None
+    if len(parts) != 2 or parts[0].lower() not in {
+            "python", "python3", "python.exe", "node", "node.exe"}:
+        return None
+    try:
+        entry = _project_file_path(project_dir, parts[1])
+        entry.relative_to(project_dir.resolve())
+    except (ValueError, OSError):
+        return None
+    executable = sys.executable if parts[0].lower().startswith("python") else shutil.which("node")
+    if not executable:
+        return None
+    return [executable, str(entry)]
+
 def _get_api_key() -> str:
     with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
         return json.load(f)["gemini_api_key"]
@@ -37,6 +75,11 @@ def _coding_provider() -> str:
         return get_coding_provider()
     except Exception:
         return ""
+
+
+def _claude_cli_available() -> bool:
+    """Detect an existing Claude CLI without invoking or installing it."""
+    return shutil.which("claude") is not None
 
 
 def _get_model(model_name: str = gemini.SMART):
@@ -250,7 +293,7 @@ Code for {file_path}:"""
         response = model.generate_content(prompt)
         code = _strip_fences(response.text)
 
-        full_path = project_dir / file_path
+        full_path = _project_file_path(project_dir, file_path)
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_text(code, encoding="utf-8")
 
@@ -265,54 +308,30 @@ Code for {file_path}:"""
 def _install_dependencies(dependencies: list[str], project_dir: Path) -> str:
     if not dependencies:
         return "No external dependencies."
-
-    to_install = []
-    for dep in dependencies:
-        pkg_name = re.split(r"[>=<!]", dep)[0].strip()
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "show", pkg_name],
-            capture_output=True, text=True
-        )
-        if result.returncode != 0:
-            to_install.append(dep)
-        else:
-            print(f"[DevAgent] ✓ Already installed: {pkg_name}")
-
-    if not to_install:
-        return f"All dependencies already installed: {', '.join(dependencies)}"
-
-    print(f"[DevAgent] 📦 Installing: {to_install}")
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "install"] + to_install,
-            capture_output=True, text=True,
-            encoding="utf-8", errors="replace",
-            timeout=120, cwd=str(project_dir)
-        )
-        if result.returncode == 0:
-            return f"Installed: {', '.join(to_install)}"
-        return f"Install warning (non-fatal): {result.stderr[:200]}"
-    except subprocess.TimeoutExpired:
-        return "Dependency install timed out (non-fatal)."
-    except Exception as e:
-        return f"Install error (non-fatal): {e}"
+    return ("Dependencies requested but not installed automatically: "
+            + ", ".join(str(x)[:80] for x in dependencies[:20])
+            + ". Review and install them through the app's package manager.")
 
 def _open_vscode(project_dir: Path) -> bool:
     vscode_candidates = [
-        "code",
-        rf"C:\Users\{Path.home().name}\AppData\Local\Programs\Microsoft VS Code\bin\code.cmd",
-        r"C:\Program Files\Microsoft VS Code\bin\code.cmd",
+        shutil.which("Code.exe") or shutil.which("code.exe"),
+        str(Path.home() / "AppData" / "Local" / "Programs" / "Microsoft VS Code" / "Code.exe"),
+        r"C:\Program Files\Microsoft VS Code\Code.exe",
     ]
     for cmd in vscode_candidates:
+        if not cmd:
+            continue
         try:
-            subprocess.Popen(
-                [cmd, str(project_dir)],
-                shell=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-            time.sleep(1.5)
-            print(f"[DevAgent] 💻 VSCode opened: {project_dir}")
+            log_dir = BASE_DIR / "logs"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            with (log_dir / "dev-agent-vscode.log").open("ab") as log_handle:
+                subprocess.Popen(
+                    [cmd, str(project_dir)],
+                    shell=False,
+                    stdout=log_handle,
+                    stderr=subprocess.STDOUT,
+                )
+            print(f"[DevAgent] 💻 VS Code launch requested: {project_dir}")
             return True
         except Exception:
             continue
@@ -321,9 +340,9 @@ def _open_vscode(project_dir: Path) -> bool:
 def _run_project(run_command: str, project_dir: Path, timeout: int = 30) -> str:
     print(f"[DevAgent] 🚀 Running: {run_command}")
     try:
-        parts = run_command.split()
-        if parts[0].lower() == "python":
-            parts[0] = sys.executable
+        parts = _safe_run_argv(run_command, project_dir)
+        if not parts:
+            return "Project saved; its proposed run command was not a permitted single Python/Node entry file, so nothing was executed."
 
         result = subprocess.run(
             parts,
@@ -352,26 +371,8 @@ def _run_project(run_command: str, project_dir: Path, timeout: int = 30) -> str:
         return f"Run error: {e}"
 
 def _try_auto_install(error_output: str, project_dir: Path) -> bool:
-    """If there is a ModuleNotFoundError, tries to auto-install the missing package."""
-    pattern = re.compile(
-        r"No module named ['\"]([a-zA-Z0-9_\-\.]+)['\"]", re.IGNORECASE
-    )
-    match = pattern.search(error_output)
-    if not match:
-        return False
-
-    pkg = match.group(1).replace("_", "-").split(".")[0]
-    print(f"[DevAgent] 🔧 Auto-installing missing package: {pkg}")
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", pkg],
-            capture_output=True, text=True,
-            encoding="utf-8", errors="replace",
-            timeout=60, cwd=str(project_dir)
-        )
-        return result.returncode == 0
-    except Exception:
-        return False
+    """Never execute pip from generated output; dependency changes use the UI."""
+    return False
 
 def _fix_files(
     error_output: str,
@@ -448,7 +449,7 @@ Fixed code for {fix_path}:"""
             response = model.generate_content(prompt)
             fixed = _strip_fences(response.text)
 
-            full_path = project_dir / fix_path
+            full_path = _project_file_path(project_dir, fix_path)
             full_path.parent.mkdir(parents=True, exist_ok=True)
             full_path.write_text(fixed, encoding="utf-8")
 
@@ -499,6 +500,20 @@ def _build_project(
     entry_point  = plan.get("entry_point", "main.py")
     run_command  = plan.get("run_command", f"python {entry_point}")
     dependencies = plan.get("dependencies", [])
+
+    if not isinstance(files, list) or not files or len(files) > 100:
+        return "Planning failed: expected 1–100 project files. Nothing was written."
+    try:
+        safe_paths = [_project_file_path(project_dir, fi.get("path", ""))
+                      for fi in files if isinstance(fi, dict)]
+        if (len(safe_paths) != len(files)
+                or len({str(path).casefold() for path in safe_paths}) != len(files)):
+            raise ValueError("invalid or duplicate project file path")
+        entry_path = _project_file_path(project_dir, entry_point)
+        if entry_path not in safe_paths:
+            raise ValueError("entry point is not in the planned project files")
+    except (ValueError, OSError) as exc:
+        return f"Planning failed: {str(exc)[:180]}. Nothing was written."
 
     log(f"Project: {proj_name} | Files: {len(files)} | Entry: {entry_point}")
     with _state_lock:
@@ -567,6 +582,10 @@ def _build_project(
 
     last_output   = ""
     auto_installs = 0  
+
+    if not _safe_run_argv(run_command, project_dir):
+        return (f"Project '{proj_name}' was saved to {project_dir}, but its run command "
+                "was not a permitted single Python or Node entry file, so it was not executed.")
 
     _update("testing")
     for attempt in range(1, MAX_FIX_ATTEMPTS + 1):
@@ -749,8 +768,11 @@ def _log(player, msg: str) -> None:
 def _status_report() -> str:
     """What the coding agent is doing, or did — for the assistant to say."""
     j = _job_snapshot()
+    claude_note = ("Claude CLI detected; it is not invoked automatically. "
+                   if _claude_cli_available() else
+                   "Claude CLI not detected; no CLI was installed. ")
     if not j:
-        return ("The coding agent has not worked on a folder in this session. "
+        return (claude_note + "The coding agent has not worked on a folder in this session. "
                 "Tell the user that, in one sentence.")
     took = (j["finished"] or time.time()) - j["started"]
     files = "; ".join(f"{p} ({f.get('action', '?')}, {f.get('state', '?')}): "
@@ -760,7 +782,7 @@ def _status_report() -> str:
             f"{j['status']}, {took:.0f}s so far" if j["finished"] is None
             else f"Coding agent finished '{j['folder']}' with {j['model']} "
                  f"in {took:.0f}s — status: {j['status']}")
-    return (f"{head}. Request: {j['request']}. Plan: {j['summary'] or 'not made yet'}. "
+    return (claude_note + f"{head}. Request: {j['request']}. Plan: {j['summary'] or 'not made yet'}. "
             f"Files: {files or 'none yet'}. Recent steps: {recent}. "
             f"{('Result: ' + j['result']) if j['result'] else ''} "
             f"Answer the user's question from this in one to three sentences, "
@@ -1603,16 +1625,33 @@ def dev_agent(
     if mode == "improve" or (folder and mode != "build"):
         if not description:
             return "Tell me what to change in the folder, sir."
-        return _start_improve(folder, description, speak=speak, player=player)
-    language     = p.get("language", "python").strip()
-    project_name = p.get("project_name", "").strip()
-    timeout      = int(p.get("timeout", 30))
-
-    if not description:
-        return "Please describe the project you want me to build, sir."
-
-    return _start_build(description, language, project_name, timeout,
-                        speak=speak, player=player)
+        target = _resolve_folder(folder)
+        if target is None:
+            return "Choose a valid project folder before requesting changes."
+        why = _refusal(target)
+        if why:
+            return why
+        launch = lambda: _start_improve(folder, description, speak=speak, player=player)
+        title = f"Allow coding agent to edit {target.name}?"
+    else:
+        language = str(p.get("language") or "python").strip()[:40]
+        project_name = str(p.get("project_name") or "").strip()[:80]
+        timeout = max(1, min(int(p.get("timeout", 30)), 120))
+        if not description:
+            return "Please describe the project you want me to build, sir."
+        launch = lambda: _start_build(description, language, project_name,
+                                      timeout, speak=speak, player=player)
+        target = PROJECTS_DIR / (re.sub(r"[^\w\-]", "_", project_name) or "new_project")
+        title = f"Allow coding agent to create {target.name}?"
+    if player is None or not callable(getattr(player, "show_confirm", None)):
+        return "Open the JINX HUD to review and confirm this coding task; nothing was changed."
+    from core import confirm
+    if confirm.pending_title():
+        return "Another confirmation is open. Finish it before starting a coding task."
+    player.show_content("Coding task — review", f"Folder: {target}\n\nRequest:\n{description[:3000]}\n\nAfter approval the agent may edit files, execute project tests and application code. Missing dependencies are not installed automatically.")
+    return confirm.request("dev_agent", title,
+                           f"Review the folder and requested change in the HUD. Files may be written and project code/tests may run.",
+                           launch)
 
 
 # ── Tool declaration (auto-discovered by core/action_loader.py) ──────────────

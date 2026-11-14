@@ -10,10 +10,9 @@ during that gap is how an assistant hears its own last sentence and answers
 itself. This module lets the tail drop our own voice while still passing a user
 who replies instantly, instead of blanket-muting.
 
-Interrupting mid-sentence by voice is the other thing it can do, and everything
-needed for it is here and tested — but it depends on the listener's room, so it
-stays switched off until it can be tried on real hardware. See the note in
-`_listen_audio` for how little it takes to turn back on.
+Interrupting mid-sentence uses core/barge_in.py and is opt-in in settings.
+Room acoustics and device buffers determine the measured latency; synthetic
+tests do not replace a real microphone/speaker acceptance test.
 
 The problem with a level test
 -----------------------------
@@ -99,7 +98,10 @@ def band_energies(pcm, sr: int) -> np.ndarray:
     Left unnormalised on purpose: the decision below projects one of these onto
     another, and a projection needs real magnitudes.
     """
-    x = np.asarray(pcm, dtype=np.float32)
+    # sounddevice.InputStream supplies (frames, 1), while playback is 1-D.
+    # Flatten mono input before windowing: broadcasting (N,1) by (N,) creates
+    # an N-by-N array and makes the frequency mask invalid.
+    x = np.asarray(pcm, dtype=np.float32).reshape(-1)
     if x.size < 64:
         return np.zeros(len(_BAND_EDGES) - 1, dtype=np.float32)
     x = x - x.mean()

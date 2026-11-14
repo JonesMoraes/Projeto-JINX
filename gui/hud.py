@@ -17,6 +17,7 @@ import urllib.request
 from pathlib import Path
 
 import psutil
+from core.hud_support import web_hud_block_reason
 
 from PyQt6.QtCore import (
     QEasingCurve, QLineF, QMimeData, QObject, QParallelAnimationGroup, QPointF,
@@ -36,6 +37,8 @@ from PyQt6.QtWidgets import (
 )
 
 try:
+    if web_hud_block_reason():
+        raise ImportError('Web HUD unavailable in this execution context')
     from PyQt6.QtWebEngineCore import QWebEngineSettings
     from PyQt6.QtWebEngineWidgets import QWebEngineView
 except Exception:  # Optional fallback keeps face/core usable without WebEngine.
@@ -96,6 +99,12 @@ class _OrbAssetFetcher(threading.Thread):
 
 
 class HudCanvas(QWidget):
+    @staticmethod
+    def available_styles():
+        if QWebEngineView is None:
+            return ('face', 'core')
+        return ('face', 'core', 'brahma_evo', 'brahma_echo')
+
     def __init__(self, face_path: str, assistant_name: str = "JINX", parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent)
@@ -105,6 +114,7 @@ class HudCanvas(QWidget):
         self.muted    = False
         self.speaking = False
         self.state    = "INITIALISING"
+        self.immersive = False
         self._assistant_name = assistant_name
 
         # The holographic head that fills the HUD. If it could not be imported
@@ -134,10 +144,12 @@ class HudCanvas(QWidget):
             self.hud_style = get_hud_style()
         except Exception:
             self.hud_style = "face"
+        if self.hud_style not in self.available_styles():
+            self.hud_style = 'face'
         self._core_phase = 0.0
 
-        # The two Brahma visuals are local, offline WebGL pages. Keep their
-        # views alive while hidden so changing the selector is immediate.
+        # Optional web views are created only when selected, never hidden at
+        # startup. Native styles do not initialize Chromium or download assets.
         self._orb_views = {}
         self._orb_workers = {}
         self._orb_signals = _OrbDownloadSignals(self)
@@ -146,22 +158,6 @@ class HudCanvas(QWidget):
         self._last_orb_sync = 0.0
         self._last_orb_state = None
         self._last_orb_style = None
-        if QWebEngineView is not None:
-            for style in ("brahma_evo", "brahma_echo"):
-                view = QWebEngineView(self)
-                view.setGeometry(self.rect())
-                if QWebEngineSettings is not None:
-                    settings = view.settings()
-                    settings.setAttribute(
-                        QWebEngineSettings.WebAttribute.WebGLEnabled, True)
-                    settings.setAttribute(
-                        QWebEngineSettings.WebAttribute.Accelerated2dCanvasEnabled, True)
-                view._jinx_orb_loaded_once = False
-                view._jinx_orb_download_started = False
-                view.loadFinished.connect(
-                    lambda ok, orb_style=style: self._on_orb_loaded(orb_style, ok))
-                view.hide()
-                self._orb_views[style] = view
         self._sync_hud_style()
 
         self._tick       = 0
@@ -277,6 +273,20 @@ class HudCanvas(QWidget):
 
     def _sync_hud_style(self) -> None:
         """Show exactly the selected local orb, if its WebEngine is available."""
+        if (self.hud_style in ('brahma_evo', 'brahma_echo')
+                and QWebEngineView is not None and self.hud_style not in self._orb_views):
+            style = self.hud_style
+            view = QWebEngineView(self)
+            view.setGeometry(self.rect())
+            if QWebEngineSettings is not None:
+                settings = view.settings()
+                settings.setAttribute(QWebEngineSettings.WebAttribute.WebGLEnabled, True)
+                settings.setAttribute(QWebEngineSettings.WebAttribute.Accelerated2dCanvasEnabled, True)
+            view._jinx_orb_loaded_once = False
+            view._jinx_orb_download_started = False
+            view.loadFinished.connect(lambda ok, orb_style=style: self._on_orb_loaded(orb_style, ok))
+            view.hide()
+            self._orb_views[style] = view
         active = self.hud_style if self.hud_style in self._orb_views else None
         for style, view in self._orb_views.items():
             view.setGeometry(self.rect())
@@ -794,6 +804,13 @@ class HudCanvas(QWidget):
             return
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         W, H = self.width(), self.height()
+
+        if self.immersive:
+            p.fillRect(self.rect(), qcol(C.BG))
+            radius = min(W * 0.23, H * 0.27, 320.0)
+            self._paint_core(p, W / 2, H / 2, radius, W, H)
+            p.end()
+            return
 
         # The backdrop is one cached pixmap, rebuilt only when the size or the
         # theme changes — so live re-theming still repaints it.

@@ -1,8 +1,65 @@
 # ⚙️ JINX
 
-As implementações locais até a Fase 3 estão disponíveis; Fase 4 pausada antes
-de começar por solicitação do usuário. Resultados e limites dos testes internos
-em [PHASE_3_VALIDATION.md](PHASE_3_VALIDATION.md): 187 testes passaram.
+### Tela cheia: só o orb e avisos compactos
+
+- O aplicativo **sempre inicia em tela cheia**, diretamente no modo orb.
+- **F11** entra/sai do modo orb: sem cabeçalho, laterais, texto de estado ou
+  waveform. Ao sair, o visual e os painéis anteriores são restaurados.
+- Resultados aparecem como avisos pequenos no canto inferior direito.
+  Clique em **Abrir**, use **Ctrl+O**, ou peça **“abra o último pop-up”** /
+  **“abra o pop-up de notícias”**. **“Amplie o pop-up”** aumenta os detalhes;
+  **“feche o pop-up”** ou **Esc** recolhe ao orb. Outro Esc sai da tela cheia.
+- **Ctrl+Espaço** abre uma linha discreta para digitar pedidos; comandos de
+  tela/pop-up funcionam localmente, mesmo sem sessão de voz. Exemplos em
+  inglês: “open the latest popup”, “expand popup”, “close popup”.
+- Até três avisos comuns na tela, com duração de sete segundos e histórico
+  limitado aos 24 resultados mais recentes. Sumir/dispensar o aviso não
+  executa novamente a função nem remove o resultado do histórico.
+- Questionários, revisões, progresso do agente, imagens/vídeos e confirmações
+  usam a mesma apresentação. Confirmações mantêm seus botões e prazo original;
+  abrir o pop-up não confirma a operação. Parar gravação permanece visível e
+  câmera ativa mantém aviso persistente, cujo × encerra a captura.
+
+### Áudio
+
+**F8** abre os testes de microfone/alto-falantes, inclusive no modo orb. Clique
+em TESTAR no microfone e fale durante o medidor; depois teste a saída. Só um
+teste executa por vez. A opção “System default” também usa uma saída física
+com transporte verificado; dispositivos virtuais e APIs sem fluxo confirmado
+não são usados silenciosamente como fallback. O app mantém sua escolha e seu
+volume, e não coloca o volume do sistema em 100% automaticamente.
+
+Verificação nesta máquina: microfone Realtek/DirectSound, saída Realtek/MME,
+captura/saída simultâneas e síntese de voz local. O usuário confirmou ouvir
+claramente a frase de teste. Isso confirma reprodução real; reconhecimento
+de fala com o provedor online ainda depende da conexão de voz.
+
+No Windows, abra **INICIAR_JINX.cmd** na pasta do projeto. Ele usa o ambiente
+local e registra stdout/stderr em logs/desktop-start.log, sem instalar pacotes
+ou alterar configurações. Rosto e núcleo iniciam sem criar views WebEngine.
+EVO e ECHO voltaram ao seletor de visual na execução normal pelo Windows;
+a esfera escolhida também permanece em tela cheia. No executor restrito,
+o menu informa por que os visuais web não podem ser iniciados.
+
+Em **Personalizar assistente → Voz**, cada opção tem um botão **▶** para
+ouvir uma amostra antes de aplicar. Também há **Ouvir voz selecionada** e
+**Parar**. Ouvir não altera a voz ativa; **Aplicar alterações** confirma a
+troca. As amostras usam a conta Gemini configurada e sua cota de síntese.
+O microfone pausa durante a reprodução para evitar respostas à própria prévia.
+
+Se aparecer **VOZ INDISPONÍVEL — WinError 10013**, o processo não conseguiu
+abrir a conexão local exigida pelo event loop Python. A interface permanece
+aberta e mostra o diagnóstico, mas a conversa por voz não está iniciada.
+É necessário executar em uma sessão que permita essa conexão local; o JINX
+não muda políticas de rede. Este bloqueio foi observado no executor dos testes.
+
+Expansão retomada em 14/11/2026: código local para as integrações da Fase 4,
+interrupção por voz (5.1), navegador com perfil próprio e snapshot acessível
+(5.2), e preferências aprendidas com revisão local (6.1).
+Veja [EXPANSION_PROGRESS.md](EXPANSION_PROGRESS.md) para configuração,
+comandos e limites. Regressão selecionada: 233 testes passaram; a suíte
+completa está bloqueada pela criação do event loop Windows neste executor.
+Validações reais de contas, navegador e áudio continuam pendentes.
 
 Novos comandos: “Crie uma apresentação de cinco slides sobre eletrônica”,
 “Resuma este vídeo do YouTube [URL]”, “Comece a gravar a reunião” / “Pare a
@@ -72,7 +129,7 @@ Sem contas ou pacotes novos: usa psutil já instalado. Foram verificados
 125 testes e consultas reais sem encerrar aplicativos. Fechamento/force foram
 testados com simulações; aceitação por voz do novo recurso permanece pendente.
 
-### The Ultimate Cross-Platform Personal AI Assistant — based on Mark-LVII, by FatihMakes
+### JINX — The Ultimate Cross-Platform Personal AI Assistant
 
 > ⚠️ **Attribution & license:** JINX is a modified, non-commercial derivative of [Mark-LVII](https://github.com/FatihMakes/Mark-LVII) by **FatihMakes**, licensed under **CC BY-NC 4.0** — same as the original. You may not use it commercially, and the original author's credit stays with the project.
 
@@ -277,7 +334,7 @@ full, no finding resting on a snippet.
 
 ### 🗓️ Routines
 
-Before this Mark, the same idea was written four times by hand: a briefing fired at
+Before the shared JINX routine engine, the same idea was written four times by hand: a briefing fired at
 connect, a check-in on a fifteen-minute timer, a news watch on a thirty-minute loop,
 and reminders that were only ever a system notification. A routine is the shape
 they share — **when**, and **what**:
@@ -314,7 +371,7 @@ when it next happens, a switch to turn each one off.
 `ui.py` was a single 6,484-line file. It is now the `gui/` package — theme, metrics,
 HUD, widgets, overlays, providers panel, window, style and reactor — and `ui.py`
 keeps `JinxUI` and **re-exports every name it ever defined**, so every plugin
-written against an older Mark still imports what it imported.
+written against an older JINX release still imports what it imported.
 
 The reactor core is a real 3-D projection — sphere, gyro rings, orbit and platform,
 depth-cued so the far side dims — drawn with QPainter and numpy. Static layers are
@@ -678,7 +735,7 @@ Nothing is removed to get there. And `tier` — the per-file override that decid
 
 ---
 
-## 📦 Previously, in Mark LV
+## 📦 JINX LV — Previous Release
 
 One new dependency for the whole release — `yt-dlp`, and only to turn a YouTube page into something Qt can play.
 
@@ -738,7 +795,7 @@ That middle row is where the time was going. Only quota and 404 used to be coole
 #### 🧩 Everything bundled drives the computer
 The bundled skill list had grown to seventeen, and some of it was nobody's business but its author's. **Not everyone updates games; everyone opens applications.**
 
-Mark LV trims it to **twelve**, and every one of them does the same kind of thing: drive this machine. Applications, the browser, files, the desktop, the screen, the clock, the weather, the display. The rule is written into the project tree, so the next skill lands in the right folder without anyone having to ask.
+The JINX LV release trims it to **twelve**, and every one of them does the same kind of thing: drive this machine. Applications, the browser, files, the desktop, the screen, the clock, the weather, the display. The rule is written into the project tree, so the next skill lands in the right folder without anyone having to ask.
 
 This is not only tidiness. Every bundled skill is declared to the model on **every** connection, whether you ever use it or not. The declarations sent at startup dropped from **16,827 characters to 12,907** — roughly a thousand tokens off every session, and five fewer wrong tools for the model to reach for.
 
@@ -754,15 +811,15 @@ This is not only tidiness. Every bundled skill is declared to the model on **eve
 * JINX **answered the video's soundtrack.** The microphone now follows the video's sound.
 * Qt's multimedia backend printed an ffmpeg banner to the console on every play, containing the **signed streaming URL with the viewer's IP address in it**. Silenced at startup.
 * **Every launch paid 201 ms for a plugin nobody had asked to use.** Discovery executes every file in `plugins/`, and `youtube_video` imported `requests` and `youtube_transcript_api` at module scope. Deferring one of them would have saved nothing — the transcript library imports `requests` itself. Both are now checked with `find_spec`, which answers "is it installed?" without executing anything, and loaded on first use: **plugin discovery 211 ms → 39 ms**.
-* A plugin that needed a file from a **newer Mark** was rejected with *"pip install core"*. The loader could not tell this project's own packages from a third-party one, so it told people to install a same-named stranger from an index — wrong, and a supply-chain hazard dressed up as a fix. First-party names now say the app is behind the plugin and that there is nothing to install.
+* A plugin that needed a file from a **newer JINX release** was rejected with *"pip install core"*. The loader could not tell this project's own packages from a third-party one, so it told people to install a same-named stranger from an index — wrong, and a supply-chain hazard dressed up as a fix. First-party names now say the app is behind the plugin and that there is nothing to install.
 
-> Built on the Mark LI–LV foundation: the **🧑‍🎤 Holographic Avatar**, **👄 Lip-Sync**, **🎚️ Push-to-Talk**, **🔇 Self-Echo Guard**, **🧩 Plugin System**, **♾️ Unlimited Sessions**, **🎨 Live Theming** and **🎙️ Wake Word** are all still here.
+> Built on the JINX LI–LV foundation: the **🧑‍🎤 Holographic Avatar**, **👄 Lip-Sync**, **🎚️ Push-to-Talk**, **🔇 Self-Echo Guard**, **🧩 Plugin System**, **♾️ Unlimited Sessions**, **🎨 Live Theming** and **🎙️ Wake Word** are all still here.
 
 ---
 
-## 🔄 The Foundation Update — in every Mark from LII
+## 🔄 The Foundation Update — in every JINX release from LII
 
-These four landed across **Mark LII, LIII, LIV and LV at the same time**, after each of those releases had already shipped. They are not what any one of those versions originally introduced; they are the floor all of them now stand on, so moving up a Mark never costs you something the one below it had.
+These four landed across **JINX releases LII, LIII, LIV and LV at the same time**, after each of those releases had already shipped. They are not what any one of those versions originally introduced; they are the floor all of them now stand on, so moving up a release never costs you something the one below it had.
 
 No new dependencies. No bundled asset files. No hardcoded language, and nothing that assumes one operating system.
 
@@ -857,9 +914,9 @@ It is held in memory only, deliberately: writing it to disk would make a fresh l
 
 ---
 
-## 🗺️ Mark Roadmap
+## 🗺️ JINX Release Roadmap
 
-| Mark | Focus |
+| Release | Focus |
 |---|---|
 | **XLIX** | Auto-start · clipboard intelligence · assistant customization |
 | **L** | Session memory · background monitoring · proactive 2.0 · instant vision |
@@ -869,7 +926,7 @@ It is held in memory only, deliberately: writing it to disk would make a fresh l
 | **LIV** | Holographic avatar · viseme lip-sync · facial acting · face-as-status · push-to-talk · self-echo guard · runtime self-knowledge & limits |
 | **LV** | Video on the HUD · model ladder with measured fallback · split settings drawers · trimmed bundled skill list |
 | **LVI** | Choose your engine · local & third-party models · Whisper + Piper in ~50 languages · language-following voice · ElevenLabs · tool budget for small models · verified outcomes instead of claimed ones · close an app by name · untrusted-content boundary · platform honesty on Wayland and macOS · hardened phone dashboard |
-| *shared* | The last five above also shipped to LIII, LIV and LV at the same time — moving up a Mark never loses them |
+| *shared* | The last five above also shipped to LIII, LIV and LV at the same time — moving up a JINX release never loses them |
 | **LVII** | Background tasks · agents as files · deep research with quotes checked in code · one routine engine for briefing, check-ins, news watch and reminders · quiet hours · command-center HUD · 3-D reactor core · re-measured model ladder |
 | **LVIII+** | MCP tools · an approval policy for actions · event-driven proactivity · a knowledge folder · conversation history · interrupt by voice |
 
@@ -1064,7 +1121,7 @@ JINX/
 
 ## 🔒 Your Data
 
-Everything stays on your machine. There is no MARK server, no telemetry and no account.
+Everything stays on your machine. There is no JINX server, no telemetry and no account.
 
 | What | Where | Notes |
 |---|---|---|
@@ -1092,7 +1149,7 @@ Licensed under **[Creative Commons BY-NC 4.0](https://creativecommons.org/licens
 
 ## 🙏 Attribution
 
-JINX is a modified, **non-commercial** derivative of **Mark-LVII** by [FatihMakes](https://github.com/FatihMakes/Mark-LVII). Every feature in this document comes from the original project; JINX renames the product and its identifiers. All credit for the architecture, the HUD and the engineering belongs to the original author.
+JINX is a modified, **non-commercial** derivative of **Mark-LVII** by [FatihMakes](https://github.com/FatihMakes/Mark-LVII). JINX uses its own product branding while retaining required source credits and pretrained model identifiers where compatibility depends on them. All credit for the original architecture and engineering belongs to its author.
 
 ## 👤 Connect with the Creator of the original
 

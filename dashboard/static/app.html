@@ -3,6 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#07090f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icons/jinx.svg" type="image/svg+xml">
   <title>Painel JINX</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -49,6 +54,11 @@
     .enc-badge.on  { display: block; background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.25); color: var(--green); }
     .enc-badge.off { display: block; background: rgba(255,100,100,0.08); border: 1px solid rgba(255,100,100,0.2); color: #f87171; }
     .url { font-size: 10px; font-family: monospace; color: var(--muted); padding: 4px 9px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; }
+    .device-menu { position:relative; }
+    .device-menu summary { list-style:none; cursor:pointer; border:1px solid var(--border); border-radius:7px; padding:5px 9px; color:var(--muted); }
+    .device-menu summary::-webkit-details-marker { display:none; }
+    .device-actions { position:absolute; z-index:5; right:0; top:36px; width:220px; padding:8px; background:#10131c; border:1px solid var(--border); border-radius:10px; display:grid; gap:6px; }
+    .device-actions button { border:1px solid var(--border); border-radius:7px; padding:9px; background:var(--surface); color:var(--text); text-align:left; cursor:pointer; }
 
     /* ── FEED ── */
     main { flex: 1; overflow-y: auto; padding: 14px 16px 8px; display: flex; flex-direction: column; gap: 10px; }
@@ -139,6 +149,13 @@
     <div class="pill" id="pill"><span class="dot"></span><span id="st">Conectando</span></div>
     <div class="enc-badge" id="enc">AES-GCM</div>
     <div class="spacer"></div>
+    <details class="device-menu">
+      <summary aria-label="Dispositivos pareados e sessão">⋮</summary>
+      <div class="device-actions">
+        <button onclick="revokeRemoteDevices(); this.closest('details').open=false">Revogar pareamentos salvos</button>
+        <button onclick="logoutRemote()">Sair deste celular</button>
+      </div>
+    </details>
     <div class="url">__IP__:__PORT__</div>
   </header>
   <main id="feed"></main>
@@ -164,6 +181,34 @@
     function _authFetch(url, opts = {}) {
       opts.headers = Object.assign({}, opts.headers, _authHeader());
       return fetch(url, opts);
+    }
+
+    async function revokeRemoteDevices() {
+      if (!window.confirm('Revogar os pareamentos salvos em todos os celulares? Eles precisarão parear novamente.')) return;
+      try {
+        const r = await _authFetch('/api/revoke-devices', { method: 'POST' });
+        const data = await r.json();
+        if (!r.ok || !data.ok) throw new Error(data.error || 'Falha ao revogar');
+        localStorage.removeItem('jinx_device_token');
+        toast(`Pareamentos revogados: ${data.revoked}. Sessões encerradas: ${data.sessions_ended}.`);
+      } catch (e) { sys(`Não foi possível revogar os dispositivos: ${e.message}`); }
+    }
+
+    async function logoutRemote() {
+      if (!window.confirm('Sair deste celular e apagar o pareamento salvo?')) return;
+      const deviceToken = localStorage.getItem('jinx_device_token');
+      try {
+        if (deviceToken) await _authFetch('/api/device-unpair', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({device_token: deviceToken}) });
+        await _authFetch('/api/logout', { method: 'POST' });
+      } catch (_) { /* clear this browser's tokens even if the server is offline */ }
+      localStorage.removeItem('jinx_device_token');
+      sessionStorage.removeItem('jinx_token');
+      sessionStorage.removeItem('jinx_key');
+      location.replace('/login');
+    }
+
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      navigator.serviceWorker.register('/service-worker.js').catch(() => {});
     }
 
     // ── AES-256-GCM encryption (Web Crypto) ──────────────────────────────────

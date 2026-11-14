@@ -8,6 +8,7 @@ written against an older Mark still finds X here.
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 import math
 import os
 import platform
@@ -104,7 +105,10 @@ class JinxUI:
         self._app.setStyle("Fusion")
         self._win = MainWindow(face_path)
         self.root = _RootShim(self._app)
-        self._win.show()
+        self._win.showFullScreen()
+        # Populate the picker independently of the voice/network connection.
+        from core import audio_devices
+        audio_devices.prefetch()
 
     @property
     def muted(self) -> bool:
@@ -154,6 +158,30 @@ class JinxUI:
     @property
     def on_audio_device_change(self):
         return self._win.on_audio_device_change
+
+    @property
+    def on_voice_preview_state(self):
+        return self._win.on_voice_preview_state
+
+    @on_voice_preview_state.setter
+    def on_voice_preview_state(self, cb):
+        self._win.on_voice_preview_state = cb
+
+    @property
+    def on_camera_frame(self):
+        return self._win.on_camera_frame
+
+    @on_camera_frame.setter
+    def on_camera_frame(self, cb):
+        self._win.on_camera_frame = cb
+
+    @property
+    def on_camera_stopped(self):
+        return self._win.on_camera_stopped
+
+    @on_camera_stopped.setter
+    def on_camera_stopped(self, cb):
+        self._win.on_camera_stopped = cb
 
     @on_audio_device_change.setter
     def on_audio_device_change(self, cb):
@@ -266,6 +294,18 @@ class JinxUI:
         """Thread-safe: display content in the panel below the HUD."""
         self._win._content_sig.emit(title[:48], text[:4000])
 
+    def control_display(self, action: str, popup: str = '', receipt=None):
+        """Thread-safe: orb mode and popup control run only on the Qt thread."""
+        self._win._display_control_sig.emit(str(action), str(popup or ''), receipt)
+
+    def display_state(self):
+        """Thread-safe plain-data mirror; never query Qt widgets from a tool."""
+        return deepcopy(self._win._display_snapshot)
+
+    def request_close(self):
+        """Thread-safe: application/window teardown belongs to the Qt thread."""
+        self._win._close_app_sig.emit()
+
     def meeting_recording(self, active: bool, ack=None):
         """Thread-safe recording indicator; ack only after Qt shows it."""
         self._win._meeting_sig.emit(bool(active), ack)
@@ -300,6 +340,14 @@ class JinxUI:
         """
         self._win._review_sig.emit(str(title or ""), str(summary or ""),
                                    list(findings or []), list(unclear or []))
+
+    def show_radar(self, data: dict) -> None:
+        """Thread-safe: show a data-only snapshot in the Qt radar overlay."""
+        try:
+            snapshot = json.loads(json.dumps(data, ensure_ascii=False))
+            self._win._radar_sig.emit(snapshot)
+        except Exception:
+            pass
 
     def prompt_reconfig(self):
         """Thread-safe: show the API key setup overlay (e.g. after an auth error)."""

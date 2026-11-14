@@ -1,0 +1,14 @@
+{
+  "id": "/",
+  "name": "JINX IA",
+  "short_name": "JINX",
+  "description": "Painel móvel pareado do JINX IA",
+  "start_url": "/login",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#07090f",
+  "theme_color": "#07090f",
+  "icons": [
+    {"src": "/icons/jinx.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}
+  ]
+}

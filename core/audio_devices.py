@@ -17,7 +17,7 @@ WHY NAMES, NOT INDICES
 
 WHY THIS IS CACHED
     `sd.query_devices()` talks to the host audio API and can take a few hundred
-    milliseconds on a Windows machine with many endpoints. Mark LV learned this
+    milliseconds on a Windows machine with many endpoints. The JINX LV release learned this
     lesson the expensive way — a 2.1-second `openwakeword` import on the Qt
     thread made the settings drawer look like it was broken. So the list is
     fetched once on a background thread at startup and served from cache.
@@ -37,6 +37,9 @@ DEFAULT_VALUE = ""
 
 _cache: dict[str, list[str]] | None = None
 _cache_lock = threading.Lock()
+_selection_lock = threading.RLock()
+_prefetch_lock = threading.Lock()
+_prefetching = False
 
 # Which host API each direction settled on, so resolve() opens the same endpoint
 # the picker listed. Filled in by _query().
@@ -113,7 +116,8 @@ _PREFERRED_APIS = {
 # in the app. Probe the mode you ship, not the mode that is easier to write.
 _PROBE_SECONDS = {"output": 0.6, "input": 0.35}
 
-# Cache: {(api_name_or_None, kind): bool}
+# Cache includes endpoint identity, direction and rate; endpoints can disagree
+# even when they use the same host API.
 _probe_results: dict = {}
 
 
@@ -122,10 +126,12 @@ def _transport_works(idx: int, kind: str, api_key) -> bool:
 
     Probed once per API per direction and cached. Output writes silence, so the
     probe is inaudible; input reads and discards."""
-    if api_key in _probe_results:
-        return _probe_results[api_key]
+    cache_key = (api_key, kind, idx, _RATES.get(kind, 16000))
+    if cache_key in _probe_results:
+        return _probe_results[cache_key]
 
     ok = False
+    st = None
     try:
         import sounddevice as sd
         rate = _RATES.get(kind, 16000)
@@ -143,8 +149,8 @@ def _transport_works(idx: int, kind: str, api_key) -> bool:
             st.start()
             t0 = time.monotonic()
             st.write(bytes(int(rate * secs) * 2))   # silence — inaudible
+            st.stop()  # Include draining buffered output, not only write().
             elapsed = time.monotonic() - t0
-            st.stop(); st.close()
             ok = elapsed > secs * 0.5
             if not ok:
                 print(f"[Audio] output: host API reports success but moves no "
@@ -161,7 +167,7 @@ def _transport_works(idx: int, kind: str, api_key) -> bool:
                                 blocksize=1024, device=idx, callback=_cb)
             st.start()
             time.sleep(secs)
-            st.stop(); st.close()
+            st.stop()
             ok = frames[0] > rate * secs * 0.3
             if not ok:
                 print(f"[Audio] input: host API delivered {frames[0]} frames in "
@@ -169,9 +175,53 @@ def _transport_works(idx: int, kind: str, api_key) -> bool:
     except Exception as e:
         print(f"[Audio] {kind} transport probe failed: {e}")
         ok = False
+    finally:
+        _close_stream(st)
 
-    _probe_results[api_key] = ok
+    _probe_results[cache_key] = ok
     return ok
+
+
+def _close_stream(stream):
+    if stream is None:
+        return
+    try:
+        stream.stop()
+    except Exception:
+        pass
+    try:
+        stream.close()
+    except Exception:
+        pass
+
+
+class SerializedOutput:
+    """Let pending blocking writes finish before the stream is closed."""
+    def __init__(self, stream):
+        self._stream = stream
+        self._io_lock = threading.RLock()
+        self._closed = False
+
+    @property
+    def latency(self):
+        return self._stream.latency
+
+    def write(self, data):
+        with self._io_lock:
+            if self._closed:
+                raise RuntimeError('Audio output is closed')
+            return self._stream.write(data)
+
+    def stop(self):
+        with self._io_lock:
+            if not self._closed:
+                self._stream.stop()
+
+    def close(self):
+        with self._io_lock:
+            if not self._closed:
+                self._closed = True
+                _close_stream(self._stream)
 
 
 def _display_name(name: str, devices) -> str:
@@ -199,13 +249,20 @@ def configure(input_rate: int, output_rate: int) -> None:
     """Tell this module the sample rates the audio streams will use, so the
     picker can rule out devices that cannot be opened at them.
 
-    Drops any cached list: which devices are usable depends on the rate, so a
-    list built under the old rates would be stale."""
+    Drops the cached list/probes if rates changed. Reapplying the same rates
+    preserves the early background enumeration."""
     global _cache
-    _RATES["input"]  = int(input_rate)
-    _RATES["output"] = int(output_rate)
-    with _cache_lock:
-        _cache = None
+    rates = {'input': int(input_rate), 'output': int(output_rate)}
+    if any(rate <= 0 for rate in rates.values()):
+        raise ValueError('Audio sample rates must be positive')
+    with _selection_lock:
+        if rates == _RATES:
+            return
+        _RATES.update(rates)
+        _probe_results.clear()
+        _chosen_api.update(input=None, output=None)
+        with _cache_lock:
+            _cache = None
 
 
 def _usable(idx: int, kind: str) -> bool:
@@ -232,11 +289,7 @@ def _usable(idx: int, kind: str) -> bool:
     except Exception:
         return False
     finally:
-        if st is not None:
-            try:
-                st.stop(); st.close()
-            except Exception:
-                pass
+        _close_stream(st)
 
 # Aliases for "the default device" and internal routing endpoints. Matched
 # case-insensitively as substrings against the device name.
@@ -248,15 +301,21 @@ _PSEUDO_DEVICES = (
     "dmix", "dsnoop",      # ALSA software mixing plugins
     "surround",            # ALSA channel-layout permutations of one card
     "samplerate", "speexrate", "upmix", "vdownmix", "null",
+    "mapeador de som", "driver de som primário", "driver de captura de som primário",
 )
 
 
 def _is_pseudo(name: str) -> bool:
-    low = name.lower()
-    return any(tok in low for tok in _PSEUDO_DEVICES)
+    low = _fold(name)
+    return any(_fold(tok) in low for tok in _PSEUDO_DEVICES)
 
 
 def _query() -> dict[str, list[str]]:
+    with _selection_lock:
+        return _query_devices()
+
+
+def _query_devices() -> dict[str, list[str]]:
     """Return {'input': [names...], 'output': [names...]}. Never raises.
 
     Only real, selectable devices — see the note above."""
@@ -285,7 +344,8 @@ def _query() -> dict[str, list[str]]:
                 if dev.get(chan, 0) <= 0:
                     continue
                 if api_filter is not None:
-                    api = apis[dev["hostapi"]].lower() if dev.get("hostapi", -1) < len(apis) else ""
+                    api_index = dev.get('hostapi', -1)
+                    api = apis[api_index].lower() if 0 <= api_index < len(apis) else ''
                     if api_filter not in api:
                         continue
                 if not _usable(idx, kind):
@@ -299,15 +359,18 @@ def _query() -> dict[str, list[str]]:
         # speakers only work on MME — and a single global choice cannot be right
         # for both.
         for kind in ("input", "output"):
+            _chosen_api[kind] = None
             for api_filter in list(preferred) + [None]:
                 found = _collect(api_filter, kind)
                 if not found:
                     continue
-                # One probe per API per direction, cached, on this thread.
-                if not _transport_works(found[0][0], kind, (api_filter, kind)):
+                # Probe every physical endpoint independently, on this worker.
+                verified = [(idx, name) for idx, name in found
+                            if _transport_works(idx, kind, (api_filter, kind, name))]
+                if not verified:
                     continue
                 _chosen_api[kind] = api_filter
-                out[kind] = [_display_name(n, devices) for _i, n in found]
+                out[kind] = [_display_name(n, devices) for _i, n in verified]
                 break
             if out[kind]:
                 print(f"[Audio] {kind}: using "
@@ -323,103 +386,122 @@ def _query() -> dict[str, list[str]]:
 def prefetch() -> None:
     """Warm the cache on a background thread. Called once at startup so the
     settings drawer never pays for enumeration on the Qt thread."""
+    global _prefetching
+    with _prefetch_lock:
+        if _prefetching:
+            return
+        _prefetching = True
     def _work():
-        global _cache
-        result = _query()
-        with _cache_lock:
-            _cache = result
-        print(f"[Audio] {len(result['input'])} input / "
-              f"{len(result['output'])} output devices found")
-    threading.Thread(target=_work, daemon=True, name="audio-devices").start()
+        global _prefetching
+        try:
+            inputs, outputs = list_devices('input'), list_devices('output')
+            print(f'[Audio] {len(inputs)} input / {len(outputs)} output devices found')
+        finally:
+            with _prefetch_lock:
+                _prefetching = False
+    try:
+        threading.Thread(target=_work, daemon=True, name="audio-devices").start()
+    except Exception:
+        with _prefetch_lock:
+            _prefetching = False
+        raise
 
 
 def list_devices(kind: str, refresh: bool = False) -> list[str]:
     """Device names for 'input' or 'output'. Falls back to a synchronous query
     if the prefetch has not landed yet — correctness over the cache."""
     global _cache
-    with _cache_lock:
-        cached = None if refresh else _cache
-    if cached is None:
-        cached = _query()
+    if kind not in ('input', 'output'):
+        raise ValueError('Invalid audio direction')
+    with _selection_lock:
         with _cache_lock:
-            _cache = cached
+            cached = None if refresh else _cache
+        if cached is None:
+            if refresh:
+                _probe_results.clear()
+            cached = _query()
+            with _cache_lock:
+                _cache = cached
     return list(cached.get(kind, []))
 
 
-def resolve(name: str, kind: str):
-    """Turn a saved device name into something sounddevice accepts.
+class AudioDeviceUnavailable(RuntimeError):
+    pass
 
-    Returns None for "system default" — which is also what we return when the
-    saved device is gone, because a missing headset must degrade to the built-in
-    speakers, not to a crash on startup.
 
-    Candidates are walked in the same host-API order the picker used, so a name
-    the user chose from the WASAPI list resolves to the WASAPI endpoint. Without
-    that ordering a full name would fall through to MME's truncated copy of the
-    same device — which happens to work, but means the setting quietly refers to
-    a different endpoint than the one on screen."""
-    wanted = (name or "").strip()
-    if not wanted or wanted == DEFAULT_LABEL:
-        return None
+def resolve(name: str, kind: str, *, refresh=False, exclude=()):
+    """Resolve default and named settings to a transport-verified physical ID.
 
-    try:
-        import platform
-        import sounddevice as sd
-
+    Missing named devices fall back to the OS default physical endpoint on a
+    working host API. Never silently return an unverified device=None.
+    """
+    if kind not in ('input', 'output'):
+        raise ValueError('Invalid audio direction')
+    import platform
+    import sounddevice as sd
+    with _selection_lock:
+        list_devices(kind, refresh=refresh)
         devices = list(sd.query_devices())
-        try:
-            apis = [a.get("name", "") for a in sd.query_hostapis()]
-        except Exception:
-            apis = []
-
-        want_in  = (kind == "input")
-        chan_key = "max_input_channels" if want_in else "max_output_channels"
-
-        def _candidates(api_filter):
-            for idx, dev in enumerate(devices):
-                if dev.get(chan_key, 0) <= 0:
-                    continue
-                if api_filter is not None:
-                    api = apis[dev["hostapi"]].lower() if dev.get("hostapi", -1) < len(apis) else ""
-                    if api_filter not in api:
-                        continue
-                yield idx, (dev.get("name") or "").strip()
-
-        # The API the picker settled on for this direction comes first — the
-        # endpoint that was listed must be the endpoint that gets opened, or the
-        # setting means something different from what it says. list_devices()
-        # populates it; calling it here is a no-op once the cache is warm.
-        list_devices(kind)
+        apis = [a.get('name', '').lower() for a in sd.query_hostapis()]
+        chan = 'max_input_channels' if kind == 'input' else 'max_output_channels'
+        excluded = set(exclude)
+        wanted = (name or '').strip()
+        if wanted == DEFAULT_LABEL:
+            wanted = ''
+        requested = wanted
+        if not wanted:
+            try:
+                index = int(sd.default.device[0 if kind == 'input' else 1])
+                if index >= 0 and not _is_pseudo(devices[index]['name']):
+                    wanted = _display_name(devices[index]['name'], devices)
+            except (IndexError, TypeError, ValueError, KeyError):
+                pass
         chosen = _chosen_api.get(kind)
-        orders = ([chosen] if chosen is not None else []) \
-            + [a for a in _PREFERRED_APIS.get(platform.system(), ()) if a != chosen] \
-            + [None]
+        order = ([chosen] if chosen is not None else []) + [
+            api for api in _PREFERRED_APIS.get(platform.system(), ()) if api != chosen] + [None]
+        checked = set()
 
-        # A candidate only counts if it can be opened at the rate this side runs
-        # at. The prefix match matters because the API that carries the audio is
-        # not always the one that can spell: MME truncates names to 31 characters
-        # while DirectSound and WASAPI do not, so the name shown in the picker
-        # can be longer than the name of the endpoint it actually opens.
-        for api_filter in orders:
-            partial = None
-            for idx, dev_name in _candidates(api_filter):
-                if dev_name == wanted:
-                    if _usable(idx, kind):
-                        return idx
+        def candidates(api_filter):
+            rows = []
+            for idx, dev in enumerate(devices):
+                actual_name = (dev.get('name') or '').strip()
+                api_idx = dev.get('hostapi', -1)
+                api = apis[api_idx] if 0 <= api_idx < len(apis) else ''
+                if (idx in excluded or dev.get(chan, 0) <= 0 or not actual_name
+                        or _is_pseudo(actual_name) or (api_filter is not None and api_filter not in api)):
                     continue
-                if partial is None and (dev_name.startswith(wanted[:24])
-                                        or wanted.startswith(dev_name[:24])):
-                    if _usable(idx, kind):
-                        partial = idx
-            if partial is not None:
-                return partial
+                rows.append((idx, actual_name, _display_name(actual_name, devices), api))
+            return rows
 
-        print(f"[Audio] Saved {kind} device '{wanted}' cannot be opened at "
-              f"{_RATES.get(kind)} Hz on any host API — using system default")
-        return None
-    except Exception as e:
-        print(f"[Audio] resolve({kind}) failed: {e} — using system default")
-        return None
+        def verified_match(target):
+            for api_filter in order:
+                rows = candidates(api_filter)
+                exact = [r for r in rows if _fold(r[1]) == _fold(target) or _fold(r[2]) == _fold(target)] if target else rows
+                partial = [r for r in rows if target and min(len(_fold(r[1])), len(_fold(target))) >= 16
+                           and (_fold(r[1]).startswith(_fold(target)[:24]) or _fold(target).startswith(_fold(r[1])[:24]))]
+                # Never guess between two similarly-named physical endpoints.
+                matches = exact or (partial if len(partial) == 1 else [])
+                for idx, actual_name, display_name, api in matches:
+                    if idx in checked:
+                        continue
+                    checked.add(idx)
+                    if _transport_works(idx, kind, (api_filter, kind, actual_name)):
+                        print(f'[Audio] {kind} resolved: {display_name} [{api}] index={idx}')
+                        return idx
+            return None
+
+        index = verified_match(wanted)
+        if index is not None:
+            return index
+        if requested:
+            print(f'[Audio] Saved {kind} endpoint unavailable; trying a verified default')
+            return resolve('', kind, exclude=excluded)
+        # The former default may have been unplugged; use a remaining verified
+        # physical endpoint, preserving the chosen host-API preference.
+        index = verified_match('')
+        if index is not None:
+            return index
+        raise AudioDeviceUnavailable(f'Nenhum dispositivo de {kind} com transporte de áudio verificado')
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -468,16 +550,17 @@ def measure_input(name: str, seconds: float = 3.0, on_level=None) -> dict:
         A person needs to see the thing respond to their voice to believe it
         is listening, and that is the entire point of the button.
     """
-    idx = resolve(name, "input")
     peak_seen = [0]
     try:
         import numpy as np
         import sounddevice as sd
+        idx = resolve(name, "input")
 
         rate = _RATES.get("input", 16000)
 
         def _cb(indata, _frames, _t, _status):
-            block = int(np.abs(np.frombuffer(indata, dtype="int16")).max())                 if len(indata) else 0
+            samples = np.frombuffer(indata, dtype='int16').astype(np.int32)
+            block = int(np.abs(samples).max()) if samples.size else 0
             if block > peak_seen[0]:
                 peak_seen[0] = block
             if on_level is not None:
@@ -503,7 +586,7 @@ def measure_input(name: str, seconds: float = 3.0, on_level=None) -> dict:
         verdict = ("Sinal muito baixo. O reconhecimento de fala pode falhar — "
                    "aumente o nível de entrada nas configurações de som do sistema.")
     else:
-        verdict = "Funcionando. Sua voz está sendo captada com clareza."
+        verdict = "Sinal de áudio detectado. Confirme a transcrição falando com o JINX."
 
     return {"ok": peak >= _QUIET_PEAK, "peak": peak,
             "level": min(1.0, peak / 12000.0), "verdict": verdict}
@@ -517,21 +600,32 @@ def play_tone(name: str, seconds: float = 0.6) -> dict:
     a sound — so the answer comes from the person, and this only makes the
     sound for them to answer about.
     """
-    idx = resolve(name, "output")
+    stream = None
     try:
         import numpy as np
         import sounddevice as sd
+        idx = resolve(name, "output")
 
         rate = _RATES.get("output", 24000)
+        seconds = max(.2, min(2.0, float(seconds)))
         t = np.linspace(0, seconds, int(rate * seconds), endpoint=False)
         # 660 Hz, well inside every speaker's range and unmistakable against
         # room noise. Quiet enough not to startle somebody wearing headphones.
         tone = (np.sin(2 * np.pi * 660 * t) * 6000).astype(np.int16)
-        sd.play(tone, samplerate=rate, device=idx)
-        sd.wait()
+        ramp = min(len(tone) // 2, int(rate * .01))
+        if ramp:
+            tone[:ramp] = (tone[:ramp] * np.linspace(0, 1, ramp)).astype(np.int16)
+            tone[-ramp:] = (tone[-ramp:] * np.linspace(1, 0, ramp)).astype(np.int16)
+        stream = sd.RawOutputStream(samplerate=rate, channels=1, dtype='int16', blocksize=1024, device=idx)
+        stream.start()
+        stream.write(tone.tobytes())
+        stream.stop()
     except Exception as e:
         return {"ok": False, "verdict": f"Não foi possível reproduzir o som neste dispositivo: {e}"}
-    return {"ok": True, "verdict": "Tom reproduzido. Você conseguiu ouvi-lo?"}
+    finally:
+        _close_stream(stream)
+    return {"ok": True, "heard_verified": False, "device_index": idx,
+            "verdict": "Tom enviado à saída validada. Você conseguiu ouvi-lo?"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -674,7 +768,10 @@ def set_output_volume(percent: int, name: str = "") -> bool:
     if endpoint is not None:
         try:
             endpoint.SetMasterVolumeLevelScalar(percent / 100.0, None)
-            return True
+            if percent > 0 and endpoint.GetMute():
+                endpoint.SetMute(0, None)
+            actual = round(endpoint.GetMasterVolumeLevelScalar() * 100)
+            return abs(actual - percent) <= 3 and (percent == 0 or not endpoint.GetMute())
         except Exception as e:
             print(f"[Audio] could not set '{name}' volume: {e}")
     if name:
@@ -684,7 +781,7 @@ def set_output_volume(percent: int, name: str = "") -> bool:
         from actions.computer_settings import volume_set, volume_get
         volume_set(percent)
         now = volume_get()
-        return now is None or abs(now - percent) <= 3
+        return now is not None and abs(now - percent) <= 3
     except Exception as e:
         print(f"[Audio] could not set the output volume: {e}")
         return False

@@ -19,7 +19,7 @@ import psutil
 from PyQt6.QtCore import (
     QEasingCurve, QLineF, QMimeData, QObject, QParallelAnimationGroup, QPointF,
     QPoint, QPropertyAnimation, QRect, QRectF, QSize, QSizeF, Qt, QTimer,
-    QUrl, pyqtSignal,
+    QUrl, QEvent, pyqtSignal,
 )
 from PyQt6.QtGui import (
     QBrush, QColor, QConicalGradient, QDragEnterEvent, QDropEvent, QFont,
@@ -62,6 +62,7 @@ from gui.metrics import (
 from gui.hud import (
     HudCanvas,
 )
+from gui.immersive import OrbMode
 from gui.widgets import (
     FileDropZone,
     LogWidget,
@@ -117,7 +118,10 @@ class MainWindow(QMainWindow):
     _quiz_sig       = pyqtSignal(str, object, object)  # (topic, questions, grader)
     _quiz_hide_sig  = pyqtSignal()
     _review_sig     = pyqtSignal(str, str, object, object)  # document review payload
+    _radar_sig      = pyqtSignal(object)
     _meeting_sig    = pyqtSignal(bool, object)  # recording consent indicator + ack
+    _display_control_sig = pyqtSignal(str, str, object)
+    _close_app_sig = pyqtSignal()
 
     def _set_meeting_recording(self, active, ack=None):
         if not hasattr(self, "_meeting_button"):
@@ -142,10 +146,15 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         from core.meeting import manager
         manager.stop()
+        self.stop_camera_stream()
         super().closeEvent(event)
 
     def __init__(self, face_path: str):
         super().__init__()
+        self._orb_mode = None
+        self._display_snapshot = {'fullscreen': False, 'open_popup': None, 'popups': []}
+        self._cam_stream_active = False
+        self._return_maximized = False
         self._face_path = face_path
 
         # Load customization from config
@@ -172,8 +181,12 @@ class MainWindow(QMainWindow):
         self.on_remote_clicked = None   # callable: () -> (url, key) | None
         self.on_interrupt      = None   # callable: () -> None — stop JINX mid-speech
         self.on_voice_change   = None   # callable: () -> None — rebuild session with new voice
+        self.on_voice_preview_state = None
+        self.on_camera_frame = None
+        self.on_camera_stopped = None
         self.on_audio_device_change = None  # callable: () -> None — reopen audio streams
         self._confirm_overlay  = None   # live ConfirmBanner, if one is on screen
+        self._radar_overlay = None
         self.get_plugins       = None   # callable: () -> list[dict], set by JinxLive
         self.get_plugin_settings = None # callable: () -> list[dict] settings schemas, set by JinxLive
         self.on_wake_toggle    = None   # callable: (enable: bool) -> str, set by JinxLive
@@ -196,6 +209,7 @@ class MainWindow(QMainWindow):
         root.addWidget(self._build_header())
 
         body = QHBoxLayout()
+        self._body_layout = body
         body.setContentsMargins(10, 10, 10, 10)
         body.setSpacing(10)
 
@@ -210,6 +224,7 @@ class MainWindow(QMainWindow):
 
         # Live camera container — replaces HUD when camera stream is active
         _cam_cont = QWidget()
+        self._cam_cont = _cam_cont
         _cam_cont.setStyleSheet("background: #000308;")
         _cam_v = QVBoxLayout(_cam_cont)
         _cam_v.setContentsMargins(0, 0, 0, 0)
@@ -306,7 +321,7 @@ class MainWindow(QMainWindow):
         # STILL PICTURE needs a scene and a view and nothing else. A Qt
         # install without the multimedia plugins can still put a photo where
         # the avatar sits, and `generate_image` has been looking for somewhere
-        # to show its own output since Mark LV.
+        # to show its own output since the JINX LV release.
         self._video_scene = QGraphicsScene(self)
         self._image_item = QGraphicsPixmapItem()
         self._image_item.setTransformationMode(
@@ -397,6 +412,9 @@ class MainWindow(QMainWindow):
 
         root.addLayout(body, stretch=1)
         root.addWidget(self._build_footer())
+        self._orb_mode = OrbMode(self)
+        self._display_control_sig.connect(self._orb_mode.control)
+        self._close_app_sig.connect(self.close)
 
         # Quick-access drawer (floating overlay, built after central widget layout is done)
         self._quick_drawer = self._build_quick_drawer()
@@ -441,6 +459,7 @@ class MainWindow(QMainWindow):
         self._quiz_sig.connect(self._show_quiz)
         self._quiz_hide_sig.connect(self._hide_quiz)
         self._review_sig.connect(self._show_review)
+        self._radar_sig.connect(self._show_radar)
         self._meeting_sig.connect(self._set_meeting_recording)
         self._cam_stop = threading.Event()
 
@@ -462,7 +481,13 @@ class MainWindow(QMainWindow):
         sc_full = QShortcut(QKeySequence("F11"), self)
         sc_full.activated.connect(self._toggle_fullscreen)
         sc_intr = QShortcut(QKeySequence("Escape"), self)
-        sc_intr.activated.connect(self._do_interrupt)
+        sc_intr.activated.connect(self._escape_display)
+        sc_popup = QShortcut(QKeySequence('Ctrl+O'), self)
+        sc_popup.activated.connect(lambda: self._orb_mode.control('open_popup'))
+        sc_command = QShortcut(QKeySequence('Ctrl+Space'), self)
+        sc_command.activated.connect(self._orb_mode.show_command)
+        sc_audio = QShortcut(QKeySequence('F8'), self)
+        sc_audio.activated.connect(self._open_audio_devices)
 
     def _show_camera_frame(self, img_bytes: bytes):
         """Slot — display camera preview overlay (main thread)."""
@@ -475,12 +500,20 @@ class MainWindow(QMainWindow):
             cw.height() - ph - 28,
             pw, ph,
         )
+        if self._orb_mode and self._orb_mode.active:
+            self._cam_preview.hide()
+            self._orb_mode.publish('capture', 'Captura de câmera', 'Imagem pronta · abrir para visualizar')
 
     # --- Live camera stream in HUD area ------------------------------------
     def _on_cam_stream(self, start: bool) -> None:
+        self._cam_stream_active = bool(start)
         if start:
             self._hud_cam_stack.setCurrentIndex(1)
+            if self._orb_mode and self._orb_mode.active:
+                self._hud_cam_stack.setCurrentIndex(0)
+                self._orb_mode.publish('camera', 'Câmera ativa', 'Abrir câmera · × encerra captura', persistent=True)
         else:
+            if self._orb_mode: self._orb_mode.remove_kind('camera')
             self._hud_cam_stack.setCurrentIndex(0)
             self._cam_live_lbl.clear()
 
@@ -497,6 +530,8 @@ class MainWindow(QMainWindow):
                 )
 
     def start_camera_stream(self) -> None:
+        if self._cam_stream_active:
+            return
         self._cam_stop.clear()
         self._cam_stream_sig.emit(True)
         t = threading.Thread(target=self._cam_loop, daemon=True, name="cam-stream")
@@ -528,16 +563,25 @@ class MainWindow(QMainWindow):
             while not self._cam_stop.wait(0.033) and cap.isOpened():
                 ret, frame = cap.read()
                 if ret and frame is not None:
+                    if self.on_camera_frame:
+                        try: self.on_camera_frame(frame)
+                        except Exception: pass
                     _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 65])
                     self._cam_frame_sig.emit(buf.tobytes())
             cap.release()
         except Exception as e:
             print(f"[Camera] Stream error: {e}")
         finally:
+            if self.on_camera_stopped:
+                try: self.on_camera_stopped()
+                except Exception: pass
             self._cam_stream_sig.emit(False)
 
     def stop_camera_stream(self) -> None:
         self._cam_stop.set()
+        if self.on_camera_stopped:
+            try: self.on_camera_stopped()
+            except Exception: pass
 
     # --- Video in the HUD area ---------------------------------------------
     #
@@ -582,6 +626,7 @@ class MainWindow(QMainWindow):
         if self._video_split:
             self._video_sound.play()
             self._video_sync.start()
+        self._compact_media_notice()
 
     def _on_image_open(self, path: str, title: str) -> None:
         """Put a still picture where the avatar sits.
@@ -624,6 +669,12 @@ class MainWindow(QMainWindow):
         self._video_on = True
         self._sync_mic_for_video()
         self._fit_video()
+        self._compact_media_notice()
+
+    def _compact_media_notice(self):
+        if self._orb_mode and self._orb_mode.active:
+            self._hud_cam_stack.setCurrentIndex(0)
+            self._orb_mode.publish('media', self._video_title.text(), 'Mídia pronta · abrir para visualizar')
 
     def _fit_video(self, *_a) -> None:
         """Size whatever is on the surface to the panel, keeping its shape."""
@@ -655,6 +706,7 @@ class MainWindow(QMainWindow):
             pass
 
     def _on_video_close(self) -> None:
+        if self._orb_mode: self._orb_mode.remove_kind('media')
         if self._video_sync:
             self._video_sync.stop()
         for p in (self._video_player, self._video_sound):
@@ -1154,12 +1206,36 @@ class MainWindow(QMainWindow):
 
     def _toggle_fullscreen(self):
         if self.isFullScreen():
-            self.showNormal()
+            self._leave_fullscreen()
         else:
             self.showFullScreen()
 
+    def _leave_fullscreen(self):
+        if self._return_maximized:
+            self.showMaximized()
+        else:
+            self.showNormal()
+
+    def changeEvent(self, event):
+        super().changeEvent(event)
+        if event.type() == QEvent.Type.WindowStateChange and self._orb_mode is not None:
+            if self.isFullScreen() and not self._orb_mode.active:
+                self._return_maximized = bool(event.oldState() & Qt.WindowState.WindowMaximized)
+            self._orb_mode.set_active(self.isFullScreen())
+
+    def _escape_display(self):
+        if self._orb_mode and self._orb_mode.command.isVisible():
+            self._orb_mode.command.hide()
+        elif self._orb_mode and self._orb_mode.current is not None:
+            self._orb_mode.close_popup()
+        elif self.isFullScreen():
+            self._leave_fullscreen()
+        else:
+            self._do_interrupt()
+
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        if self._orb_mode is not None: self._orb_mode.reposition()
         self._fit_side_columns()
         cw = self.centralWidget()
         if self._overlay and self._overlay.isVisible():
@@ -1735,7 +1811,7 @@ class MainWindow(QMainWindow):
         self._refresh_talk_btns()
 
         self._hud_btn = _row(QPushButton())
-        self._hud_btn.clicked.connect(self._toggle_hud_style)
+        self._hud_btn.clicked.connect(self._show_hud_choices)
         self._refresh_hud_btn()
 
         w.adjustSize()
@@ -1856,7 +1932,7 @@ class MainWindow(QMainWindow):
 
         dismiss = IconButton("close", 22)
         dismiss.setToolTip("Fechar")
-        dismiss.clicked.connect(w.hide)
+        dismiss.clicked.connect(self._hide_content)
         w.add_header_widget(dismiss)
 
         self._content_display = QTextEdit()
@@ -1885,6 +1961,10 @@ class MainWindow(QMainWindow):
         content panel a height of 0 while leaving it "visible", so the next
         search result, review or finished task landed in a panel nobody could
         see."""
+        if self._orb_mode and self._orb_mode.active:
+            self._orb_mode.capture_panel(panel)
+            panel.hide()
+            return
         panel.show()
         split = self._center_split
         idx = split.indexOf(panel)
@@ -1896,6 +1976,9 @@ class MainWindow(QMainWindow):
         new[0] = max(total - want, 120)
         new[idx] = want
         split.setSizes(new)
+
+    def _hide_content(self):
+        self._content_panel.hide()
 
     def _show_content(self, title: str, text: str):
         """Slot — runs on Qt main thread. Updates and shows the content panel."""
@@ -2006,6 +2089,21 @@ class MainWindow(QMainWindow):
         if first:
             self.hud.glance(0.0, -0.85, hold=1.3)
         self._reveal_below_hud(self._content_panel, 260)
+
+    def _show_radar(self, data):
+        from gui.radar import RadarWidget
+        self._close_radar()
+        parent = self.centralWidget()
+        widget = RadarWidget(data, self._close_radar, parent)
+        widget.move(max(0, (parent.width()-widget.width())//2),
+                    max(0, (parent.height()-widget.height())//2))
+        widget.show(); widget.raise_()
+        self._radar_overlay = widget
+
+    def _close_radar(self):
+        widget, self._radar_overlay = self._radar_overlay, None
+        if widget is not None:
+            widget.hide(); widget.deleteLater()
 
     # ── document review ──────────────────────────────────────────────────────
     # Rendered as rich text into the content panel that already exists, rather
@@ -2170,6 +2268,7 @@ class MainWindow(QMainWindow):
         self._quiz_render()
 
     def _hide_quiz(self):
+        if self._orb_mode: self._orb_mode.remove_kind('quiz')
         self._quiz = None
         self._quiz_panel.hide()
 
@@ -2546,36 +2645,59 @@ class MainWindow(QMainWindow):
             else "Segure uma tecla para falar, em vez de manter o microfone ativo continuamente.")
 
     def _refresh_hud_btn(self):
-        from memory.config_manager import get_hud_style
         names = {
             "face": "🧑  HUD: ROSTO ANIMADO",
             "core": "◉  HUD: NÚCLEO REATOR",
             "brahma_evo": "✦  HUD: EVO",
             "brahma_echo": "✧  HUD: ECHO",
         }
-        style = get_hud_style()
-        next_style = {"face": "core", "core": "brahma_evo",
-                      "brahma_evo": "brahma_echo", "brahma_echo": "face"}.get(style, "face")
+        styles = self.hud.available_styles()
+        style = self.hud.hud_style if self.hud.hud_style in styles else 'face'
         self._hud_btn.setText(names.get(style, names["face"]))
         self._hud_btn.setStyleSheet(btn_css("choice"))
-        self._hud_btn.setToolTip("HUD atual: " + names.get(style, names["face"]).split("HUD: ", 1)[-1]
-                                 + ". Clique para alternar para "
-                                 + names.get(next_style, names["face"]).split("HUD: ", 1)[-1] + ".")
+        self._hud_btn.setToolTip('Escolher visual: rosto, núcleo reator, EVO ou ECHO.')
+
+    def _show_hud_choices(self):
+        from PyQt6.QtWidgets import QMenu
+        from core.hud_support import web_hud_block_reason
+        menu = QMenu(self)
+        menu.setToolTipsVisible(True)
+        for style, label in (('face', 'Rosto animado'), ('core', 'Núcleo reator'),
+                             ('brahma_evo', 'EVO'), ('brahma_echo', 'ECHO')):
+            available = style in self.hud.available_styles()
+            action = menu.addAction(label if available else label + ' — indisponível nesta execução')
+            action.setCheckable(True)
+            action.setChecked(style == self.hud.hud_style)
+            action.setEnabled(available)
+            if not available:
+                action.setToolTip(web_hud_block_reason() or 'Instale o PyQt6-WebEngine de requirements.txt.')
+            action.triggered.connect(lambda checked=False, s=style: self._set_hud_style(s))
+        menu.exec(self._hud_btn.mapToGlobal(self._hud_btn.rect().bottomLeft()))
 
     def _toggle_hud_style(self):
-        """Swap the centrepiece. Both objects stay in memory, so the change is
-        instant and switching back costs nothing."""
-        from memory.config_manager import get_hud_style, save_hud_style
-        styles = ("face", "core", "brahma_evo", "brahma_echo")
-        current = get_hud_style()
+        """Cycle available visuals, creating optional web views lazily."""
+        styles = self.hud.available_styles()
+        current = self.hud.hud_style if self.hud.hud_style in styles else 'face'
         want = styles[(styles.index(current) + 1) % len(styles)]
-        save_hud_style(want)
+        self._set_hud_style(want)
+
+    def _set_hud_style(self, want):
+        from memory.config_manager import save_hud_style
+        if want not in self.hud.available_styles():
+            return
+        previous = self.hud.hud_style
         try:
             self.hud.hud_style = want
             self.hud._sync_hud_style()
             self.hud.update()
-        except Exception:
-            pass
+        except Exception as exc:
+            self.hud.hud_style = previous
+            self.hud._sync_hud_style()
+            self._log.append_log(f'ERR: Não foi possível iniciar o visual: {type(exc).__name__}.')
+            return
+        save_hud_style(want)
+        if self._orb_mode and self._orb_mode.active:
+            self._orb_mode.saved['style'] = want
         self._refresh_hud_btn()
         labels = {"face": "rosto animado", "core": "núcleo reator",
                   "brahma_evo": "EVO", "brahma_echo": "ECHO"}
@@ -2692,6 +2814,7 @@ class MainWindow(QMainWindow):
         cfg = _read_full_config()
         if self._customize_overlay:
             self._customize_overlay.hide()
+            self._customize_overlay.deleteLater()
         cw = self.centralWidget()
         ov = CustomizeOverlay(
             cfg.get("assistant_name", "JINX") or "JINX",
@@ -2708,6 +2831,7 @@ class MainWindow(QMainWindow):
             ow, oh,
         )
         ov.on_preview = self._preview_ui_color
+        ov.on_voice_preview_state = self.on_voice_preview_state
         ov.saved.connect(self._apply_name_update)
         ov.show()
         self._customize_overlay = ov
@@ -2838,10 +2962,19 @@ class MainWindow(QMainWindow):
         self._hide_confirm_banner()
         ov = ConfirmBanner(title, detail, parent=self.centralWidget())
         ov.answered.connect(self._on_confirm_answered)
-        self._centre_overlay(ov)
         self._confirm_overlay = ov
+        if self._orb_mode and self._orb_mode.active:
+            ov.hide()
+            self._orb_mode.publish('confirm', title or 'Confirmação necessária',
+                                   'Confirmação pendente · abrir para revisar', persistent=True)
+        else:
+            self._centre_overlay(ov)
+        from core.confirm import TIMEOUT_SECONDS
+        QTimer.singleShot(int(TIMEOUT_SECONDS * 1000),
+                          lambda: self._hide_confirm_banner() if self._confirm_overlay is ov else None)
 
     def _hide_confirm_banner(self):
+        if self._orb_mode: self._orb_mode.remove_kind('confirm')
         ov = getattr(self, "_confirm_overlay", None)
         if ov is not None:
             ov.hide()

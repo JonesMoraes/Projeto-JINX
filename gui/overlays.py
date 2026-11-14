@@ -286,7 +286,7 @@ class CustomizeOverlay(QWidget):
     """Floating overlay — change assistant name, user name, UI colour and voice."""
 
     saved = pyqtSignal(str, str, str, str)   # assistant_name, user_name, ui_color, voice
-    _OW, _OH = 400, 588
+    _OW, _OH = 400, 650
 
     def __init__(self, assistant_name="JINX", user_name="",
                  ui_color=DEFAULT_UI_COLOR, voice="", parent=None):
@@ -347,7 +347,11 @@ class CustomizeOverlay(QWidget):
         self._sel_voice   = (voice or DEFAULT_VOICE)
         if self._sel_voice not in AVAILABLE_VOICES:
             self._sel_voice = DEFAULT_VOICE
-        self._voice_combo = QComboBox()
+        from gui.voice_preview import VoicePicker, VoicePreviewController
+        self.on_voice_preview_state = None
+        self._voice_preview = VoicePreviewController(
+            self, lambda active: self.on_voice_preview_state(active) if self.on_voice_preview_state else 0)
+        self._voice_combo = VoicePicker()
         self._voice_combo.setFixedHeight(32)
         self._voice_combo.setFont(hud_font(9))
         self._voice_combo.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -362,6 +366,28 @@ class CustomizeOverlay(QWidget):
         self._voice_combo.setCurrentIndex(
             max(0, self._voice_combo.findData(self._sel_voice)))
         lay.addWidget(self._voice_combo)
+        preview_row = QHBoxLayout()
+        listen = QPushButton('▶ Ouvir voz selecionada')
+        from gui.style import btn_css
+        listen.setStyleSheet(btn_css('choice', 'center'))
+        listen.setMinimumHeight(26)
+        listen.setFont(hud_font(8))
+        listen.clicked.connect(lambda: self._listen_voice(self._voice_combo.currentData()))
+        stop = QPushButton('■ Parar')
+        stop.setStyleSheet(btn_css('dim', 'center'))
+        stop.setMinimumHeight(26)
+        stop.setFont(hud_font(8))
+        stop.clicked.connect(self._stop_voice_preview)
+        preview_row.addWidget(listen)
+        preview_row.addWidget(stop)
+        lay.addLayout(preview_row)
+        self._voice_status = _lbl('Amostra Gemini; usa sua conta, sem aplicar.', 7,
+                                  color=C.TEXT_DIM, align=Qt.AlignmentFlag.AlignLeft)
+        self._voice_status.setWordWrap(True)
+        lay.addWidget(self._voice_status)
+        self._preview_voice = None
+        self._voice_combo.preview_requested.connect(self._listen_voice)
+        self._voice_preview.status.connect(self._voice_preview_status)
 
         # ── UI colour — colour wheel ─────────────────────────────────────────
         lay.addSpacing(4)
@@ -436,6 +462,24 @@ class CustomizeOverlay(QWidget):
         lay.addLayout(btn_row)
 
     # ── colour flow ──────────────────────────────────────────────────────────
+    def _listen_voice(self, voice):
+        self._preview_voice = voice
+        self._voice_status.setText(f'{voice}: gerando amostra…')
+        self._voice_preview.player.request(voice)
+
+    def _voice_preview_status(self, voice, message):
+        if voice == self._preview_voice:
+            self._voice_status.setText(f'{voice}: {message}')
+
+    def _stop_voice_preview(self):
+        self._preview_voice = None
+        self._voice_preview.player.stop()
+        self._voice_status.setText('Prévia parada. A voz ativa não foi alterada.')
+
+    def hideEvent(self, event):
+        self._stop_voice_preview()
+        super().hideEvent(event)
+
     def _set_color(self, hx: str, update_wheel: bool = True, preview: bool = True):
         """Updates the selected colour; hex box + wheel stay in sync, theme is live-previewed."""
         self._sel_color = hx.strip().lower()
@@ -474,6 +518,7 @@ class CustomizeOverlay(QWidget):
         self.hide()
 
     def _save(self):
+        self._stop_voice_preview()
         name = self._name_input.text().strip() or "JINX"
         user = self._user_input.text().strip()
         voice = self._voice_combo.currentData() or self._sel_voice
@@ -764,6 +809,7 @@ class AudioDeviceOverlay(_HudOverlay):
             f"QPushButton:hover {{ color: {C.PRI}; border-color: {C.PRI_DIM}; }}"
             f"QPushButton:disabled {{ color: {C.BORDER}; }}"
         )
+        self._test_buttons = []
 
         def _row(label: str, kind: str, current: str) -> QComboBox:
             cap = QLabel(label)
@@ -804,6 +850,7 @@ class AudioDeviceOverlay(_HudOverlay):
             btn_row = QHBoxLayout(); btn_row.setSpacing(6)
             btn_row.addWidget(box, 1)
             test = QPushButton("TESTAR")
+            self._test_buttons.append(test)
             test.setFixedSize(64, 30)
             test.setFont(hud_font(8, QFont.Weight.Bold))
             test.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -984,19 +1031,22 @@ class AudioDeviceOverlay(_HudOverlay):
 
         Both calls block for seconds — recording waits for the user to speak,
         the tone waits for itself — and doing that on the Qt thread freezes the
-        HUD, which is the mistake Mark LV already paid for once with a 2.1
+        HUD, which an earlier JINX release already learned from with a 2.1
         second wake-word import in the settings drawer.
 
         Results come back by signal, not by timer. See the note on
         `_level_seen` above for why that distinction is the whole feature.
         """
         import threading
+        if self._active is not None:
+            return
 
         name = box.currentData() or ""
         self._active = (button, label, meter)
-        button.setEnabled(False)
+        for test_button in self._test_buttons:
+            test_button.setEnabled(False)
         label.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
-        label.setText("Speak now…" if kind == "input" else "Playing a tone…")
+        label.setText("Fale agora…" if kind == "input" else "Reproduzindo teste…")
         if meter is not None and kind == "input":
             meter.setValue(0)
             meter.show()
@@ -1015,7 +1065,10 @@ class AudioDeviceOverlay(_HudOverlay):
                 good = bool(res.get("ok", False))
             except Exception as e:
                 text, good = f"O teste falhou: {e}", False
-            self._test_result.emit(text, good)
+            try:
+                self._test_result.emit(text, good)
+            except RuntimeError:
+                pass  # Panel closed while the bounded device test completed.
 
         threading.Thread(target=_work, daemon=True, name=f"audio-test-{kind}").start()
 
@@ -1029,7 +1082,8 @@ class AudioDeviceOverlay(_HudOverlay):
             return
         button, label, meter = self._active
         self._active = None
-        button.setEnabled(True)
+        for test_button in self._test_buttons:
+            test_button.setEnabled(True)
         if meter is not None:
             meter.setValue(0)
             meter.hide()
