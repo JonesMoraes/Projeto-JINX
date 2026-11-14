@@ -418,11 +418,11 @@ class JinxUI:
 
     def start_camera_stream(self) -> None:
         """Thread-safe: start live camera feed in the full HUD area."""
-        self._win.start_camera_stream()
+        self._win._cam_start_sig.emit()
 
     def stop_camera_stream(self) -> None:
         """Thread-safe: stop the live camera feed."""
-        self._win.stop_camera_stream()
+        self._win._cam_stop_sig.emit()
 
     @property
     def assistant_name(self) -> str:

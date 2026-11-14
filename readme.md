@@ -1,5 +1,12 @@
 # ⚙️ JINX
 
+**Webcam contínua:** use **LIGAR WEBCAM**, na barra inferior, ou **F9**.
+O botão permanece visível em tela cheia e muda para **DESLIGAR WEBCAM**
+enquanto a imagem ao vivo está ativa. A prévia fica aberta até você desligar;
+fechar o pop-up apenas recolhe a prévia, e o indicador continua ativo.
+O botão não grava nem envia imagens automaticamente. Fechar o aplicativo
+também encerra a captura; a webcam começa desligada a cada inicialização.
+
 Atualização de integração em 14/11/2026: a expansão posterior à Fase 3 está
 incorporada com correções de rollback, autorreparo, testes do HUD e exemplo
 Arduino. O escopo entregue e as pendências estão em

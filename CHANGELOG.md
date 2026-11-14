@@ -1,5 +1,15 @@
 # Histórico de alterações
 
+## 2026-11-14 — Botão de webcam contínua
+- Barra inferior com LIGAR/DESLIGAR WEBCAM e atalho F9, visível também em
+  tela cheia. O botão abre a imagem ao vivo e mantém a captura até desligar.
+- Estado de abertura/cancelamento e liberação explícitos; captura única,
+  primeiro frame confirmado, falhas de dispositivo informadas e handles liberados.
+- Captura local pela implementação existente; sem gravação ou envio automático.
+  Start/stop externos passam por sinais Qt; testes usam câmeras simuladas.
+- Validação: 389 testes passaram; render Windows conferido com a webcam
+  desligada. Captura física depende do teste do usuário pelo botão/F9.
+
 ## 2026-11-14 — Correção e integração da expansão
 - Expansão da branch feature/expansion-2026-11-14 preparada para integração
   ao main local, preservando dados pessoais e credenciais.

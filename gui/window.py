@@ -89,7 +89,7 @@ from gui.providers_panel import (
 
 from PyQt6.QtWidgets import QGridLayout
 
-from gui.style import DISPLAY_CSS, btn_css, hud_font, px_font, scroll_css
+from gui.style import DISPLAY_CSS, btn_css, hud_font, mono_font, px_font, scroll_css
 from gui.widgets import (ArcLogo, CommandFrame, DataRow, HeaderBar, HoloPanel, IconButton,
                          PanelText, RingGauge, RoutineRow, Sparkline, StateChip, StatusStrip,
                          TaskRow)
@@ -104,6 +104,9 @@ class MainWindow(QMainWindow):
     _camera_sig     = pyqtSignal(bytes)      # show camera frame preview (small overlay)
     _cam_stream_sig = pyqtSignal(bool)       # True=start live stream, False=stop
     _cam_frame_sig  = pyqtSignal(bytes)      # live camera frame → HUD area
+    _cam_start_sig = pyqtSignal()
+    _cam_stop_sig = pyqtSignal()
+    _cam_status_sig = pyqtSignal(str)
     _video_open_sig  = pyqtSignal(str, str, bool, str)  # video, title, muted, audio
     _image_open_sig  = pyqtSignal(str, str)   # still picture on the HUD: path, title
     _wake_btns_sig   = pyqtSignal()          # wake state resolved off-thread
@@ -154,6 +157,9 @@ class MainWindow(QMainWindow):
         self._orb_mode = None
         self._display_snapshot = {'fullscreen': False, 'open_popup': None, 'popups': []}
         self._cam_stream_active = False
+        self._cam_lock = threading.Lock()
+        self._cam_worker_running = False
+        self._cam_preview_requested = False
         self._return_maximized = False
         self._face_path = face_path
 
@@ -448,6 +454,9 @@ class MainWindow(QMainWindow):
         self._confirm_hide_sig.connect(self._hide_confirm_banner)
         self._cam_stream_sig.connect(self._on_cam_stream)
         self._cam_frame_sig.connect(self._on_cam_frame)
+        self._cam_start_sig.connect(self.start_camera_stream)
+        self._cam_stop_sig.connect(self.stop_camera_stream)
+        self._cam_status_sig.connect(self._on_cam_status)
         self._wake_btns_sig.connect(self._refresh_wake_btns)
         self._video_open_sig.connect(self._on_video_open)
         self._image_open_sig.connect(self._on_image_open)
@@ -463,6 +472,24 @@ class MainWindow(QMainWindow):
         self._radar_sig.connect(self._show_radar)
         self._meeting_sig.connect(self._set_meeting_recording)
         self._cam_stop = threading.Event()
+        self._camera_toolbar = QToolBar('Webcam', self)
+        self._camera_toolbar.setMovable(False)
+        self._camera_toolbar.setFloatable(False)
+        self._camera_toolbar.setStyleSheet(f'background: {C.BG}; border: 0; spacing: 8px;')
+        self.addToolBar(Qt.ToolBarArea.BottomToolBarArea, self._camera_toolbar)
+        self._webcam_button = QPushButton('LIGAR WEBCAM · F9')
+        self._webcam_button.setCheckable(True)
+        self._webcam_button.setMinimumSize(240, 34)
+        self._webcam_button.setFont(hud_font(9, QFont.Weight.Bold))
+        self._webcam_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._webcam_button.setToolTip('Ligar/desligar a imagem ao vivo. Captura local contínua até desligar; sem gravação ou envio automático.')
+        self._webcam_button.clicked.connect(self._toggle_webcam)
+        self._camera_toolbar.addWidget(self._webcam_button)
+        self._webcam_status = QLabel('Webcam desligada')
+        self._webcam_status.setFont(mono_font(8))
+        self._webcam_status.setStyleSheet(f'color: {C.TEXT_MED}; padding: 0 8px;')
+        self._camera_toolbar.addWidget(self._webcam_status)
+        self._on_cam_status('off')
 
         # Camera preview overlay (child of central widget, positioned in resizeEvent)
         self._cam_preview = _CameraPreview(self.centralWidget())
@@ -489,6 +516,8 @@ class MainWindow(QMainWindow):
         sc_command.activated.connect(self._orb_mode.show_command)
         sc_audio = QShortcut(QKeySequence('F8'), self)
         sc_audio.activated.connect(self._open_audio_devices)
+        sc_camera = QShortcut(QKeySequence('F9'), self)
+        sc_camera.activated.connect(self._toggle_webcam)
 
     def _show_camera_frame(self, img_bytes: bytes):
         """Slot — display camera preview overlay (main thread)."""
@@ -506,19 +535,49 @@ class MainWindow(QMainWindow):
             self._orb_mode.publish('capture', 'Captura de câmera', 'Imagem pronta · abrir para visualizar')
 
     # --- Live camera stream in HUD area ------------------------------------
+    def _toggle_webcam(self) -> None:
+        if self._cam_worker_running or self._cam_stream_active:
+            self.stop_camera_stream()
+        else:
+            self._cam_preview_requested = True
+            self.start_camera_stream()
+
+    def _on_cam_status(self, status: str) -> None:
+        captions = {
+            'off': ('LIGAR WEBCAM · F9', 'Webcam desligada'),
+            'opening': ('CANCELAR WEBCAM · F9', 'Abrindo webcam…'),
+            'on': ('DESLIGAR WEBCAM · F9', '● Webcam ativa · imagem local contínua'),
+            'stopping': ('DESLIGANDO WEBCAM…', 'Aguardando liberação da câmera…'),
+        }
+        text, detail = captions[status]
+        self._webcam_button.setText(text)
+        self._webcam_button.setChecked(status != 'off')
+        self._webcam_button.setEnabled(status != 'stopping')
+        self._webcam_button.setStyleSheet(btn_css('on' if status != 'off' else 'dim'))
+        self._webcam_status.setText(detail)
+
     def _on_cam_stream(self, start: bool) -> None:
+        if start and self._cam_stop.is_set():
+            return
         self._cam_stream_active = bool(start)
+        self._on_cam_status('on' if start else 'off')
         if start:
             self._hud_cam_stack.setCurrentIndex(1)
             if self._orb_mode and self._orb_mode.active:
                 self._hud_cam_stack.setCurrentIndex(0)
-                self._orb_mode.publish('camera', 'Câmera ativa', 'Abrir câmera · × encerra captura', persistent=True)
+                key = self._orb_mode.publish('camera', 'Câmera ativa', 'Abrir câmera · × encerra captura', persistent=True)
+                if self._cam_preview_requested:
+                    self._orb_mode.open_popup(key)
+            self._cam_preview_requested = False
         else:
             if self._orb_mode: self._orb_mode.remove_kind('camera')
-            self._hud_cam_stack.setCurrentIndex(0)
+            self._cam_preview_requested = False
+            self._hud_cam_stack.setCurrentIndex(2 if self._video_on and not self._orb_mode.active else 0)
             self._cam_live_lbl.clear()
 
     def _on_cam_frame(self, data: bytes) -> None:
+        if self._cam_stop.is_set():
+            return
         px = QPixmap()
         px.loadFromData(data)
         if not px.isNull():
@@ -531,14 +590,22 @@ class MainWindow(QMainWindow):
                 )
 
     def start_camera_stream(self) -> None:
-        if self._cam_stream_active:
-            return
-        self._cam_stop.clear()
-        self._cam_stream_sig.emit(True)
-        t = threading.Thread(target=self._cam_loop, daemon=True, name="cam-stream")
-        t.start()
+        with self._cam_lock:
+            if self._cam_worker_running:
+                return
+            self._cam_worker_running = True
+            self._cam_stop.clear()
+        self._cam_status_sig.emit('opening')
+        try:
+            threading.Thread(target=self._cam_loop, daemon=True, name='cam-stream').start()
+        except Exception:
+            with self._cam_lock:
+                self._cam_worker_running = False
+            self._cam_stream_sig.emit(False)
+            self._log_sig.emit('ERR: Não foi possível iniciar a webcam.')
 
     def _cam_loop(self) -> None:
+        cap = None
         try:
             import cv2
             # Reuse camera index detected by screen_processor (cached in api_keys.json)
@@ -555,32 +622,62 @@ class MainWindow(QMainWindow):
                 backend = 0
             cap = cv2.VideoCapture(cam_idx, backend)
             if not cap.isOpened():
+                cap.release()
                 cap = cv2.VideoCapture(0)
             if not cap.isOpened():
-                return
+                raise RuntimeError('camera unavailable')
             # warm-up frames
             for _ in range(5):
+                if self._cam_stop.is_set():
+                    return
                 cap.read()
+            first_frame = True
+            missed = 0
             while not self._cam_stop.wait(0.033) and cap.isOpened():
                 ret, frame = cap.read()
                 if ret and frame is not None:
+                    missed = 0
                     if self.on_camera_frame:
                         try: self.on_camera_frame(frame)
                         except Exception: pass
-                    _, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 65])
-                    self._cam_frame_sig.emit(buf.tobytes())
-            cap.release()
+                    encoded, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 65])
+                    if not encoded:
+                        raise RuntimeError('camera frame encoding failed')
+                    if not self._cam_stop.is_set():
+                        if first_frame:
+                            self._cam_stream_sig.emit(True)
+                            first_frame = False
+                        self._cam_frame_sig.emit(buf.tobytes())
+                else:
+                    missed += 1
+                    if missed >= 15:
+                        raise RuntimeError('camera stopped returning frames')
         except Exception as e:
-            print(f"[Camera] Stream error: {e}")
+            if not self._cam_stop.is_set():
+                message = 'Não foi possível obter imagem da webcam. Confira a conexão, as permissões e se outro aplicativo está usando a câmera.'
+                self._log_sig.emit('ERR: ' + message)
+                self._content_sig.emit('Webcam indisponível', message)
+            print(f"[Camera] Stream error: {type(e).__name__}")
         finally:
+            if cap is not None:
+                try: cap.release()
+                except Exception: pass
             if self.on_camera_stopped:
                 try: self.on_camera_stopped()
                 except Exception: pass
-            self._cam_stream_sig.emit(False)
+            with self._cam_lock:
+                self._cam_stream_sig.emit(False)
+                self._cam_worker_running = False
 
     def stop_camera_stream(self) -> None:
-        self._cam_stop.set()
-        if self.on_camera_stopped:
+        with self._cam_lock:
+            self._cam_stop.set()
+            running = self._cam_worker_running
+            if running:
+                self._cam_status_sig.emit('stopping')
+            else:
+                self._cam_stream_sig.emit(False)
+        if not running and self.on_camera_stopped:
             try: self.on_camera_stopped()
             except Exception: pass
 
