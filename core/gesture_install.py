@@ -6,7 +6,6 @@ from pathlib import Path
 import re
 import subprocess
 import sys
-import tempfile
 import urllib.request
 from urllib.parse import urlsplit
 import venv
@@ -14,43 +13,38 @@ import venv
 from core.gesture_control import RUNTIME, PYTHON, MODEL, ROOT
 
 MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task'
-SPECS = ('mediapipe==0.10.35', 'opencv-contrib-python>=4.8,<5', 'numpy>=1.24,<3')
+MANIFEST = Path(__file__).with_name('hand_runtime_windows_py312.json')
 
 
-def prepare(report_path=None):
-    with tempfile.TemporaryDirectory(prefix='jinx-hand-plan-') as folder:
-        report = Path(folder) / 'packages.json'
-        if report_path is None:
-            result = subprocess.run([sys.executable, '-m', 'pip', 'install', '--dry-run',
-                '--ignore-installed', '--only-binary=:all:', '--report', str(report), *SPECS],
-                capture_output=True, timeout=120)
-            if result.returncode:
-                raise RuntimeError('Plano do MediaPipe indisponível')
-        else:
-            report = Path(report_path)
-        packages = []
-        for row in json.loads(report.read_text(encoding='utf-8'))['install']:
-            info = row['download_info']
-            url = info['url']
-            digest = info.get('archive_info', {}).get('hashes', {}).get('sha256', '')
-            if (urlsplit(url).scheme != 'https' or urlsplit(url).hostname != 'files.pythonhosted.org'
-                    or not re.fullmatch('[a-fA-F0-9]{64}', digest)):
-                raise ValueError('Origem/hash de pacote inválido')
-            with urllib.request.urlopen(urllib.request.Request(url, method='HEAD'), timeout=10) as reply:
-                size = int(reply.headers.get('Content-Length', 0))
-            if not 0 < size <= 150 * 1048576:
-                raise ValueError('Tamanho de pacote não verificado')
-            packages.append({'name': row['metadata']['name'], 'url': url, 'sha256': digest, 'size': size})
-        with urllib.request.urlopen(urllib.request.Request(MODEL_URL, method='HEAD'), timeout=10) as reply:
+def prepare():
+    # A pip dry-run can download entire wheels. Use a reviewed, hash-pinned
+    # manifest instead, so preparation performs only small HEAD requests.
+    manifest = json.loads(MANIFEST.read_text(encoding='utf-8'))
+    if sys.platform != manifest['platform'] or list(sys.version_info[:2]) != manifest['python']:
+        raise RuntimeError('Runtime de gestos preparado para Windows/Python 3.12; outro ambiente requer novo plano.')
+    packages = []
+    for row in manifest['packages']:
+        url = row['url']
+        digest = row['sha256']
+        if (urlsplit(url).scheme != 'https' or urlsplit(url).hostname != 'files.pythonhosted.org'
+                or not re.fullmatch('[a-fA-F0-9]{64}', digest)):
+            raise ValueError('Origem/hash de pacote inválido')
+        with urllib.request.urlopen(urllib.request.Request(url, method='HEAD'), timeout=10) as reply:
             size = int(reply.headers.get('Content-Length', 0))
-            hashes = ','.join(reply.headers.get_all('x-goog-hash', []))
-        md5 = next((part.strip()[4:] for part in hashes.split(',') if part.strip().startswith('md5=')), '')
-        if not md5 or not 0 < size < 20 * 1048576:
-            raise ValueError('Tamanho/integridade do modelo não verificados')
-        total = size + sum(p['size'] for p in packages)
-        if not packages or total > 300 * 1048576:
-            raise ValueError('Plano de gestos excede limites')
-        return {'packages': packages, 'model_size': size, 'model_md5': md5, 'bytes': total}
+        if not 0 < size <= 150 * 1048576 or size != row['size']:
+            raise ValueError('Tamanho de pacote não verificado')
+        packages.append({'name': row['name'], 'url': url, 'sha256': digest, 'size': size})
+    with urllib.request.urlopen(urllib.request.Request(MODEL_URL, method='HEAD'), timeout=10) as reply:
+        size = int(reply.headers.get('Content-Length', 0))
+        hashes = ','.join(reply.headers.get_all('x-goog-hash', []))
+    md5 = next((part.strip()[4:] for part in hashes.split(',') if part.strip().startswith('md5=')), '')
+    if (not md5 or not 0 < size < 20 * 1048576 or size != manifest['model_size']
+            or md5 != manifest['model_md5']):
+        raise ValueError('Tamanho/integridade do modelo não verificados')
+    total = size + sum(p['size'] for p in packages)
+    if not packages or total > 300 * 1048576:
+        raise ValueError('Plano de gestos excede limites')
+    return {'packages': packages, 'model_size': size, 'model_md5': md5, 'bytes': total}
 
 
 def install(plan, *, approved=False):

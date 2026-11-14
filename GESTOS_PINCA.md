@@ -31,7 +31,10 @@ semântica verificada pelo sistema de arquivos. Não há zoom/rotação 3D nesta
 Plano consultado nesta máquina: 95,8 MiB (aproximadamente 100 MB decimais),
 incluindo modelo de 7,5 MiB e 19 pacotes. Espaço em disco após descompactar é
 maior que o download. As versões/fontes/hashes estão no plano local em logs/.
-O tamanho é recalculado pelo instalador para a máquina em que for usado.
+O instalador confirma os tamanhos por HEAD, sem baixar as bibliotecas durante
+a preparação. Manifesto público com versões e hashes fixos em
+core/hand_runtime_windows_py312.json; este primeiro runtime é para Windows com
+Python 3.12. Outro interpretador requer preparar um plano compatível.
 
 MediaPipe 0.10.35, NumPy <3 e OpenCV contrib <5 ficam em um ambiente próprio em
 config/gesture_runtime/env. O ambiente Python principal e requirements.txt
@@ -60,7 +63,7 @@ instalar, não abre a webcam nem ativa o mouse automaticamente.
 - Testes de armar, segurar, arrastar, soltar, oscilação, perda de mão,
   emergência, timeout, dependência ausente, confirmação e indicador de UI
   usam coordenadas/mouse simulados. Nenhum arquivo pessoal foi arrastado.
-- Primeira suíte integrada: 404 testes passaram. Reconhecimento físico,
+- Suíte integrada: 405 testes passaram. Reconhecimento físico,
   qualidade de rastreamento e latência real dependem da instalação e do teste
   da câmera/mão do usuário; não são comprovados pelos testes simulados.
 

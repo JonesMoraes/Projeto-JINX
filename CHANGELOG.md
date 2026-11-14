@@ -6,7 +6,7 @@
 - Usa a webcam compartilhada; modelo MediaPipe roda em ambiente separado,
   sem alterar as dependências do aplicativo. Instalador apresenta tamanho e
   exige confirmação. F10/Esc e botão PARAR interrompem; não ativa no boot.
-- 404 testes passaram com mouse/landmarks simulados. Instalação do runtime e
+- 405 testes passaram com mouse/landmarks simulados. Instalação do runtime e
   teste físico da mão/câmera permanecem pendentes de aprovação/uso explícito.
 
 ## 2026-11-14 — Posição do botão de webcam

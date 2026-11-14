@@ -5,7 +5,8 @@ import tempfile
 import threading
 import time
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, MagicMock, patch
+from email.message import Message
 
 from core.pinch_pointer import PinchPointer
 from core.gesture_control import GestureControl
@@ -131,6 +132,30 @@ class ControllerTests(unittest.TestCase):
 
 
 class PluginAndInstallerTests(unittest.TestCase):
+    def test_prepare_checks_size_and_duplicate_model_hash_headers_without_downloading(self):
+        manifest = json.loads(gesture_install.MANIFEST.read_text(encoding='utf-8'))
+        sizes = {p['url']: p['size'] for p in manifest['packages']}
+        sizes[gesture_install.MODEL_URL] = manifest['model_size']
+        replies = []
+        def head(request, **kwargs):
+            self.assertEqual(request.get_method(), 'HEAD')
+            response = MagicMock()
+            response.__enter__.return_value = response
+            headers = Message()
+            headers['Content-Length'] = str(sizes[request.full_url])
+            if request.full_url == gesture_install.MODEL_URL:
+                headers['x-goog-hash'] = 'crc32c=example'
+                headers['x-goog-hash'] = 'md5=' + manifest['model_md5']
+            response.headers = headers
+            replies.append(response)
+            return response
+        with patch.object(gesture_install.urllib.request, 'urlopen', side_effect=head), \
+                patch.object(gesture_install.subprocess, 'run') as process:
+            plan = gesture_install.prepare()
+        self.assertEqual(plan['bytes'], manifest['bytes'])
+        process.assert_not_called()
+        for response in replies: response.read.assert_not_called()
+
     def test_no_hud_cannot_enable_mouse(self):
         result = plugin.run({'action': 'start'}, player=None)
         self.assertIn('failed', result)
