@@ -420,6 +420,10 @@ class JinxUI:
         """Thread-safe: start live camera feed in the full HUD area."""
         self._win._cam_start_sig.emit()
 
+    def toggle_gestures(self, enabled: bool) -> None:
+        """Thread-safe: request explicit local gesture control with a visible stop indicator."""
+        self._win._gesture_toggle_sig.emit(bool(enabled))
+
     def stop_camera_stream(self) -> None:
         """Thread-safe: stop the live camera feed."""
         self._win._cam_stop_sig.emit()

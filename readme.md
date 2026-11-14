@@ -1,5 +1,11 @@
 # ⚙️ JINX
 
+**Controle por pinça:** implementação local opt-in para mover o cursor com
+o indicador e arrastar/soltar com polegar + indicador. F10 ativa/para;
+Esc interrompe globalmente no Windows. Suporte de reconhecimento é instalado
+separadamente após revisão do tamanho. Instruções e limites em
+[GESTOS_PINCA.md](GESTOS_PINCA.md).
+
 **Webcam contínua:** use o **ícone de câmera**, junto aos botões de microfone e
 interromper no painel COMANDO, ou **F9**. O botão fica oculto em tela cheia;
 F9 continua disponível para ligar/desligar. A prévia fica aberta até você desligar;

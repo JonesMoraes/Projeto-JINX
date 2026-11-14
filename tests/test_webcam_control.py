@@ -125,3 +125,18 @@ class WebcamControlTests(unittest.TestCase):
                 if loop.called:
                     break
             self.assertTrue(loop.called)
+
+    def test_gestures_show_persistent_stop_and_do_not_start_when_runtime_missing(self):
+        from core.gesture_control import control
+        with patch.object(control, 'status', return_value={'active': False}), \
+                patch.object(control, 'start', return_value=(False, 'Instale o suporte')), \
+                patch.object(self.window, 'start_camera_stream') as camera:
+            self.window._toggle_gestures(True)
+        camera.assert_not_called()
+        self.window._on_gesture_state('Abra a pinça para armar')
+        self.assertTrue(self.window._gesture_stop_btn.isVisible())
+        with patch.object(control, 'stop') as stop:
+            self.window._gesture_stop_btn.click()
+        stop.assert_called_once()
+        self.window._on_gesture_state('Gestos desligados')
+        self.assertFalse(self.window._gesture_toolbar.isVisible())

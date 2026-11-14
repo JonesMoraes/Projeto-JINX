@@ -107,6 +107,8 @@ class MainWindow(QMainWindow):
     _cam_start_sig = pyqtSignal()
     _cam_stop_sig = pyqtSignal()
     _cam_status_sig = pyqtSignal(str)
+    _gesture_toggle_sig = pyqtSignal(bool)
+    _gesture_state_sig = pyqtSignal(str)
     _video_open_sig  = pyqtSignal(str, str, bool, str)  # video, title, muted, audio
     _image_open_sig  = pyqtSignal(str, str)   # still picture on the HUD: path, title
     _wake_btns_sig   = pyqtSignal()          # wake state resolved off-thread
@@ -147,6 +149,8 @@ class MainWindow(QMainWindow):
         manager.stop()
 
     def closeEvent(self, event):
+        from core.gesture_control import control
+        control.stop()
         from core.meeting import manager
         manager.stop()
         self.stop_camera_stream()
@@ -457,6 +461,8 @@ class MainWindow(QMainWindow):
         self._cam_start_sig.connect(self.start_camera_stream)
         self._cam_stop_sig.connect(self.stop_camera_stream)
         self._cam_status_sig.connect(self._on_cam_status)
+        self._gesture_toggle_sig.connect(self._toggle_gestures)
+        self._gesture_state_sig.connect(self._on_gesture_state)
         self._wake_btns_sig.connect(self._refresh_wake_btns)
         self._video_open_sig.connect(self._on_video_open)
         self._image_open_sig.connect(self._on_image_open)
@@ -501,6 +507,8 @@ class MainWindow(QMainWindow):
         sc_audio.activated.connect(self._open_audio_devices)
         sc_camera = QShortcut(QKeySequence('F9'), self)
         sc_camera.activated.connect(self._toggle_webcam)
+        sc_gestures = QShortcut(QKeySequence('F10'), self)
+        sc_gestures.activated.connect(self._toggle_gestures)
 
     def _show_camera_frame(self, img_bytes: bytes):
         """Slot — display camera preview overlay (main thread)."""
@@ -518,6 +526,46 @@ class MainWindow(QMainWindow):
             self._orb_mode.publish('capture', 'Captura de câmera', 'Imagem pronta · abrir para visualizar')
 
     # --- Live camera stream in HUD area ------------------------------------
+    def _toggle_gestures(self, requested=None):
+        from core.gesture_control import control
+        active = control.status()['active']
+        want = not active if requested is None else requested
+        if not want:
+            control.stop()
+            return
+        if active:
+            return
+        try:
+            ok, message = control.start(self._gesture_state_sig.emit)
+            if not ok:
+                self._show_content('Controle por gestos', message)
+                return
+            if self.on_camera_frame is None:
+                from core import camera_observers
+                self.on_camera_frame = camera_observers.feed
+                self.on_camera_stopped = camera_observers.stop
+            self.start_camera_stream()
+        except Exception as exc:
+            control.stop()
+            self._show_content('Gestos indisponíveis', type(exc).__name__)
+
+    def _on_gesture_state(self, message):
+        active = not (message.startswith('Gestos desligados') or 'indisponíveis' in message)
+        if not hasattr(self, '_gesture_toolbar'):
+            self._gesture_toolbar = QToolBar('Controle por gestos', self)
+            self._gesture_toolbar.setMovable(False)
+            self._gesture_toolbar.setFloatable(False)
+            self._gesture_stop_btn = QPushButton()
+            self._gesture_stop_btn.setFont(hud_font(9, QFont.Weight.Bold))
+            self._gesture_stop_btn.setStyleSheet(f'background: {C.BG}; color: {C.GREEN}; border: 1px solid {C.GREEN}; padding: 6px;')
+            self._gesture_stop_btn.clicked.connect(lambda: self._toggle_gestures(False))
+            self._gesture_toolbar.addWidget(self._gesture_stop_btn)
+            self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self._gesture_toolbar)
+        self._gesture_stop_btn.setText('GESTOS · ' + message + ' · PARAR (Esc/F10)')
+        self._gesture_toolbar.setVisible(active)
+        self._gesture_btn.setText('GESTOS ATIVOS — PARAR [F10]' if active else 'CONTROLE POR GESTOS [F10]')
+        self._log_sig.emit('SYS: ' + message)
+
     def _toggle_webcam(self) -> None:
         if self._cam_worker_running or self._cam_stream_active:
             self.stop_camera_stream()
@@ -1306,6 +1354,10 @@ class MainWindow(QMainWindow):
             self._orb_mode.set_active(self.isFullScreen())
 
     def _escape_display(self):
+        from core.gesture_control import control
+        if control.status()['active']:
+            control.stop()
+            return
         if self._orb_mode and self._orb_mode.command.isVisible():
             self._orb_mode.command.hide()
         elif self._orb_mode and self._orb_mode.current is not None:
@@ -1844,6 +1896,7 @@ class MainWindow(QMainWindow):
         self._autostart_btn = _btn("◉  INICIAR COM O SISTEMA: NÃO", self._toggle_autostart)
         _btn("⚙  PERSONALIZAR ASSISTENTE", self._open_customize)
         _btn("🎧  DISPOSITIVOS DE ÁUDIO", self._open_audio_devices)
+        self._gesture_btn = _btn('CONTROLE POR GESTOS [F10]', lambda: self._toggle_gestures())
         _btn("🧠  MEMÓRIA", self._open_memory_panel)
         _btn("🧩  PLUGINS", self._open_plugin_manager)
         _btn("⚙  CONFIGURAÇÕES DOS PLUGINS", self._open_plugin_settings)
@@ -3142,6 +3195,8 @@ class MainWindow(QMainWindow):
     # ────────────────────────────────────────────────────────────────────────────
 
     def _do_interrupt(self):
+        from core.gesture_control import control
+        control.stop()
         if self.on_interrupt:
             self.on_interrupt()
 
