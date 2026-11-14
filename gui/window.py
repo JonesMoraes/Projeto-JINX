@@ -2790,14 +2790,12 @@ class MainWindow(QMainWindow):
             "face": "🧑  HUD: ROSTO ANIMADO",
             "core": "◉  HUD: NÚCLEO REATOR",
             "aurora": "◌  HUD: AURORA",
-            "brahma_evo": "✦  HUD: EVO",
-            "brahma_echo": "✧  HUD: ECHO",
         }
         styles = self.hud.available_styles()
         style = self.hud.hud_style if self.hud.hud_style in styles else 'face'
         self._hud_btn.setText(names.get(style, names["face"]))
         self._hud_btn.setStyleSheet(btn_css("choice"))
-        self._hud_btn.setToolTip('Escolher visual: rosto, núcleo reator, EVO ou ECHO.')
+        self._hud_btn.setToolTip('Escolher visual: rosto, núcleo reator ou aurora.')
 
     def _show_hud_choices(self):
         from PyQt6.QtWidgets import QMenu
@@ -2805,7 +2803,7 @@ class MainWindow(QMainWindow):
         menu = QMenu(self)
         menu.setToolTipsVisible(True)
         for style, label in (('face', 'Rosto animado'), ('core', 'Núcleo reator'),
-                             ('aurora', 'Aurora'), ('brahma_evo', 'EVO'), ('brahma_echo', 'ECHO')):
+                             ('aurora', 'Aurora')):
             available = style in self.hud.available_styles()
             action = menu.addAction(label if available else label + ' — indisponível nesta execução')
             action.setCheckable(True)
@@ -2841,9 +2839,19 @@ class MainWindow(QMainWindow):
         if self._orb_mode and self._orb_mode.active:
             self._orb_mode.saved['style'] = want
         self._refresh_hud_btn()
-        labels = {"face": "rosto animado", "core": "núcleo reator",
-                  "brahma_evo": "EVO", "brahma_echo": "ECHO"}
+        labels = {"face": "rosto animado", "core": "núcleo reator", "aurora": "aurora"}
         self._log.append_log(f"SYS: HUD alterado para {labels[want]}.")
+
+        # Tema completo da interface: cada modelo carrega sua própria cor,
+        # aplicada instantaneamente em painéis, bordas e botões (e persistida).
+        from gui.theme import apply_ui_accent, current_palette, retheme_all_widgets
+        from memory.config_manager import update_config
+        _STYLE_ACCENTS = {"face": "#00d4ff", "core": "#00d4ff", "aurora": "#00ff88"}
+        accent = _STYLE_ACCENTS.get(want, "#00d4ff")
+        old = current_palette()
+        if apply_ui_accent(accent):
+            retheme_all_widgets(old, current_palette())
+            update_config(ui_color=accent)
 
     def _toggle_ptt(self):
         from memory.config_manager import (get_push_to_talk_enabled,

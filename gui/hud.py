@@ -103,9 +103,7 @@ class HudCanvas(QWidget):
 
     @staticmethod
     def available_styles():
-        if QWebEngineView is None:
-            return ('face', 'core', 'aurora')
-        return ('face', 'core', 'aurora', 'brahma_evo', 'brahma_echo')
+        return ('face', 'core', 'aurora')
 
     def __init__(self, face_path: str, assistant_name: str = "JINX", parent=None):
         super().__init__(parent)

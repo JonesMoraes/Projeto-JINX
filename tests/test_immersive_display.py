@@ -74,16 +74,6 @@ class ImmersiveDisplayTests(unittest.TestCase):
             player._win.close()
             player._win.deleteLater()
 
-    def test_fullscreen_keeps_selected_evo_or_echo(self):
-        for style in ('brahma_evo', 'brahma_echo'):
-            with patch.object(self.window.hud, '_sync_hud_style'):
-                self.window.hud.hud_style = style
-                self.mode.set_active(True)
-                self.assertEqual(self.window.hud.hud_style, style)
-                self.mode.set_active(False)
-                self.assertEqual(self.window.hud.hud_style, style)
-            self.app.processEvents()
-
     def test_audio_test_panel_prevents_overlapping_tests(self):
         from gui.overlays import AudioDeviceOverlay
         from PyQt6.QtWidgets import QLabel

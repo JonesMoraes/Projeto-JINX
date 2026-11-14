@@ -220,7 +220,7 @@ def save_push_to_talk_enabled(enabled: bool) -> None:
     _save_flag("push_to_talk_enabled", enabled)
 
 
-HUD_STYLES = ("face", "core", "aurora", "brahma_evo", "brahma_echo")
+HUD_STYLES = ("face", "core", "aurora")
 
 
 def get_hud_style() -> str:
