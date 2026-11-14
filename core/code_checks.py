@@ -189,6 +189,14 @@ def _walk(folder: Path, limit: int = 20_000):
 def _project_python(folder: Path) -> str:
     """The project's own interpreter when it has a virtual environment —
     its dependencies live there, not in the one running this assistant."""
+    state = folder / '.jinx_runtime'
+    try:
+        row = json.loads((state / 'current.json').read_text(encoding='utf-8'))
+        selected = (state / row['python']).resolve()
+        if state.resolve() in selected.parents and selected.is_file():
+            return str(selected)
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
     for venv in (".venv", "venv", "env"):
         for exe in (Path(venv) / "Scripts" / "python.exe", Path(venv) / "bin" / "python"):
             if (folder / exe).is_file():

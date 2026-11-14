@@ -8,7 +8,7 @@ import subprocess
 import sys
 import urllib.request
 from urllib.parse import urlsplit
-import venv
+import os
 
 from core.gesture_control import RUNTIME, PYTHON, MODEL, ROOT
 
@@ -16,12 +16,22 @@ MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/han
 MANIFEST = Path(__file__).with_name('hand_runtime_windows_py312.json')
 
 
+def base_python():
+    if sys.version_info[:2] == (3, 12):
+        return Path(sys.executable)
+    candidate = Path(os.environ.get('LOCALAPPDATA', '')) / 'Programs/Python/Python312/python.exe'
+    if not candidate.is_file():
+        raise RuntimeError('Mantenha Python 3.12 instalado para o runtime isolado de gestos.')
+    return candidate
+
+
 def prepare():
     # A pip dry-run can download entire wheels. Use a reviewed, hash-pinned
     # manifest instead, so preparation performs only small HEAD requests.
     manifest = json.loads(MANIFEST.read_text(encoding='utf-8'))
-    if sys.platform != manifest['platform'] or list(sys.version_info[:2]) != manifest['python']:
+    if sys.platform != manifest['platform']:
         raise RuntimeError('Runtime de gestos preparado para Windows/Python 3.12; outro ambiente requer novo plano.')
+    base_python()
     packages = []
     for row in manifest['packages']:
         url = row['url']
@@ -55,7 +65,8 @@ def install(plan, *, approved=False):
         logs = ROOT / 'logs'
         logs.mkdir(exist_ok=True)
         with (logs / 'gesture-install.log').open('ab') as log:
-            venv.EnvBuilder(with_pip=True).create(RUNTIME / 'env')
+            subprocess.run([str(base_python()), '-m', 'venv', str(RUNTIME / 'env')],
+                           stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True)
             artifacts = []
             for item in plan['packages']:
                 if (urlsplit(item['url']).hostname != 'files.pythonhosted.org'

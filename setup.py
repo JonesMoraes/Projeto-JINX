@@ -13,6 +13,7 @@ Two things it deliberately does NOT install:
     PyQt6 and numpy already listed here. No GPU, no OpenGL, no extra packages.
 """
 import platform
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -20,13 +21,13 @@ from pathlib import Path
 OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 HERE = Path(__file__).resolve().parent
 
-MIN_PY = (3, 11)        # hard floor: below this the syntax used here won't parse
-MAX_PY = (3, 13)        # highest version this is actually tested on
+MIN_PY = (3, 15)        # application policy; bootstrap can run on an older Python
+MAX_PY = (3, 15)        # future stable versions are verified by runtime_manager.py
 
 
 def _run(label: str, args: list[str]) -> None:
     print(f"\n▶ {label}")
-    subprocess.run(args, check=True)
+    subprocess.run(args, check=True, env=dict(os.environ, PYYAML_FORCE_LIBYAML='0'))
 
 
 def _check_python() -> None:

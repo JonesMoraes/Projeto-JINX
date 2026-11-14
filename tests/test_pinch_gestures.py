@@ -169,7 +169,7 @@ class PluginAndInstallerTests(unittest.TestCase):
         stop.assert_called_once()
 
     def test_large_install_cannot_run_without_explicit_approval(self):
-        with patch.object(gesture_install.venv, 'EnvBuilder') as env:
+        with patch.object(gesture_install.subprocess, 'run') as env:
             ok, _ = gesture_install.install({'bytes': 100 * 1048576})
         self.assertFalse(ok)
         env.assert_not_called()

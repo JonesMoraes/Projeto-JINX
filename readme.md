@@ -1,5 +1,11 @@
 # ⚙️ JINX
 
+**Python atualizado no Windows:** abra por **INICIAR_JINX.cmd**. O inicializador
+verifica a versão estável mais recente no python.org, prepara um ambiente novo
+e só o seleciona após instalar dependências e passar nos testes. Se a atualização
+falhar, informa o motivo e usa o ambiente anterior disponível. Requisito atual:
+Python >=3.15 (3.15.2 nesta revisão). Veja [PYTHON_RUNTIME.md](PYTHON_RUNTIME.md).
+
 **Controle por pinça:** implementação local opt-in para mover o cursor com
 o indicador e arrastar/soltar com polegar + indicador. F10 ativa/para;
 Esc interrompe globalmente no Windows. Suporte de reconhecimento é instalado
@@ -973,7 +979,7 @@ python main.py
 | **OS** | Windows 10/11, macOS, or Linux |
 | **Linux display server** | Everything works on **X11**. On **Wayland** — the default on Ubuntu 22.04+, Fedora and current GNOME/KDE — the system does not permit any program to type, click, capture the screen or raise another window, so those features are unavailable and JINX says so at startup instead of pretending. Voice, memory, files, the web and opening applications are unaffected. Log out and pick an Xorg session to get the rest |
 | **macOS permissions** | Accessibility (to type and click) and Screen Recording (to see the screen), both under System Settings → Privacy & Security. Until granted, those actions silently do nothing — the OS reports success either way |
-| **Python** | 3.11, 3.12 or 3.13 |
+| **Python** | >=3.15; INICIAR_JINX.cmd prepares the latest stable release (currently 3.15.2) |
 | **Microphone** | Required for voice interaction (and for the "Hey Jarvis" wake word) |
 | **Speakers** | Required for voice replies |
 | **API Key** | Free Gemini API key (entered on first launch → `config/api_keys.json`). Only for the Gemini engine — a fully local setup needs no key and no account |

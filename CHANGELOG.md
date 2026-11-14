@@ -1,5 +1,14 @@
 # Histórico de alterações
 
+## 2026-11-14 — Política de Python estável atualizado
+- Requisito do interpretador em .python-version/setup.py e referência em
+  requirements.txt. Inicializador verifica python.org, valida hash/assinatura
+  do instalador e testa dependências antes de selecionar o ambiente novo.
+- Ambientes gerenciados ficam em .jinx_runtime; ambiente anterior preservado
+  em caso de falha. Runtime opcional de gestos mantém seu Python 3.12 separado.
+- Python 3.15.2 instalado/selecionado; 411 testes aprovados, pip check sem
+  conflitos e startup real com conexão/microfone/recepção/reprodução iniciados.
+
 ## 2026-11-14 — Controle de mouse por pinça
 - Controle local opt-in: indicador move, pinça sustentada segura, abertura solta.
   Arma somente após mão aberta; perda da mão e watchdog liberam o botão.
