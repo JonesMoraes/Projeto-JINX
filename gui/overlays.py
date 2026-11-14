@@ -315,10 +315,17 @@ class CustomizeOverlay(QWidget):
                f"QLineEdit:focus {{ border: 1px solid {C.PRI}; }}")
 
         lay.addWidget(_lbl("⚙  PERSONALIZAR ASSISTENTE", 12, True))
+        _hint = QLabel("Altere nome, voz e cor. Mudanças de cor são pré-visualizadas "
+                       "ao vivo; clique em APLICAR para salvar.")
+        _hint.setWordWrap(True)
+        _hint.setFont(hud_font(8))
+        _hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        lay.addWidget(_hint)
         sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
         lay.addWidget(sep)
 
+        lay.addWidget(_lbl("1. IDENTIDADE", 9, True, color=C.PRI))
         lay.addWidget(_lbl("NOME DO ASSISTENTE", 8, color=C.TEXT_DIM,
                             align=Qt.AlignmentFlag.AlignLeft))
         self._name_input = QLineEdit(assistant_name)
@@ -328,7 +335,7 @@ class CustomizeOverlay(QWidget):
         lay.addWidget(self._name_input)
 
         lay.addSpacing(4)
-        lay.addWidget(_lbl("SEU NOME  (deixe em branco para usar senhor/senhora)", 8,
+        lay.addWidget(_lbl("SEU NOME  (opcional, em branco = detecção automática)", 8,
                             color=C.TEXT_DIM, align=Qt.AlignmentFlag.AlignLeft))
         self._user_input = QLineEdit(user_name)
         self._user_input.setPlaceholderText("ex.: Ana  (deixe em branco para detecção automática)")
@@ -342,7 +349,11 @@ class CustomizeOverlay(QWidget):
         # styles come from the supported-voice catalog in config_manager.
         from memory.config_manager import AVAILABLE_VOICES, DEFAULT_VOICE, VOICE_STYLES
         lay.addSpacing(4)
-        lay.addWidget(_lbl("VOZ DO ASSISTENTE  —  PT-BR", 8, color=C.TEXT_DIM,
+        lay.addWidget(_lbl("2. VOZ DO ASSISTENTE  (PT-BR)", 9, True, color=C.PRI))
+        _vhint = QLabel("Escolha a voz e ouça uma amostra antes de aplicar.")
+        _vhint.setFont(hud_font(8)); _vhint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        lay.addWidget(_vhint)
+        lay.addWidget(_lbl("VOZ", 8, color=C.TEXT_DIM,
                             align=Qt.AlignmentFlag.AlignLeft))
         self._sel_voice   = (voice or DEFAULT_VOICE)
         if self._sel_voice not in AVAILABLE_VOICES:
@@ -391,11 +402,15 @@ class CustomizeOverlay(QWidget):
 
         # ── UI colour — colour wheel ─────────────────────────────────────────
         lay.addSpacing(4)
+        lay.addWidget(_lbl("3. COR DA INTERFACE", 9, True, color=C.PRI))
+        _chint = QLabel("Arraste o seletor ou digite um hex. Pré-visualizado ao vivo.")
+        _chint.setFont(hud_font(8)); _chint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        lay.addWidget(_chint)
         clr_hdr = QHBoxLayout()
-        clr_hdr.addWidget(_lbl("COR DA INTERFACE  —  arraste o seletor", 8,
-                               color=C.TEXT_DIM, align=Qt.AlignmentFlag.AlignLeft))
+        clr_hdr.addWidget(_lbl("COR  (hex)", color=C.TEXT_DIM,
+                               align=Qt.AlignmentFlag.AlignLeft))
         clr_hdr.addStretch()
-        df_btn = QPushButton("PADRÃO")
+        df_btn = QPushButton("RESETAR COR")
         df_btn.setFixedSize(64, 20)
         df_btn.setFont(hud_font(7, QFont.Weight.Bold))
         df_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -432,7 +447,7 @@ class CustomizeOverlay(QWidget):
         lay.addSpacing(6)
         btn_row = QHBoxLayout(); btn_row.setSpacing(8)
 
-        save_btn = QPushButton("▸  APLICAR ALTERAÇÕES")
+        save_btn = QPushButton("✓  APLICAR E SALVAR")
         save_btn.setFixedHeight(34)
         save_btn.setFont(hud_font(9, QFont.Weight.Bold))
         save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
