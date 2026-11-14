@@ -11,29 +11,43 @@ from memory.config_manager import get_plugin_config, save_plugin_config
 
 class AgendaPanel(QDialog):
     finished_work = pyqtSignal(str, str)
+    connection_finished = pyqtSignal(bool, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Agenda / Schedule")
+        self.setWindowTitle("Agenda — Google Agenda")
         self.resize(720, 680)
         self.setFont(hud_font(10))
         self.setStyleSheet(f"background:{C.BG};color:{C.TEXT};")
         layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("Tarefas e eventos locais sem conta. Trello opcional nas configurações de plugins.\n"
-                                "Local tasks and events need no account. Trello is optional in plugin settings."))
-        cfg = get_plugin_config("agenda")
-        self.enabled = QCheckBox("Sincronizar com Trello a cada 60 s / Sync with Trello every 60 s")
-        self.enabled.setChecked(bool(cfg.get("enabled")))
+        instructions = QLabel('Tarefas e eventos locais continuam disponíveis sem conta.\n'
+            'Google Agenda: salve as configurações, conecte sua conta e use Sincronizar.\n'
+            'O JSON OAuth Desktop deve estar em config/ e ter a Calendar API habilitada.\n'
+            'Não há sincronização automática; arquivar/desfazer localmente não apaga eventos no Google.')
+        instructions.setWordWrap(True)
+        layout.addWidget(instructions)
+        cfg = get_plugin_config("google_workspace")
+        self.enabled = QCheckBox("Permitir sincronização manual com Google Agenda")
+        self.enabled.setChecked(cfg.get("calendar_sync") is True)
         layout.addWidget(self.enabled)
-        self.list_id = QLineEdit(str(cfg.get("list_id") or ""))
-        self.list_id.setPlaceholderText("ID da SUA lista Trello / YOUR Trello list ID")
-        layout.addWidget(self.list_id)
+        self.calendar_id = QLineEdit(str(cfg.get('calendar_id') or 'primary'))
+        self.calendar_id.setPlaceholderText('ID do Google Agenda (primary = calendário principal)')
+        self.calendar_id.setToolTip('primary usa seu calendário principal; outros calendários exigem o ID e acesso da conta conectada.')
+        layout.addWidget(self.calendar_id)
+        self.client_file = QLineEdit(str(cfg.get('client_file') or 'google_client_secret.json'))
+        self.client_file.setPlaceholderText('Arquivo JSON OAuth Desktop dentro de config/')
+        self.client_file.setToolTip('Nome/caminho relativo do JSON OAuth Desktop, armazenado dentro de config/.')
+        layout.addWidget(self.client_file)
         self.save_btn = QPushButton("Salvar configuração / Save settings")
         self.save_btn.clicked.connect(self._save)
         layout.addWidget(self.save_btn)
+        self.connect_btn = QPushButton('Conectar conta Google no navegador')
+        self.connect_btn.clicked.connect(self._connect_google)
+        layout.addWidget(self.connect_btn)
         self.kind = QComboBox()
         self.kind.addItem("Tarefas / Tasks", "task")
         self.kind.addItem("Eventos / Events", "event")
+        self.kind.setCurrentIndex(1)
         layout.addWidget(self.kind)
         self.filter = QComboBox()
         for label, value in (("Abertos / Open", "open"), ("Hoje / Today", "today"),
@@ -61,12 +75,12 @@ class AgendaPanel(QDialog):
             self.priority.addItem(label, value)
         self.priority.setCurrentIndex(1)
         layout.addWidget(self.priority)
-        self.buttons = [self.save_btn]
+        self.buttons = [self.save_btn, self.connect_btn]
         row = None
         for index, (label, action) in enumerate((("Atualizar / Refresh", "list"), ("Adicionar / Add", "add"),
                               ("Alterar / Update", "update"), ("Concluir / Complete", "complete"),
                               ("Reabrir / Reopen", "reopen"), ("Arquivar / Archive", "archive"),
-                              ("Sincronizar / Sync", "sync"))):
+                              ("Sincronizar Google Agenda", "sync"))):
             if index % 3 == 0:
                 row = QHBoxLayout()
                 layout.addLayout(row)
@@ -78,6 +92,7 @@ class AgendaPanel(QDialog):
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
         self.finished_work.connect(self._finish)
+        self.connection_finished.connect(self._finish_connection)
         self.kind.currentIndexChanged.connect(lambda: self._execute("list"))
         self.filter.currentIndexChanged.connect(lambda: self._execute("list"))
         self._execute("list")
@@ -93,11 +108,41 @@ class AgendaPanel(QDialog):
 
     def _save(self):
         try:
-            save_plugin_config("agenda", {"enabled": self.enabled.isChecked(),
-                                         "list_id": self.list_id.text().strip()})
-            self.status.setText("Configuração salva / Settings saved")
+            save_plugin_config('agenda', {'provider': 'google', 'enabled': False})
+            save_plugin_config('google_workspace', {'calendar': True,
+                'calendar_sync': self.enabled.isChecked(),
+                'calendar_id': self.calendar_id.text().strip() or 'primary',
+                'client_file': self.client_file.text().strip() or 'google_client_secret.json'})
+            self.status.setText('Google Agenda selecionado. Conecte sua conta se necessário; nenhum evento foi enviado.')
+            return True
         except Exception:
             self.status.setText("Falha ao salvar / Save failed")
+            return False
+
+    def _connect_google(self):
+        if not self._save():
+            return
+        values = get_plugin_config('google_workspace')
+        for button in self.buttons + [self.kind, self.filter]:
+            button.setEnabled(False)
+        self.status.setText('Autorize os serviços Google selecionados no navegador. Nenhum evento será enviado ao conectar.')
+        def connect():
+            try:
+                from core.google_workspace import connect as oauth_connect
+                ok, message = oauth_connect(values)
+            except Exception:
+                ok, message = False, 'Conexão Google não concluída. Confira o arquivo OAuth e a conexão.'
+            try:
+                self.connection_finished.emit(ok, message)
+            except RuntimeError:
+                pass
+        threading.Thread(target=connect, daemon=True, name='agenda-google-login').start()
+
+    def _finish_connection(self, ok, message):
+        self.status.setTextFormat(Qt.TextFormat.PlainText)
+        self.status.setText(message + (' Use Sincronizar Google Agenda para enviar/receber eventos.' if ok else ''))
+        for button in self.buttons + [self.kind, self.filter]:
+            button.setEnabled(True)
 
     def _execute(self, action):
         values = {"action": action, "title": self.title.text(), "due": self.due.text(),
@@ -114,7 +159,7 @@ class AgendaPanel(QDialog):
             try:
                 from plugins.organizer import run, _filtered
                 from core import agenda_store, organizer_store, agenda_sync
-                result = agenda_sync.sync_now() if action == "sync" else run(values)
+                result = agenda_sync.display_result(agenda_sync.sync_now()) if action == "sync" else run(values)
                 records = (agenda_store.all_events(True) if values["kind"] == "event" else organizer_store.tasks())
                 events = json.dumps(_filtered(records, values["filter"]), ensure_ascii=False)
             except Exception:

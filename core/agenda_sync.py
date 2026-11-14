@@ -1,6 +1,6 @@
-"""Agenda/Trello reconciliation adapted from jgm-source; see NOTICE.md.
+"""Default Google Calendar router; legacy Trello reconciliation from jgm-source.
 
-Conflicts preserve both versions. A disappearing card never deletes local data.
+See NOTICE.md for the legacy port. Google is manual, conflicts preserve data.
 """
 import hashlib
 import threading
@@ -24,7 +24,45 @@ def snapshot(card):
     return {"title": str(card.get("name") or ""), "due": canonical_due(card.get("due"))}
 
 
+def provider():
+    return get_plugin_config('agenda').get('provider', 'google')
+
+
 def sync_now():
+    if provider() == 'trello':
+        return _sync_trello_now()
+    from core import google_workspace as google, google_calendar_sync
+    if not get_plugin_enabled('agenda_sync') or not get_plugin_enabled('google_workspace'):
+        return outcome.unverified('agenda_google_sync', 'Ative os plugins Agenda e Google nas configurações.')
+    cfg = google.config()
+    if cfg.get('calendar') is not True or cfg.get('calendar_sync') is not True:
+        return outcome.unverified('agenda_google_sync',
+            'Google Agenda não conectado ou sincronização desativada. Abra Agenda, selecione Google Agenda, salve e conecte sua conta.')
+    try:
+        result = google_calendar_sync.sync(google.Client('calendar'), cfg.get('calendar_id') or 'primary')
+        if not result.get('complete'):
+            return outcome.unverified('agenda_google_sync', 'Há conflitos ou eventos não suportados; dados preservados.',
+                                      changes=result.get('changes', 0), issues=result.get('issues', []))
+        return outcome.done('agenda_google_sync', changes=result['changes'])
+    except google.GoogleError as exc:
+        return outcome.unverified('agenda_google_sync', str(exc))
+    except Exception:
+        return outcome.unverified('agenda_google_sync', 'Google Agenda indisponível. Confira a conexão e a conta; dados locais preservados.')
+
+
+def display_result(result):
+    """Human-readable sync receipt; keep model-only instructions out of the UI."""
+    import shlex
+    try:
+        facts = dict(part.split('=', 1) for part in shlex.split(result.split(' -- ', 1)[0]) if '=' in part)
+        if facts.get('status') == 'done':
+            return 'Google Agenda sincronizado: ' + facts.get('changes', '0') + ' alterações.'
+        return facts.get('reason') or 'Sincronização não confirmada. Confira a conta Google.'
+    except ValueError:
+        return 'Sincronização não confirmada. Confira a conta Google.'
+
+
+def _sync_trello_now():
     cfg = get_plugin_config("agenda")
     if not get_plugin_enabled("agenda_sync") or not cfg.get("enabled") or not cfg.get("list_id"):
         return outcome.unverified("agenda_sync", "Sincronização desligada / Sync disabled")
@@ -146,7 +184,7 @@ def start(log=None):
         _stop.clear()
         def loop():
             while not _stop.wait(60):
-                if get_plugin_config("agenda").get("enabled"):
+                if provider() == 'trello' and get_plugin_config("agenda").get("enabled"):
                     result = sync_now()
                     if log:
                         log(result)

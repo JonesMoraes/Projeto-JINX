@@ -1,5 +1,15 @@
 # Histórico de alterações
 
+## 2026-11-14 — Google Agenda como agenda principal
+- Painel e ferramenta agenda_sync usam Google Calendar por padrão. Campos
+  de lista Trello substituídos por calendário Google, JSON OAuth e conexão no
+  navegador. Sincronização explícita; CRUD/undo permanecem locais.
+- Temporizador Trello da instalação desativado via config_manager; eventos,
+  vínculos e credenciais anteriores preservados. Trello continua como ferramenta
+  independente/opção legada explícita, sem fallback automático após falha Google.
+- 417 testes passaram no Python 3.15.2. Nenhum evento/conta real acessado;
+  arquivo OAuth e consentimento do usuário ainda necessários nesta instalação.
+
 ## 2026-11-14 — Política de Python estável atualizado
 - Requisito do interpretador em .python-version/setup.py e referência em
   requirements.txt. Inicializador verifica python.org, valida hash/assinatura

@@ -1,9 +1,12 @@
-"""Agenda sync voice hooks; organizer task CRUD follows in expansion 1.3."""
+"""Local agenda tools with explicit Google Calendar synchronization by default."""
 import json
 from core import outcome, undo
 from core import agenda_store as store, agenda_sync
+from core.plugin_jobs import Jobs
 
-PLUGIN = {"name": "agenda_sync", "description": "Agenda: list, add, reschedule by title; sync with user's Trello list.",
+_google_jobs = Jobs('Google Agenda')
+
+PLUGIN = {"name": "agenda_sync", "description": "Agenda: list/add/reschedule/archive local events; explicitly sync with Google Calendar. Local edits do not automatically publish to Google. Connect account in Agenda settings. Trello is a separate optional tool, not the default agenda. Archive/undo are local and do not delete Google events.",
     "parameters": {"type": "OBJECT", "properties": {
         "action": {"type": "STRING", "enum": ["list", "add", "reschedule", "archive", "sync"]},
         "title": {"type": "STRING"},
@@ -12,19 +15,21 @@ PLUGIN = {"name": "agenda_sync", "description": "Agenda: list, add, reschedule b
         "due": {"type": "STRING", "description": "ISO datetime, e.g. 2026-11-14T17:00:00-03:00; rescheduling must retain the event date"}},
         "required": ["action"]}}
 
-PLUGIN_SETTINGS = {"namespace": "agenda", "title": "AGENDA — SUA LISTA TRELLO / YOUR TRELLO LIST",
-    "fields": [{"key": "enabled", "label": "Sincronizar a cada 60 s / Sync every 60 s", "type": "toggle", "default": False},
-               {"key": "list_id", "label": "ID da sua lista Trello / Your Trello list ID", "type": "text"}],
-    "action": {"label": "TESTAR LISTA / TEST LIST", "run": lambda values: _test(values)}}
+PLUGIN_SETTINGS = {"namespace": "agenda", "title": "AGENDA — GOOGLE AGENDA / GOOGLE CALENDAR",
+    "fields": [],
+    "action": {"label": "TESTAR GOOGLE AGENDA (CONECTE PELO PAINEL AGENDA)", "run": lambda values: _test(values)}}
 
 
 def _test(values):
-    from core import trello_client as api
+    from core import google_workspace as api
     try:
-        result = api.request("GET", "/lists/" + api.ident(values.get("list_id")), {"fields": "id"})
-        return bool(result.get("id")), "Lista acessível pela sua conta / List accessible to your account"
-    except api.TrelloError as exc:
+        client = api.Client('calendar')
+        result = client.request('GET', api.calendar_path(api.config().get('calendar_id')), params={'maxResults': 1})
+        return isinstance(result, dict), 'Google Agenda acessível.' if isinstance(result, dict) else 'Calendário não encontrado.'
+    except api.GoogleError as exc:
         return False, str(exc)
+    except Exception:
+        return False, 'Não foi possível verificar o Google Agenda.'
 
 
 def run(parameters, player=None, session_memory=None):
@@ -32,7 +37,9 @@ def run(parameters, player=None, session_memory=None):
     try:
         action = p.get("action")
         if action == "sync":
-            return agenda_sync.sync_now()
+            if agenda_sync.provider() == 'trello':
+                return agenda_sync.sync_now()
+            return _google_jobs.start(lambda: agenda_sync.display_result(agenda_sync.sync_now()), player)
         if action == "list":
             return outcome.done("agenda", data=outcome.untrusted("agenda", json.dumps(store.all_events(), ensure_ascii=False)))
         if action not in ("add", "reschedule", "archive"):
@@ -61,9 +68,9 @@ def run(parameters, player=None, session_memory=None):
                 if previous:
                     item.update(title=previous["title"], due=previous["due"],
                                 archived=previous.get("archived", False), dirty=True)
-                    if action == "archive" and item.get("trello_id"):
+                    if action == "archive" and item.get("trello_id") and agenda_sync.provider() == 'trello':
                         item["restore_remote"] = True
-                elif item.get("trello_id"):
+                elif item.get("trello_id") and agenda_sync.provider() == 'trello':
                     from core import trello_client as api
                     import hashlib
                     from memory.config_manager import get_plugin_config
@@ -83,8 +90,10 @@ def run(parameters, player=None, session_memory=None):
                 store.save(events)
             return outcome.done("agenda_undo")
         undo.push_undo("Agenda", restore)
-        result = agenda_sync.sync_now()
-        return outcome.done("agenda_local", id=event["id"], sync=result)
+        if agenda_sync.provider() == 'trello':
+            return outcome.done("agenda_local", id=event["id"], sync=agenda_sync.sync_now())
+        return outcome.done('agenda_local', id=event['id'],
+                            note='Alteração salva localmente. Use Sincronizar com Google para enviar/receber eventos. Arquivar/desfazer não apaga eventos no Google.')
     except ValueError:
         return outcome.failed("agenda", "Informe título e data/hora ISO válidos / Provide title and valid ISO datetime")
     except Exception:

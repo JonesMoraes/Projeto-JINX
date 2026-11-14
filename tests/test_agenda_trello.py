@@ -14,7 +14,7 @@ class AgendaTest(unittest.TestCase):
         self.path = patch.object(store, "PATH", Path(temp.name) / "agenda.json")
         self.path.start()
         self.addCleanup(self.path.stop)
-        self.cfg = {"agenda": {"enabled": True, "list_id": "mylist"},
+        self.cfg = {"agenda": {"provider": "trello", "enabled": True, "list_id": "mylist"},
                     "trello": {"api_key": "mykey", "token": "mytoken"}}
         self.config = patch.object(sync, "get_plugin_config", side_effect=lambda n: self.cfg[n])
         self.config.start()

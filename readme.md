@@ -1,5 +1,11 @@
 # ⚙️ JINX
 
+**Agenda com Google:** o painel Agenda e o comando de sincronização agora
+usam **Google Agenda** por padrão. Compromissos e tarefas locais foram
+preservados. Na Agenda, salve o calendário/arquivo OAuth, conecte sua conta
+Google no navegador e use **Sincronizar Google Agenda**. Alterações locais
+não são publicadas automaticamente. Detalhes em [GOOGLE_AGENDA.md](GOOGLE_AGENDA.md).
+
 **Python atualizado no Windows:** abra por **INICIAR_JINX.cmd**. O inicializador
 verifica a versão estável mais recente no python.org, prepara um ambiente novo
 e só o seleciona após instalar dependências e passar nos testes. Se a atualização
