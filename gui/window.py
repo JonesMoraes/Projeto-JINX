@@ -89,7 +89,7 @@ from gui.providers_panel import (
 
 from PyQt6.QtWidgets import QGridLayout
 
-from gui.style import DISPLAY_CSS, btn_css, hud_font, mono_font, px_font, scroll_css
+from gui.style import DISPLAY_CSS, btn_css, hud_font, px_font, scroll_css
 from gui.widgets import (ArcLogo, CommandFrame, DataRow, HeaderBar, HoloPanel, IconButton,
                          PanelText, RingGauge, RoutineRow, Sparkline, StateChip, StatusStrip,
                          TaskRow)
@@ -472,23 +472,6 @@ class MainWindow(QMainWindow):
         self._radar_sig.connect(self._show_radar)
         self._meeting_sig.connect(self._set_meeting_recording)
         self._cam_stop = threading.Event()
-        self._camera_toolbar = QToolBar('Webcam', self)
-        self._camera_toolbar.setMovable(False)
-        self._camera_toolbar.setFloatable(False)
-        self._camera_toolbar.setStyleSheet(f'background: {C.BG}; border: 0; spacing: 8px;')
-        self.addToolBar(Qt.ToolBarArea.BottomToolBarArea, self._camera_toolbar)
-        self._webcam_button = QPushButton('LIGAR WEBCAM · F9')
-        self._webcam_button.setCheckable(True)
-        self._webcam_button.setMinimumSize(240, 34)
-        self._webcam_button.setFont(hud_font(9, QFont.Weight.Bold))
-        self._webcam_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._webcam_button.setToolTip('Ligar/desligar a imagem ao vivo. Captura local contínua até desligar; sem gravação ou envio automático.')
-        self._webcam_button.clicked.connect(self._toggle_webcam)
-        self._camera_toolbar.addWidget(self._webcam_button)
-        self._webcam_status = QLabel('Webcam desligada')
-        self._webcam_status.setFont(mono_font(8))
-        self._webcam_status.setStyleSheet(f'color: {C.TEXT_MED}; padding: 0 8px;')
-        self._camera_toolbar.addWidget(self._webcam_status)
         self._on_cam_status('off')
 
         # Camera preview overlay (child of central widget, positioned in resizeEvent)
@@ -544,17 +527,18 @@ class MainWindow(QMainWindow):
 
     def _on_cam_status(self, status: str) -> None:
         captions = {
-            'off': ('LIGAR WEBCAM · F9', 'Webcam desligada'),
+            'off': ('WEBCAM OFF', 'Webcam desligada'),
             'opening': ('CANCELAR WEBCAM · F9', 'Abrindo webcam…'),
-            'on': ('DESLIGAR WEBCAM · F9', '● Webcam ativa · imagem local contínua'),
+            'on': ('WEBCAM ON', '● Webcam ativa · imagem local contínua'),
             'stopping': ('DESLIGANDO WEBCAM…', 'Aguardando liberação da câmera…'),
         }
         text, detail = captions[status]
-        self._webcam_button.setText(text)
+        self._webcam_button.set_look('camera_off' if status == 'off' else 'camera', text,
+                                     'MUTED_C' if status == 'off' else 'GREEN')
         self._webcam_button.setChecked(status != 'off')
         self._webcam_button.setEnabled(status != 'stopping')
-        self._webcam_button.setStyleSheet(btn_css('on' if status != 'off' else 'dim'))
-        self._webcam_status.setText(detail)
+        self._webcam_button.setToolTip(detail + ' [F9] · Ligar/desligar imagem local contínua, sem gravação ou envio automático.')
+        self._webcam_button.setAccessibleName(detail)
 
     def _on_cam_stream(self, start: bool) -> None:
         if start and self._cam_stop.is_set():
@@ -1824,6 +1808,10 @@ class MainWindow(QMainWindow):
         self._mute_btn.clicked.connect(self._toggle_mute)
         self._style_mute_btn()
         row.addWidget(self._mute_btn, 1)
+        self._webcam_button = IconButton('camera_off', 38, colour='MUTED_C')
+        self._webcam_button.setCheckable(True)
+        self._webcam_button.clicked.connect(self._toggle_webcam)
+        row.addWidget(self._webcam_button)
         self._interrupt_btn = IconButton("stop", 38, "INTERROMPER", "MUTED_C")
         self._interrupt_btn.setToolTip("Interromper o assistente  [ESC]")
         self._interrupt_btn.clicked.connect(self._do_interrupt)

@@ -1,8 +1,8 @@
 # ⚙️ JINX
 
-**Webcam contínua:** use **LIGAR WEBCAM**, na barra inferior, ou **F9**.
-O botão permanece visível em tela cheia e muda para **DESLIGAR WEBCAM**
-enquanto a imagem ao vivo está ativa. A prévia fica aberta até você desligar;
+**Webcam contínua:** use o **ícone de câmera**, junto aos botões de microfone e
+interromper no painel COMANDO, ou **F9**. O botão fica oculto em tela cheia;
+F9 continua disponível para ligar/desligar. A prévia fica aberta até você desligar;
 fechar o pop-up apenas recolhe a prévia, e o indicador continua ativo.
 O botão não grava nem envia imagens automaticamente. Fechar o aplicativo
 também encerra a captura; a webcam começa desligada a cada inicialização.

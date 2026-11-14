@@ -884,6 +884,14 @@ def paint_icon(p: QPainter, kind: str, r: QRectF, col: QColor) -> None:
         p.drawLine(QLineF(cx, cy + s * 0.45, cx, cy + s * 0.85))
         if kind == "mic_off":
             p.drawLine(QLineF(cx - s * 0.8, cy - s * 0.8, cx + s * 0.8, cy + s * 0.8))
+    elif kind in ('camera', 'camera_off'):
+        p.drawRoundedRect(QRectF(cx - s * .8, cy - s * .5, s * 1.6, s), s * .15, s * .15)
+        p.drawEllipse(QPointF(cx, cy), s * .28, s * .28)
+        p.drawLine(QLineF(cx - s * .4, cy - s * .5, cx - s * .2, cy - s * .75))
+        p.drawLine(QLineF(cx - s * .2, cy - s * .75, cx + s * .3, cy - s * .75))
+        p.drawLine(QLineF(cx + s * .3, cy - s * .75, cx + s * .5, cy - s * .5))
+        if kind == 'camera_off':
+            p.drawLine(QLineF(cx - s * .85, cy - s * .85, cx + s * .85, cy + s * .85))
     elif kind == "stop":
         p.drawRect(QRectF(cx - s * 0.45, cy - s * 0.45, s * 0.9, s * 0.9))
     elif kind == "send":

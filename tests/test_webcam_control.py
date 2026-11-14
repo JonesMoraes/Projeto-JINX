@@ -33,10 +33,17 @@ class WebcamControlTests(unittest.TestCase):
         self.window.deleteLater()
         self.app.processEvents()
 
-    def test_button_visible_in_fullscreen_and_click_can_cancel_opening(self):
+    def test_button_groups_with_mic_and_stop_and_is_hidden_in_fullscreen(self):
+        self.assertTrue(self.window._webcam_button.isVisible())
+        self.assertEqual(self.window._webcam_button.parentWidget(), self.window._mute_btn.parentWidget())
+        self.assertLess(self.window._mute_btn.x(), self.window._webcam_button.x())
+        self.assertLess(self.window._webcam_button.x(), self.window._interrupt_btn.x())
         self.window.showFullScreen()
         self.app.processEvents()
         self.assertTrue(self.window._orb_mode.active)
+        self.assertFalse(self.window._webcam_button.isVisible())
+        self.window.showNormal()
+        self.app.processEvents()
         self.assertTrue(self.window._webcam_button.isVisible())
         with patch('gui.window.threading.Thread') as thread:
             self.window._webcam_button.click()

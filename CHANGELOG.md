@@ -1,5 +1,10 @@
 # Histórico de alterações
 
+## 2026-11-14 — Posição do botão de webcam
+- Webcam movida para a mesma linha de microfone e interromper, com ícone
+  compatível com os controles. Barra inferior removida; botão oculto em tela
+  cheia, mantendo o atalho F9 e o indicador de captura ativa.
+
 ## 2026-11-14 — Botão de webcam contínua
 - Barra inferior com LIGAR/DESLIGAR WEBCAM e atalho F9, visível também em
   tela cheia. O botão abre a imagem ao vivo e mantém a captura até desligar.
