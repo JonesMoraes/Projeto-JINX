@@ -21,8 +21,8 @@ from pathlib import Path
 OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 HERE = Path(__file__).resolve().parent
 
-MIN_PY = (3, 15)        # application policy; bootstrap can run on an older Python
-MAX_PY = (3, 15)        # future stable versions are verified by runtime_manager.py
+MIN_PY = (3, 14)        # application policy; bootstrap can run on an older Python
+MAX_PY = (3, 14)        # future stable versions are verified by runtime_manager.py
 
 
 def _run(label: str, args: list[str]) -> None:

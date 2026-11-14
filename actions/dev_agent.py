@@ -215,10 +215,10 @@ JSON:"""
         raw = _strip_fences(response.text)
         return json.loads(raw)
     except json.JSONDecodeError as e:
-        raise ValueError(f"Planner returned invalid JSON: {e}\nRaw: {response.text[:300]}")
+        raise ValueError(f"Planner returned invalid JSON: {e}\nRaw: {response.text[:300]}") from e
     except Exception as e:
         if _is_rate_limit(e):
-            raise RateLimitError(str(e))
+            raise RateLimitError(str(e)) from e
         raise
 
 def _write_file(
@@ -302,7 +302,7 @@ Code for {file_path}:"""
 
     except Exception as e:
         if _is_rate_limit(e):
-            raise RateLimitError(str(e))
+            raise RateLimitError(str(e)) from e
         raise
 
 def _install_dependencies(dependencies: list[str], project_dir: Path) -> str:
@@ -458,7 +458,7 @@ Fixed code for {fix_path}:"""
 
         except Exception as e:
             if _is_rate_limit(e):
-                raise RateLimitError(str(e))
+                raise RateLimitError(str(e)) from e
             print(f"[DevAgent] ⚠️ Could not fix {fix_path}: {e}")
 
     return updated_codes
@@ -1650,7 +1650,7 @@ def dev_agent(
         return "Another confirmation is open. Finish it before starting a coding task."
     player.show_content("Coding task — review", f"Folder: {target}\n\nRequest:\n{description[:3000]}\n\nAfter approval the agent may edit files, execute project tests and application code. Missing dependencies are not installed automatically.")
     return confirm.request("dev_agent", title,
-                           f"Review the folder and requested change in the HUD. Files may be written and project code/tests may run.",
+                           "Review the folder and requested change in the HUD. Files may be written and project code/tests may run.",
                            launch)
 
 

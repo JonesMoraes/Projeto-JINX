@@ -1221,7 +1221,6 @@ class ProvidersOverlay(_HudOverlay):
             return
         """Fetch a provider's optional dependency, off the Qt thread — pip takes
         tens of seconds and a frozen window looks like a crashed one."""
-        import subprocess
         import sys as _sys
         import threading
 

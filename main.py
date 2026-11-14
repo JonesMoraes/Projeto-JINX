@@ -2927,8 +2927,12 @@ class JinxLive:
                     # the session it belongs to.
                     _orig_send = session.send_client_content
 
-                    async def _send_and_arm(*a, **kw):
-                        result = await _orig_send(*a, **kw)
+                    # `_orig_send` is bound as a default, not read from the
+                    # enclosing scope: this block runs again on every reconnect,
+                    # and a wrapper that outlived its loop iteration would send
+                    # on whichever session was newest instead of its own.
+                    async def _send_and_arm(*a, _orig=_orig_send, **kw):
+                        result = await _orig(*a, **kw)
                         self._arm_stall()
                         return result
 

@@ -2,7 +2,6 @@
 import asyncio
 import atexit
 import importlib.util
-import json
 import threading
 import time
 import wave

@@ -103,7 +103,7 @@ class Reactor3D:
                 position = next_position
             return position, tangent
 
-        for path in range(54):
+        for _ in range(54):
             position = _unit(rng.normal(size=3))
             tangent = rng.normal(size=3)
             tangent = _unit(tangent - position * np.dot(tangent, position))

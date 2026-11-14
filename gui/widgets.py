@@ -287,7 +287,6 @@ _SKIP_DIRS = {".git", ".hg", ".svn", "node_modules", "venv", ".venv", "env",
 def _count_files(folder: Path, cap: int = 5000) -> int:
     """Files in a project folder, stopping at `cap` — a whole drive dropped by
     mistake must not freeze the window while it is counted."""
-    import os
     n = 0
     for _root, dirs, files in os.walk(folder):
         dirs[:] = [d for d in dirs if d not in _SKIP_DIRS]
@@ -1289,7 +1288,7 @@ class TaskRow(QWidget):
         if not p.isActive() or not t:
             return
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        W, H = self.width(), self.height()
+        W = self.width()
         col = qcol(getattr(C, self._COLOURS.get(t["status"], "PRI")))
         if self.underMouse():
             p.fillRect(self.rect(), blend(C.PRI, 0.08))

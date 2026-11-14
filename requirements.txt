@@ -1,5 +1,8 @@
 # ── JINX — Python dependencies ────────────────────────────────────────────
-# Runtime: latest stable CPython, currently 3.15.2 (.python-version).
+# Runtime: CPython 3.14, pinned in .python-version (currently 3.14.10). The
+# minor is pinned on purpose: a new CPython lands each October and the native
+# packages (onnxruntime, mediapipe) take months to ship a wheel for it, so
+# chasing "latest stable" breaks a working install once a year.
 # Python itself is installed/validated by runtime_manager.py, not by pip.
 # INICIAR_JINX.cmd checks python.org and selects only a tested environment.
 # pip skips any line whose sys_platform marker does not match your OS, so this

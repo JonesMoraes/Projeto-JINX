@@ -43,11 +43,8 @@ def fetch(url, limit=2_000_000):
     return data
 
 
-def latest():
-    html = fetch('https://www.python.org/downloads/windows/').decode()
-    match = re.search(r'Latest Python 3 Release\s*-\s*Python (3\.\d+\.\d+)', html)
-    if not match: raise ValueError('Latest stable Python not found')
-    version = match[1]
+def release(version):
+    """(version, installer URL, SHA-256) for one exact release, from python.org."""
     url = f'https://www.python.org/ftp/python/{version}/python-{version}-amd64.exe'
     page = 'https://www.python.org/downloads/release/python-' + version.replace('.', '') + '/'
     parser = FileRows()
@@ -57,6 +54,51 @@ def latest():
             digest = re.search(r'(?<![a-f0-9])[a-f0-9]{64}(?![a-f0-9])', re.sub(r'\s+', '', row['text']))
             if digest: return version, url, digest[0]
     raise ValueError('Installer SHA-256 missing from official release page')
+
+
+def latest():
+    """The newest stable CPython python.org advertises, wherever it is."""
+    html = fetch('https://www.python.org/downloads/windows/').decode()
+    match = re.search(r'Latest Python 3 Release\s*-\s*Python (3\.\d+\.\d+)', html)
+    if not match: raise ValueError('Latest stable Python not found')
+    return release(match[1])
+
+
+def pinned():
+    """The major.minor this project runs on, from .python-version; None if unset."""
+    try:
+        text = (ROOT / '.python-version').read_text(encoding='utf-8').strip()
+    except OSError:
+        return None
+    match = re.match(r'(\d+)\.(\d+)', text)
+    return (int(match[1]), int(match[2])) if match else None
+
+
+def target():
+    """The release to run: the pinned minor when .python-version names one.
+
+    Chasing the newest stable on every launch is what turns a working install
+    into a broken one: a brand-new CPython lands each October and the native
+    packages (onnxruntime, mediapipe) take months to publish a wheel for it.
+    The pin decides the major.minor; patches inside it still move forward.
+    Security-only releases publish no Windows installer, so patches are tried
+    newest-first until one actually has one.
+    """
+    minor = pinned()
+    if minor is None:
+        return latest()
+    index = fetch('https://www.python.org/ftp/python/').decode()
+    patches = sorted({(int(a), int(b), int(c)) for a, b, c in
+                      re.findall(r'(?<![\d.])(\d+)\.(\d+)\.(\d+)/', index)
+                      if (int(a), int(b)) == minor}, reverse=True)
+    if not patches:
+        raise ValueError(f'python.org publishes no {minor[0]}.{minor[1]} release')
+    for patch in patches[:5]:
+        try:
+            return release('.'.join(map(str, patch)))
+        except ValueError:
+            continue   # source-only release: no Windows installer to verify
+    raise ValueError(f'No Windows installer published for Python {minor[0]}.{minor[1]}')
 
 
 def run(args, log, timeout=1200, **kwargs):
@@ -145,7 +187,7 @@ def main():
         candidate = (STATE / row['python']).resolve()
         if STATE.resolve() in candidate.parents and candidate.is_file(): selected = candidate
     try:
-        version, url, digest = latest()
+        version, url, digest = target()
         print(f'Python estavel atual: {version}', flush=True)
         if selected is None or version_of(selected) != version:
             print('Preparando e testando o novo ambiente. Progresso: logs/python-runtime.log', flush=True)

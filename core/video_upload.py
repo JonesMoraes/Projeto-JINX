@@ -1,6 +1,5 @@
 """Confirmed streaming YouTube upload using the shared OAuth account."""
 import hashlib
-import json
 from pathlib import Path
 from urllib.parse import urlsplit
 from core import google_workspace as google, outcome

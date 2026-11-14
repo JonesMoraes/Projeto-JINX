@@ -4,19 +4,19 @@
 usam **Google Agenda** por padrão. Compromissos e tarefas locais foram
 preservados. Na Agenda, salve o calendário/arquivo OAuth, conecte sua conta
 Google no navegador e use **Sincronizar Google Agenda**. Alterações locais
-não são publicadas automaticamente. Detalhes em [GOOGLE_AGENDA.md](GOOGLE_AGENDA.md).
+não são publicadas automaticamente. Detalhes em [docs/GOOGLE_AGENDA.md](docs/GOOGLE_AGENDA.md).
 
 **Python atualizado no Windows:** abra por **INICIAR_JINX.cmd**. O inicializador
 verifica a versão estável mais recente no python.org, prepara um ambiente novo
 e só o seleciona após instalar dependências e passar nos testes. Se a atualização
 falhar, informa o motivo e usa o ambiente anterior disponível. Requisito atual:
-Python >=3.15 (3.15.2 nesta revisão). Veja [PYTHON_RUNTIME.md](PYTHON_RUNTIME.md).
+Python >=3.14 (3.14.10 nesta revisão). Veja [PYTHON_RUNTIME.md](PYTHON_RUNTIME.md).
 
 **Controle por pinça:** implementação local opt-in para mover o cursor com
 o indicador e arrastar/soltar com polegar + indicador. F10 ativa/para;
 Esc interrompe globalmente no Windows. Suporte de reconhecimento é instalado
 separadamente após revisão do tamanho. Instruções e limites em
-[GESTOS_PINCA.md](GESTOS_PINCA.md).
+[docs/GESTOS_PINCA.md](docs/GESTOS_PINCA.md).
 
 **Webcam contínua:** use o **ícone de câmera**, junto aos botões de microfone e
 interromper no painel COMANDO, ou **F9**. O botão fica oculto em tela cheia;
@@ -28,7 +28,7 @@ também encerra a captura; a webcam começa desligada a cada inicialização.
 Atualização de integração em 14/11/2026: a expansão posterior à Fase 3 está
 incorporada com correções de rollback, autorreparo, testes do HUD e exemplo
 Arduino. O escopo entregue e as pendências estão em
-[INTEGRACAO_EXPANSAO.md](INTEGRACAO_EXPANSAO.md). Código disponível não significa
+[docs/historico/INTEGRACAO_EXPANSAO.md](docs/historico/INTEGRACAO_EXPANSAO.md). Código disponível não significa
 que todas as contas, dispositivos e funcionalidades do plano foram validados.
 
 ### Tela cheia: só o orb e avisos compactos
@@ -87,7 +87,7 @@ não muda políticas de rede. Este bloqueio foi observado no executor dos testes
 Expansão retomada em 14/11/2026: código local para as integrações da Fase 4,
 interrupção por voz (5.1), navegador com perfil próprio e snapshot acessível
 (5.2), e preferências aprendidas com revisão local (6.1).
-Veja [EXPANSION_PROGRESS.md](EXPANSION_PROGRESS.md) para configuração,
+Veja [docs/historico/EXPANSION_PROGRESS.md](docs/historico/EXPANSION_PROGRESS.md) para configuração,
 comandos e limites. Regressão selecionada: 233 testes passaram; a suíte
 completa está bloqueada pela criação do event loop Windows neste executor.
 Validações reais de contas, navegador e áudio continuam pendentes.
@@ -97,7 +97,7 @@ Novos comandos: “Crie uma apresentação de cinco slides sobre eletrônica”,
 gravação da reunião” e “Pesquise voos de GRU para Lisboa em [data]”. Também
 aceitam inglês. Reunião requer audição Whisper local já instalada/em cache
 ou Groq configurada em ENGINE & PROVIDERS; captura exige indicador visual
-no HUD. Todos os detalhes por tarefa em [EXPANSION_PROGRESS.md](EXPANSION_PROGRESS.md).
+no HUD. Todos os detalhes por tarefa em [docs/historico/EXPANSION_PROGRESS.md](docs/historico/EXPANSION_PROGRESS.md).
 
 ⚙ → configurações dos plugins inclui instaladores opcionais de documentos,
 legendas e reuniões. pypdf e SoundCard são opcionais; nenhum modelo pesado
@@ -106,7 +106,7 @@ se ausente, use Exportar PDF no Office. Credenciais pessoais são inseridas
 manualmente na UI e nunca entram nos commits. Reinicie para carregar novidades.
 
 Expansão local: tarefas 2.3–2.6 (brilho por monitor, privacidade da janela,
-watchers e jogos) documentadas em [EXPANSION_PROGRESS.md](EXPANSION_PROGRESS.md),
+watchers e jogos) documentadas em [docs/historico/EXPANSION_PROGRESS.md](docs/historico/EXPANSION_PROGRESS.md),
 com comandos PT-BR/EN, arquivos e limites de verificação. Todas usam dependências
 existentes; contexto de janela e alertas começam desligados. Reinicie o aplicativo
 para carregar novos plugins. Os testes internos não substituem a escuta real.
@@ -985,7 +985,7 @@ python main.py
 | **OS** | Windows 10/11, macOS, or Linux |
 | **Linux display server** | Everything works on **X11**. On **Wayland** — the default on Ubuntu 22.04+, Fedora and current GNOME/KDE — the system does not permit any program to type, click, capture the screen or raise another window, so those features are unavailable and JINX says so at startup instead of pretending. Voice, memory, files, the web and opening applications are unaffected. Log out and pick an Xorg session to get the rest |
 | **macOS permissions** | Accessibility (to type and click) and Screen Recording (to see the screen), both under System Settings → Privacy & Security. Until granted, those actions silently do nothing — the OS reports success either way |
-| **Python** | >=3.15; INICIAR_JINX.cmd prepares the latest stable release (currently 3.15.2) |
+| **Python** | >=3.14; INICIAR_JINX.cmd prepares the release pinned in .python-version (currently 3.14.10) |
 | **Microphone** | Required for voice interaction (and for the "Hey Jarvis" wake word) |
 | **Speakers** | Required for voice replies |
 | **API Key** | Free Gemini API key (entered on first launch → `config/api_keys.json`). Only for the Gemini engine — a fully local setup needs no key and no account |
@@ -1190,8 +1190,8 @@ JINX is a modified, **non-commercial** derivative of **Mark-LVII** by [FatihMake
 | --- | --- |
 | YouTube | [@FatihMakes](https://www.youtube.com/@FatihMakes) |
 | Instagram | [@fatihmakes](https://www.instagram.com/fatihmakes) |
-<!-- Expansion audit: see IMPLEMENTATION_PLAN.md for the ordered backlog,
-BASELINE.md for measured startup results and pending voice acceptance,
+<!-- Expansion audit: see assets/extras/IMPLEMENTATION_PLAN.md for the ordered backlog,
+docs/historico/BASELINE.md for measured startup results and pending voice acceptance,
 and CHANGELOG.md for task reports and verification limits. -->
 
 ### Contas Gemini adicionais (expansão 1.1)

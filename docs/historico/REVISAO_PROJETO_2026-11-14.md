@@ -23,7 +23,7 @@ checkout da aplicação, correção de código nem reinício do aplicativo.
 ## Verificação executada
 
 - Atualização das referências Git e comparação entre main, remoto e expansão.
-- Leitura do plano em EXTRAS ADD/IMPLEMENTATION_PLAN.md e dos relatórios das fases.
+- Leitura do plano em assets/extras/IMPLEMENTATION_PLAN.md e dos relatórios das fases.
 - Inventário de módulos, análise sintática e revisão dirigida de integração,
   recuperação, plugins, câmera, interface e funcionalidades novas.
 - Main: 187 testes passaram; pip check sem conflitos.
@@ -137,7 +137,7 @@ defeitos e validações externas pendentes.
   aqui. A rodada inicial também expôs sensibilidade dos testes a caminhos
   curtos do Windows e encoding cp1252. A rodada final normalizou apenas o
   ambiente, sem alterar testes/código ou substituir o event loop.
-- O plano foi movido localmente para EXTRAS ADD; o Git registra a remoção
+- O plano foi movido localmente para assets/extras; o Git registra a remoção
   do caminho original. A movimentação e os arquivos pessoais preexistentes
   foram preservados.
 

@@ -1,0 +1,53 @@
+# Ruff configuration for JINX.
+#
+# Scope, deliberately narrow: this file exists to catch mistakes that change
+# behaviour (pyflakes + bugbear), not to argue about formatting. The code predates
+# any formatter, and a 3000-line E501 report would bury the findings that matter —
+# an undefined name is a crash, a line longer than the margin is not.
+#
+#     ruff check .
+#
+# Run it with `uvx ruff` or any dev interpreter; ruff is a dev tool and is not in
+# requirements.txt, because the app does not import it.
+
+target-version = "py314"
+line-length = 120
+
+exclude = [
+    ".git",
+    ".jinx_runtime",
+    "logs",
+    "downloads",
+    "screenshots",
+    "reports",
+    "assets/third_party",
+]
+
+[lint]
+select = ["F", "B", "E9"]
+# B905 (zip without strict=) is a judgement call per call site, not a bug.
+ignore = ["B905"]
+
+[lint.per-file-ignores]
+# ui.py merges every gui module's namespace so that `from ui import X` still
+# finds names ui.py used to define. Imports that look unused here are that
+# compatibility surface; removing them is a breaking change, not a cleanup.
+"ui.py" = ["F401"]
+"gui/*.py" = ["F401"]
+# Test doubles assign fixtures they do not always read, the manual harness
+# under providers/ opens files it only inspects, and one test asserts a broad
+# exception because the failure it guards against is "any exception".
+"tests/*.py" = ["F401", "F841", "B017", "B023"]
+"providers/_tests.py" = ["F401", "F841"]
+# B023: in these three files every flagged closure is built and called inside
+# the same loop iteration (attempt(generate, key) runs it before the loop
+# advances, and Brain.run invokes on_text synchronously), so the late-bound
+# loop variable always holds the value it was written with. main.py's wrapper
+# does escape its iteration, which is why it binds the session as a default
+# argument instead of being excused here.
+"core/gemini.py" = ["B023"]
+"core/cloud.py" = ["B023"]
+"core/_smoke_harness.py" = ["B023"]
+# FastAPI reads File(...) as a declaration, not as a value, so a call in a
+# default argument is the framework's documented idiom.
+"dashboard/server.py" = ["B008"]

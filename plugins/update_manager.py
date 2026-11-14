@@ -1,5 +1,5 @@
 """Opt-in release checks and user-confirmed staged updates."""
-from core import updater, confirm, outcome
+from core import updater, outcome
 
 
 def _install(_values):
@@ -41,7 +41,7 @@ def run(parameters, player=None, session_memory=None):
                 return outcome.failed("updater", "Choose a valid staged release")
             player.show_content("Aplicar atualização", f"Versão preparada: {candidate.name}\nO JINX será fechado, arquivos de código serão verificados e substituídos com cópia para rollback; depois reabre.")
             return confirmation.request("apply_update", "Apply staged JINX update?",
-                f"Close JINX, replace verified project code, and reopen. User data folders are excluded.",
+                "Close JINX, replace verified project code, and reopen. User data folders are excluded.",
                 lambda: updater.apply_after_restart(str(candidate), player))
         return outcome.failed("updater", "Unknown update action")
     except Exception as exc:

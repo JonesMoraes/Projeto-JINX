@@ -1,5 +1,4 @@
 """Focus protocol port from João Gabriel, CC BY-NC 4.0; see NOTICE.md."""
-import json
 from urllib.parse import urlsplit
 from core import outcome, session_preferences as prefs
 from memory.config_manager import get_plugin_config

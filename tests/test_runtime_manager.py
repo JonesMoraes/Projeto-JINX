@@ -42,6 +42,32 @@ class RuntimeTests(unittest.TestCase):
         with patch.object(runtime, 'fetch', side_effect=[b'Latest Python 3 Release - Python 3.15.2', b'<table></table>']):
             with self.assertRaises(ValueError): runtime.latest()
 
+    def test_target_honours_pinned_minor_and_skips_source_only_releases(self):
+        """The pin decides the minor; a patch with no Windows installer is skipped.
+
+        Security-only releases publish source tarballs and no .exe, so taking the
+        newest patch of the pinned minor would fail on exactly the releases with
+        nothing to install.
+        """
+        url = 'https://www.python.org/ftp/python/3.14.10/python-3.14.10-amd64.exe'
+        sha = 'b' * 64
+        index = (b'<a href="3.14.11/">3.14.11/</a> <a href="3.14.10/">3.14.10/</a> '
+                 b'<a href="3.15.2/">3.15.2/</a>')
+        pages = [index, b'<table></table>',
+                 ('<table><tr><td><a href="' + url + '">Windows</a></td><td>' + sha + '</td></tr></table>').encode()]
+        with tempfile.TemporaryDirectory() as folder:
+            (Path(folder) / '.python-version').write_text('3.14.10\n')
+            with patch.object(runtime, 'ROOT', Path(folder)), \
+                    patch.object(runtime, 'fetch', side_effect=pages):
+                # 3.15.2 is newer, but the pin wins.
+                self.assertEqual(runtime.target(), ('3.14.10', url, sha))
+
+    def test_target_falls_back_to_latest_without_a_pin(self):
+        with tempfile.TemporaryDirectory() as folder, \
+                patch.object(runtime, 'ROOT', Path(folder)), \
+                patch.object(runtime, 'latest', return_value=('9.9.9', 'url', 'sha')):
+            self.assertEqual(runtime.target(), ('9.9.9', 'url', 'sha'))
+
     def test_installer_checksum_failure_never_executes_installer(self):
         with tempfile.TemporaryDirectory() as folder, \
                 patch.object(runtime, 'STATE', Path(folder) / 'state'), \

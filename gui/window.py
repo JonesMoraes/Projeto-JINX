@@ -2280,7 +2280,7 @@ class MainWindow(QMainWindow):
         for f in (findings or []):
             key, mark = self._REVIEW_MARKS.get(f.get("severity"), ("PRI_DIM", "·"))
             colour = getattr(C, key)
-            parts.append(f'<div style="margin-bottom:11px;">')
+            parts.append('<div style="margin-bottom:11px;">')
             parts.append(
                 f'<span style="color:{colour}; font-weight:bold;">{mark}</span> '
                 f'<span style="color:{C.WHITE}; font-weight:bold;">'

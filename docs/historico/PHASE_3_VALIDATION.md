@@ -28,5 +28,5 @@ Os testes opcionais de conta da Fase 1 continuam adiados conforme autorização
 anterior; consultar PHASE_1_VALIDATION.md.
 
 Relatórios por tarefa, arquivos e comandos PT-BR/EN: EXPANSION_PROGRESS.md.
-A movimentação local de IMPLEMENTATION_PLAN.md para EXTRAS ADD é preexistente
+A movimentação local de IMPLEMENTATION_PLAN.md para assets/extras/ é preexistente
 ao envio e foi preservada; arquivos extras pessoais não fazem parte dos commits.

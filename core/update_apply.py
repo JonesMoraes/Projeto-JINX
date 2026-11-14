@@ -71,7 +71,6 @@ def apply(root: Path, stage: Path, pid: int):
             tmp = dest.with_name(dest.name + ".jinx-update")
             tmp.write_bytes(data); os.replace(tmp, dest)
             changed.append((dest, old))
-        launcher = root / "INICIAR_JINX.cmd"
         (root / "logs").mkdir(parents=True, exist_ok=True)
         log = (root / "logs" / "update-helper.log").open("ab")
         try:
@@ -98,4 +97,4 @@ if __name__ == "__main__":
         apply(Path(sys.argv[1]), Path(sys.argv[2]), int(sys.argv[3]))
     except Exception as exc:
         print(f"Update failed: {type(exc).__name__}: {str(exc)[:240]}", flush=True)
-        raise SystemExit(1)
+        raise SystemExit(1) from None

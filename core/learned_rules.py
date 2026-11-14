@@ -133,7 +133,10 @@ def review(rule_id, player):
 def remove(rule_id, register_undo=True):
     with _lock:
         rows = _load()
-        removed = next(r for r in rows if r['id'] == rule_id)
+        # Look the id up first: removing one that is not there would still
+        # write the list back and report success.
+        if not any(r['id'] == rule_id for r in rows):
+            raise StopIteration(f'no rule with id {rule_id}')
         after = [r for r in rows if r['id'] != rule_id]
         _save(after)
     if register_undo:

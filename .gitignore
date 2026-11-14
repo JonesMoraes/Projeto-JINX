@@ -51,6 +51,12 @@ screenshots/
 .jinx_update/
 .jinx_runtime/
 
+# The task engine writes these while it works: a finished task leaves a JSON
+# record, a transcript and a report behind. They describe one run on one
+# machine, not the source that produced them.
+memory/tasks/
+reports/
+
 # Brahma-Ai-Evo's license prohibits mirroring its source on Git hosting.
 assets/third_party/brahma_evo/
 assets/third_party/brahma_echo/

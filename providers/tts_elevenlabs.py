@@ -74,7 +74,7 @@ def _match_voice(wanted: str, voices: list[tuple[str, str]]) -> str:
     wanted = (wanted or "").strip()
     if not wanted:
         return ""
-    for voice_id, name in voices:
+    for voice_id, _name in voices:
         if voice_id == wanted:
             return voice_id
     folded = wanted.casefold()

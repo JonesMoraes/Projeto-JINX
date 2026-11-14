@@ -95,7 +95,7 @@ class ResultPopup(QFrame):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setStyleSheet(f'background:transparent; border:0;' + scroll_css())
+        scroll.setStyleSheet('background:transparent; border:0;' + scroll_css())
         container = QWidget()
         self.body = QVBoxLayout(container)
         self.body.setContentsMargins(0, 3, 0, 0)

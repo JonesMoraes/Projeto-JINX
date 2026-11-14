@@ -1,15 +1,24 @@
 # Python no Windows
 
-Política solicitada em 14/11/2026: usar a versão estável mais recente do
-CPython. Na implantação desta política, python.org publica 3.15.2. Requisito
-do aplicativo: Python >=3.15, registrado em setup.py; .python-version aponta
-para 3.15.2. requirements.txt lista os pacotes, não o interpretador: pip não
+Política revisada em 14/11/2026: fixar o Python em **3.14** em vez de
+acompanhar a última estável. Requisito do aplicativo: Python >=3.14, registrado
+em setup.py; .python-version aponta para 3.14.10 e é ele que decide o
+major.minor. requirements.txt lista os pacotes, não o interpretador: pip não
 instala o próprio Python como uma dependência comum.
 
-Abra por INICIAR_JINX.cmd. runtime_manager.py consulta a indicação oficial de
-versão estável no python.org a cada abertura, sem selecionar alpha/beta/RC.
-Se houver atualização, verifica SHA-256 e assinatura Authenticode do instalador,
-atualiza o Python por usuário e cria um ambiente separado em
+A mudança tem uma razão medida. Sob 3.15 a instalação inteira funcionava, mas o
+wake word ("Hey Jarvis") não: openwakeword exige onnxruntime, e nenhuma versão
+do onnxruntime publica wheel cp315 (a 1.32.0 para em cp314, e não há abi3). Sob
+3.14 os 417 testes passam e o próprio wake word carrega o modelo. O mediapipe
+dos gestos continua exigindo 3.12, em runtime separado — igual nas duas.
+
+Abra por INICIAR_JINX.cmd. runtime_manager.py lê .python-version e escolhe a
+última revisão daquele major.minor que tenha instalador Windows (releases
+somente-de-segurança publicam apenas código-fonte e são puladas), sem
+selecionar alpha/beta/RC. O .cmd continua chamando `py -3`: ele só inicia o
+gerenciador, que é stdlib puro e então monta o ambiente da versão fixada.
+Se houver atualização de patch, verifica SHA-256 e assinatura Authenticode do
+instalador, atualiza o Python por usuário e cria um ambiente separado em
 .jinx_runtime/envs/<versão>. Instala requirements, executa pip check e a suíte
 unittest antes de selecionar esse ambiente para iniciar main.py. Extras
 leves já instalados (PDF, loopback/vozes) são preservados quando
@@ -36,19 +45,20 @@ Quando não existe wheel de PyYAML para o Python novo, o instalador usa a
 variante Python pura suportada pelo pacote, sem instalar compiladores C++.
 Referência: https://github.com/yaml/pyyaml/blob/6.0.3/setup.py.
 
-Fonte: https://www.python.org/downloads/windows/ e
-https://www.python.org/downloads/release/python-3152/.
+Fonte: https://www.python.org/downloads/windows/, https://www.python.org/ftp/python/ e
+https://www.python.org/downloads/release/python-31410/.
 
 ## Validação desta implantação
 
-- Python 3.15.2 instalado por usuário; instalador oficial com SHA-256 e
-  assinatura Python Software Foundation verificados. Instalação Windows terminou
-  com código 0, sem reinício.
-- Ambiente .jinx_runtime/envs/3.15.2 com requirements, pypdf e SoundCard
-  previamente presentes. pip check sem conflitos.
-- 411 testes passaram no Python 3.15.2, sem skips, em 39,69 s.
-- JINX iniciado pelo launch_jinx.pyw: processo main.py do ambiente 3.15.2,
+- Python 3.14.10 instalado por usuário; o 3.15.2 permanece na máquina apenas
+  como bootstrap e não é mais selecionado.
+- Ambiente .jinx_runtime/envs/3.14.10 com requirements instalados, pip check
+  sem conflitos e 417 testes aprovados (1 skip: pypdf opcional).
+- openwakeword 0.6.0 + onnxruntime instalados; modelo hey_jarvis baixado e
+  carregado, predict respondendo sem erro.
+- JINX iniciado pelo launch_jinx.pyw: processo main.py do ambiente 3.14.10,
   sessão de voz conectada, microfone/recepção/reprodução iniciados nos logs.
   Isso não representa uma nova confirmação humana de escuta ou conversa.
+- Python 3.12.10 instalado por usuário para o runtime isolado de gestos.
 - Estado de seleção local em .jinx_runtime/current.json; logs de instalação,
   testes e execução em logs/. Configurações pessoais não foram reescritas.

@@ -57,7 +57,7 @@
   EVO/ECHO ainda requer validação na máquina; não houve adaptação dos assets.
 - Comentários inválidos do sketch Arduino corrigidos para //; estabilidade
   dos testes Windows melhorada para caminhos curtos e encoding.
-- Escopo parcial e validações externas descritos em INTEGRACAO_EXPANSAO.md.
+- Escopo parcial e validações externas descritos em docs/historico/INTEGRACAO_EXPANSAO.md.
 
 ## 2026-11-14 — Esferas EVO/ECHO e prévia de vozes
 - Removido o opt-in global que havia ocultado as esferas na execução normal
@@ -148,7 +148,7 @@
 - pypdf (0,40 MB) e SoundCard (0,04 MB) instalados opcionalmente. LibreOffice
   ausente: conversão requer instalação posterior ou Exportar PDF no Office.
 - Fase 4 não iniciada por solicitação do usuário; envio GitHub autorizado.
-  Limites de validação registrados em PHASE_3_VALIDATION.md.
+  Limites de validação registrados em docs/historico/PHASE_3_VALIDATION.md.
 
 ## 2026-11-13 — Tarefas 2.3–2.6
 - Brilho por monitor WMI com readback/undo; captura real de lista verificada.
@@ -156,7 +156,7 @@
 - Watchers opt-in de cripto, HTTP e RAM; jogos Steam/Epic/Riot por manifests locais.
 - 160 testes passaram. Jogos detectáveis nesta máquina: lista vazia; nenhum jogo lançado.
 - Testes de efeitos de brilho/alertas/launch simulados. Não representam escuta real
-  PT-BR/EN. Detalhes, arquivos e comandos em EXPANSION_PROGRESS.md.
+  PT-BR/EN. Detalhes, arquivos e comandos em docs/historico/EXPANSION_PROGRESS.md.
 
 ## 2026-11-13 — Tarefa 2.2
 
@@ -298,7 +298,7 @@
 
 ## 2026-11-13 — Fase 0 concluída
 
-- Auditoria estática e mapeamento completo em IMPLEMENTATION_PLAN.md.
-- Baseline de inicialização, conexão de áudio e consulta local registrado em BASELINE.md; teste falado PT-BR/EN confirmado pelo usuário.
+- Auditoria estática e mapeamento completo em assets/extras/IMPLEMENTATION_PLAN.md.
+- Baseline de inicialização, conexão de áudio e consulta local registrado em docs/historico/BASELINE.md; teste falado PT-BR/EN confirmado pelo usuário.
 - Git local e branch feature/expansion preparados; exclusão de assets Brahma, arquivos locais e dados pessoais do versionamento.
 - Nenhuma funcionalidade nova, alteração de segurança ou dependência instalada nesta fase.

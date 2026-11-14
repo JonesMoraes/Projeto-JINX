@@ -193,7 +193,7 @@ def process_manager(parameters, player=None, **_context):
         return confirm.request("process_manager", "Forçar encerramento / Force quit" if action == "force" else "Fechar processo / Close process",
             summary + " — trabalho não salvo pode ser perdido / unsaved work may be lost",
             lambda: _perform(targets, action == "force"))
-    except (ValueError, psutil.Error) as exc:
+    except (ValueError, psutil.Error):
         return outcome.failed("process_manager", "Não foi possível selecionar/inspecionar o alvo / Could not select or inspect target")
     except Exception:
         return outcome.failed("process_manager", "Consulta/operação não confirmada / Query or operation unverified")
