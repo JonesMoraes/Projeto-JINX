@@ -75,8 +75,13 @@ class SetupOverlay(QWidget):
             w.setStyleSheet(f"color: {color}; background: transparent;")
             return w
 
-        layout.addWidget(_lbl("◈  CONFIGURAÇÃO INICIAL NECESSÁRIA", 13, True))
-        layout.addWidget(_lbl("Configure o JINX antes de iniciar.", 9, color=C.PRI_DIM))
+        layout.addWidget(_lbl("◈  CONFIGURAÇÃO INICIAL", 13, True))
+        _hint = QLabel("Informe sua chave de API do Gemini para começar. "
+                       "O sistema operacional foi detectado automaticamente.")
+        _hint.setWordWrap(True)
+        _hint.setFont(hud_font(8))
+        _hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        layout.addWidget(_hint)
         layout.addSpacing(6)
 
         sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
@@ -566,6 +571,12 @@ class PluginManagerOverlay(QWidget):
         hdr.setFont(hud_font(12, QFont.Weight.Bold))
         hdr.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         lay.addWidget(hdr)
+        hint = QLabel("Ative ou desative plugins instalados. "
+                      "Plugins desativados não aparecem para o assistente.")
+        hint.setWordWrap(True)
+        hint.setFont(hud_font(8))
+        hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        lay.addWidget(hint)
         sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
         lay.addWidget(sep)
@@ -805,6 +816,11 @@ class AudioDeviceOverlay(_HudOverlay):
         hdr.setFont(hud_font(12, QFont.Weight.Bold))
         hdr.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         lay.addWidget(hdr)
+        hint = QLabel("Escolha o microfone e os alto-falantes. Teste cada um antes de aplicar.")
+        hint.setWordWrap(True)
+        hint.setFont(hud_font(8))
+        hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        lay.addWidget(hint)
 
         sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
@@ -1222,6 +1238,11 @@ class MemoryOverlay(_HudOverlay):
         hdr.setFont(hud_font(12, QFont.Weight.Bold))
         hdr.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         self._lay.addWidget(hdr)
+        hint = QLabel("Fatos que o assistente guardou. Remova os que não quiser mais.")
+        hint.setWordWrap(True)
+        hint.setFont(hud_font(8))
+        hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        self._lay.addWidget(hint)
 
         sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
@@ -1729,7 +1750,11 @@ class RemoteKeyOverlay(QWidget):
             return w
 
         lay.addWidget(_lbl("◈  ACESSO REMOTO", 12, True))
-        sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
+        _hint = QLabel("Escaneie o QR code com o celular ou use a chave manual abaixo.")
+        _hint.setWordWrap(True)
+        _hint.setFont(hud_font(8))
+        _hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        lay.addWidget(_hint)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 1px 0;")
         lay.addWidget(sep)
 

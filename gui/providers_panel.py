@@ -162,13 +162,13 @@ class ProvidersOverlay(_HudOverlay):
         outer.setContentsMargins(22, 18, 22, 18)
         outer.setSpacing(10)
 
-        title = QLabel("🔌  MECANISMO  E  PROVEDORES")
+        title = QLabel("🔌  MOTOR DE IA  E  PROVEDORES")
         title.setFont(hud_font(13, QFont.Weight.Bold))
         title.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         outer.addWidget(title)
 
         sub = QLabel("Escolha o que alimenta a conversa. "
-                     "O Gemini é o padrão e não precisa de configuração neste painel.")
+                     "Gemini é o padrão e não precisa de configuração.")
         sub.setWordWrap(True)
         sub.setFont(hud_font(8))
         sub.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
