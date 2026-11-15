@@ -7,13 +7,14 @@ import re
 import unicodedata
 from weakref import WeakKeyDictionary
 
-from PyQt6.QtCore import QEvent, Qt, QTimer
-from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QPalette
-from PyQt6.QtWidgets import (QApplication, QComboBox, QDialog, QFrame, QGridLayout,
+from PyQt6.QtCore import QEvent, Qt, QTimer, QRectF
+from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QPalette, QLinearGradient, QRadialGradient, QBrush
+from PyQt6.QtWidgets import (QApplication, QBoxLayout, QComboBox, QDialog, QFrame, QGridLayout,
     QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QPushButton,
     QScrollArea, QSizePolicy, QStackedWidget, QVBoxLayout, QWidget)
 
 from gui.style import hud_font, DISPLAY_FAMILIES, DISPLAY_CSS
+from gui.settings_visuals import settings_stylesheet
 from gui.theme import C
 from gui.settings_themes import (SETTINGS_THEMES, DEFAULT_SETTINGS_THEME,
                                  settings_theme_id, resolved_settings_theme)
@@ -53,28 +54,77 @@ CATEGORIES = (
 
 
 class ThemePreview(QWidget):
-    """Small native preview; no network assets or image dependencies."""
-    def __init__(self, theme, parent=None):
+    """Interactive theme catalog thumbnail painted natively in Qt.
+
+    Each mini composition mirrors its reference: warm industrial dark, organic
+    cream, violet neon, airy blue, or the HUD's live cyan/selected accent.
+    """
+    def __init__(self, theme, theme_id='', parent=None):
         super().__init__(parent)
         self.theme = theme
-        self.setFixedHeight(68)
+        self.theme_id = theme_id
+        self.setFixedHeight(86)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
     def paintEvent(self, event):
         t = self.theme
+        w, h = self.width(), self.height()
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        p.fillRect(self.rect(), QColor(t.bg))
-        p.fillRect(8, 8, 42, 52, QColor(t.panel))
-        p.fillRect(13, 17, 29, 5, QColor(t.accent))
-        p.fillRect(13, 30, 23, 3, QColor(t.muted))
-        p.fillRect(13, 42, 27, 3, QColor(t.muted))
-        p.setPen(QPen(QColor(t.border)))
+        g = QLinearGradient(0, 0, w, h)
+        g.setColorAt(0, QColor(t.bg))
+        g.setColorAt(1, QColor(t.panel))
+        p.fillRect(self.rect(), g)
+
+        if self.theme_id == 'nature_ui':
+            glow = QRadialGradient(w * 0.88, 3, h * 1.2)
+            glow.setColorAt(0, QColor('#d7dcb8'))
+            glow.setColorAt(1, QColor(0, 0, 0, 0))
+            p.fillRect(self.rect(), QBrush(glow))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor('#9ba76f'))
+            for x, y, angle in ((w-30, 11, 28), (w-48, 2, -22), (w-16, 30, -32)):
+                p.save()
+                p.translate(x, y)
+                p.rotate(angle)
+                p.drawEllipse(QRectF(-6, -13, 12, 24))
+                p.restore()
+        elif self.theme_id == 'neon_glass':
+            glow = QRadialGradient(w * 0.78, 12, w * 0.6)
+            glow.setColorAt(0, QColor(125, 50, 220, 175))
+            glow.setColorAt(1, QColor(0, 0, 0, 0))
+            p.fillRect(self.rect(), QBrush(glow))
+        elif self.theme_id == 'titanium_dark':
+            p.fillRect(0, 0, w, 3, QColor('#ff9a00'))
+            p.fillRect(0, h-2, 48, 2, QColor(t.accent))
+        elif self.theme_id == 'cyber_hud':
+            p.setPen(QPen(QColor(t.accent), 1.2))
+            p.drawLine(1, 12, 1, 1)
+            p.drawLine(1, 1, 35, 1)
+            p.drawLine(w - 32, h - 1, w-1, h-1)
+            p.drawLine(w-1, h-1, w-1, h-13)
+
+        radius = 9 if self.theme_id == 'minimal_light' else max(4, t.radius)
+        p.setPen(QPen(QColor(t.border), 1))
         p.setBrush(QColor(t.panel))
-        p.drawRoundedRect(60, 9, max(40, self.width() - 70), 49, t.radius / 2, t.radius / 2)
-        p.fillRect(70, 19, max(20, self.width() - 100), 4, QColor(t.text))
-        p.fillRect(70, 32, 38, 3, QColor(t.muted))
-        p.fillRect(70, 43, 44, 6, QColor(t.accent))
+        p.drawRoundedRect(QRectF(9, 11, 47, h-22), 7, 7)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(t.accent))
+        p.drawRoundedRect(QRectF(16, 21, 31, 6), 3, 3)
+        for ypos in (37, 49, 61):
+            p.setBrush(QColor(t.muted))
+            p.drawRoundedRect(QRectF(17, ypos, 22, 3), 1, 1)
+        p.setPen(QPen(QColor(t.border), 1))
+        p.setBrush(QColor(t.panel))
+        p.drawRoundedRect(QRectF(64, 13, max(30, w-76), h-27), radius/2, radius/2)
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QColor(t.text))
+        p.drawRoundedRect(QRectF(73, 25, max(24, (w-95)*0.50), 5), 2, 2)
+        p.setBrush(QColor(t.muted))
+        p.drawRoundedRect(QRectF(73, 39, max(18, (w-100)*0.36), 3), 1, 1)
+        p.setBrush(QColor(t.accent))
+        p.drawRoundedRect(QRectF(73, 55, max(22, (w-95)*0.45), 8), 4, 4)
+        p.end()
 
 
 class SettingsDialog(QDialog):
@@ -84,7 +134,7 @@ class SettingsDialog(QDialog):
         self.setObjectName('SettingsCentral')
         self.setWindowTitle('JINX — Configurações')
         self.setFont(hud_font(9))
-        self.resize(1000, 720)
+        self.resize(1180, 780)
         self.setMinimumSize(760, 540)
         self.theme_id = settings_theme_id(config.load_api_keys().get('settings_theme'))
         self._pages = {}
@@ -96,11 +146,25 @@ class SettingsDialog(QDialog):
         self._theme_buttons = {}
         self._theme_previews = {}
         root = QVBoxLayout(self)
-        root.setContentsMargins(16, 20, 16, 16)
-        header = QHBoxLayout()
-        brand = QLabel('JINX  /  Configurações')
-        brand.setFont(hud_font(16, QFont.Weight.Bold))
-        header.addWidget(brand)
+        root.setContentsMargins(14, 14, 14, 14)
+        root.setSpacing(10)
+        header_host = QWidget()
+        header_host.setObjectName('SettingsHeader')
+        header_host.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        header = QHBoxLayout(header_host)
+        header.setContentsMargins(20, 13, 20, 13)
+        header.setSpacing(16)
+        identity = QVBoxLayout()
+        identity.setSpacing(1)
+        brand = QLabel('JINX IA')
+        brand.setObjectName('SettingsBrand')
+        brand.setFont(hud_font(17, QFont.Weight.Bold))
+        identity.addWidget(brand)
+        kicker = QLabel('CENTRAL DE CONFIGURAÇÕES')
+        kicker.setObjectName('SettingsKicker')
+        kicker.setFont(hud_font(8))
+        identity.addWidget(kicker)
+        header.addLayout(identity)
         header.addStretch()
         self.search = QLineEdit()
         self.search.setPlaceholderText('Buscar configurações…')
@@ -108,12 +172,12 @@ class SettingsDialog(QDialog):
         self.search.setClearButtonEnabled(True)
         self.search.setMaximumWidth(290)
         header.addWidget(self.search)
-        root.addLayout(header)
-        root.addSpacing(14)
+        root.addWidget(header_host)
         body = QHBoxLayout()
-        body.setSpacing(12)
+        body.setSpacing(14)
         self.navigation = QListWidget()
-        self.navigation.setFixedWidth(175)
+        self.navigation.setObjectName('SettingsNavigation')
+        self.navigation.setFixedWidth(205)
         self.navigation.setAccessibleName('Categorias de configuração')
         for key, title, description, terms in CATEGORIES:
             item = QListWidgetItem(title)
@@ -123,8 +187,10 @@ class SettingsDialog(QDialog):
         body.addWidget(self.navigation)
         right = QVBoxLayout()
         self.heading = QLabel()
+        self.heading.setObjectName('SettingsHeading')
         self.heading.setFont(hud_font(20, QFont.Weight.Bold))
         self.subtitle = QLabel()
+        self.subtitle.setObjectName('SettingsSubtitle')
         self.subtitle.setWordWrap(True)
         right.addWidget(self.heading)
         right.addWidget(self.subtitle)
@@ -136,19 +202,48 @@ class SettingsDialog(QDialog):
         self.stack.addWidget(self.empty)
         body.addLayout(right, 1)
         root.addLayout(body, 1)
-        footer = QHBoxLayout()
-        self.status = QLabel('Use Aplicar ou Salvar em cada painel para confirmar alterações.')
+        footer_host = QWidget()
+        footer_host.setObjectName('SettingsFooter')
+        footer_host.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        footer = QHBoxLayout(footer_host)
+        footer.setContentsMargins(15, 8, 15, 8)
+        self.status = QLabel('As alterações são salvas em cada seção.')
+        self.status.setObjectName('SettingsHint')
         self.status.setWordWrap(True)
         footer.addWidget(self.status, 1)
-        close = QPushButton('Fechar')
+        close = QPushButton('Concluir')
+        close.setObjectName('SettingsPrimary')
+        close.setMinimumWidth(128)
         close.clicked.connect(self.close)
         footer.addWidget(close)
-        root.addLayout(footer)
+        root.addWidget(footer_host)
         self.navigation.currentItemChanged.connect(self._selected)
         self.search.textChanged.connect(self._search)
         self.navigation.setCurrentRow(0)
         self._apply_theme()
         QApplication.instance().installEventFilter(self)
+
+    def _card(self, layout, title, description=''):
+        """Real responsive Qt panel; all controls keep their callbacks."""
+        card = QWidget()
+        card.setObjectName('SettingsCard')
+        card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        card.setMinimumWidth(0)
+        card.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        body = QVBoxLayout(card)
+        body.setContentsMargins(17, 14, 17, 16)
+        body.setSpacing(10)
+        heading = QLabel(title)
+        heading.setObjectName('SettingsCardTitle')
+        heading.setFont(hud_font(12, QFont.Weight.Bold))
+        body.addWidget(heading)
+        if description:
+            hint = QLabel(description)
+            hint.setObjectName('SettingsHint')
+            hint.setWordWrap(True)
+            body.addWidget(hint)
+        layout.addWidget(card)
+        return body
 
     def _button(self, layout, title, callback, description=''):
         button = QPushButton(title)
@@ -181,8 +276,9 @@ class SettingsDialog(QDialog):
         self.subtitle.setText(description)
         if key not in self._pages:
             page = QWidget()
+            page.setObjectName('SettingsPage')
             layout = QVBoxLayout(page)
-            layout.setContentsMargins(0, 0, 8, 4)
+            layout.setContentsMargins(1, 0, 8, 4)
             layout.setSpacing(12)
             try:
                 getattr(self, '_build_' + key)(layout)
@@ -256,6 +352,8 @@ class SettingsDialog(QDialog):
 
     def _build_general(self, layout):
         cfg = config.load_api_keys()
+        layout = self._card(layout, 'Identidade da assistente',
+                            'Defina como a JINX se apresenta e como fala com você.')
         layout.addWidget(QLabel('Nome do assistente'))
         self.assistant_name = QLineEdit(cfg.get('assistant_name') or 'JINX')
         layout.addWidget(self.assistant_name)
@@ -275,17 +373,22 @@ class SettingsDialog(QDialog):
         self._button(layout, 'Aplicar identidade', save)
 
     def _build_appearance(self, layout):
+        themes_body = self._card(layout, 'Escolha seu ambiente',
+                                 'Cinco designs próprios. Clique em um cartão para aplicar imediatamente.')
         grid = QGridLayout()
         grid.setSpacing(12)
         for index, (key, theme) in enumerate(SETTINGS_THEMES.items()):
             card = QPushButton()
+            card.setObjectName('SettingsThemeCard')
             card.setCheckable(True)
-            card.setMinimumHeight(137)
+            # QPushButton's sizeHint does not account for nested preview widgets.
+            # A fixed card height prevents the thumbnail from spilling over labels.
+            card.setFixedHeight(158)
             card.setAccessibleName(theme.name)
             card.setToolTip(theme.description)
             inner = QVBoxLayout(card)
             inner.setContentsMargins(12, 10, 12, 10)
-            preview = ThemePreview(resolved_settings_theme(key))
+            preview = ThemePreview(resolved_settings_theme(key), key)
             self._theme_previews[key] = preview
             inner.addWidget(preview)
             label = QLabel(theme.name)
@@ -294,8 +397,14 @@ class SettingsDialog(QDialog):
             card.clicked.connect(lambda checked=False, k=key: self.select_theme(k))
             self._theme_buttons[key] = card
             grid.addWidget(card, index // 2, index % 2)
-        layout.addLayout(grid)
-        self._button(layout, 'Restaurar Cyber HUD', lambda: self.select_theme(DEFAULT_SETTINGS_THEME))
+            grid.setRowMinimumHeight(index // 2, 158)
+        themes_body.addLayout(grid)
+        self._button(themes_body, 'Restaurar Cyber HUD', lambda: self.select_theme(DEFAULT_SETTINGS_THEME))
+        # The scroll page must grow to the gallery's real minimum height.
+        # Otherwise Qt compresses all three preview rows into thin strips.
+        themes_body.parentWidget().setMinimumHeight(660)
+        layout = self._card(layout, 'Visual do HUD',
+                            'As esferas e a cor do HUD são independentes dos outros quatro temas.')
         layout.addWidget(QLabel('Visual do assistente no HUD'))
         hud = QComboBox()
         names = {'face': 'Rosto animado', 'core': 'Núcleo reator', 'brahma_evo': 'EVO', 'brahma_echo': 'ECHO'}
@@ -355,15 +464,37 @@ class SettingsDialog(QDialog):
         for key, button in self._theme_buttons.items():
             button.setChecked(key == self.theme_id)
 
+    def _update_audio_columns(self):
+        columns = getattr(self, '_audio_columns', None)
+        if columns is None:
+            return
+        direction = (QBoxLayout.Direction.LeftToRight if self.width() >= 1160
+                     else QBoxLayout.Direction.TopToBottom)
+        if columns.direction() != direction:
+            columns.setDirection(direction)
+
+    def resizeEvent(self, event):
+        self._update_audio_columns()
+        super().resizeEvent(event)
+
     def _build_audio(self, layout):
         from gui.overlays import AudioDeviceOverlay
         from gui.voice_preview import VoicePicker, VoicePreviewController
-        layout.addWidget(QLabel('Voz Gemini • a prévia não muda a voz ativa'))
+        columns_host = QWidget()
+        columns = QBoxLayout(QBoxLayout.Direction.LeftToRight, columns_host)
+        columns.setContentsMargins(0, 0, 0, 0)
+        columns.setSpacing(14)
+        layout.addWidget(columns_host)
+        self._audio_columns = columns
+        self._update_audio_columns()
+        voice_body = self._card(columns, 'Voz da assistente',
+                                'Escolha e ouça uma amostra antes de alterar a voz ativa.')
+        voice_body.addWidget(QLabel('Modelo de voz Gemini'))
         self.voice = VoicePicker()
         for name in config.AVAILABLE_VOICES:
             self.voice.addItem(f'{name} — {config.VOICE_STYLES[name]}', name)
         self.voice.setCurrentIndex(max(0, self.voice.findData(config.get_voice())))
-        layout.addWidget(self.voice)
+        voice_body.addWidget(self.voice)
         self.voice_status = QLabel('Escolha uma voz e ouça antes de aplicar.')
         self.voice_status.setWordWrap(True)
         self.preview = VoicePreviewController(self, lambda active: (
@@ -375,10 +506,19 @@ class SettingsDialog(QDialog):
         self._button(actions, 'Ouvir prévia', lambda: self.preview.player.request(self.voice.currentData()))
         self._button(actions, 'Parar', self.preview.player.stop)
         self._button(actions, 'Aplicar voz', self._save_voice)
-        layout.addLayout(actions)
-        layout.addWidget(self.voice_status)
-        audio = self._embed(layout, AudioDeviceOverlay())
+        voice_body.addLayout(actions)
+        voice_body.addWidget(self.voice_status)
+        voice_body.addStretch(1)
+        devices_body = self._card(columns, 'Microfone e saída de áudio',
+                                  'Selecione os dispositivos e teste antes de aplicar.')
+        audio = self._embed(devices_body, AudioDeviceOverlay())
         audio.picked.connect(self.window._on_audio_devices_applied)
+        # Without explicit stretches, long device names can steal the width
+        # of the voice card when both panels are side by side.
+        voice_body.parentWidget().setMinimumWidth(300)
+        devices_body.parentWidget().setMinimumWidth(365)
+        columns.setStretch(0, 1)
+        columns.setStretch(1, 1)
 
     def _save_voice(self):
         try:
@@ -395,14 +535,17 @@ class SettingsDialog(QDialog):
 
     def _build_ai(self, layout):
         from gui.providers_panel import ProvidersOverlay
-        panel = self._embed(layout, ProvidersOverlay())
+        panel = self._embed(self._card(layout, 'Modelos e provedores'),
+                            ProvidersOverlay())
         panel.changed.connect(self.window._on_providers_applied)
 
     def _build_memory(self, layout):
         from gui.overlays import MemoryOverlay
-        self._embed(layout, MemoryOverlay())
+        self._embed(self._card(layout, 'Memória da JINX'), MemoryOverlay())
 
     def _build_automation(self, layout):
+        layout = self._card(layout, 'Controles e atalhos',
+                            'Os comandos da antiga aba Controles estão reunidos aqui.')
         layout.addWidget(QLabel('Controles do dia a dia'))
         if hasattr(self.window, '_toggle_fullscreen'):
             self._button(layout, 'Alternar tela cheia [F11]', self.window._toggle_fullscreen)
@@ -422,6 +565,8 @@ class SettingsDialog(QDialog):
                 timer.start(500)
 
     def _build_integrations(self, layout):
+        layout = self._card(layout, 'Integrações instaladas',
+                            'Configure um serviço por vez. Credenciais permanecem ocultas.')
         sections = self.window.get_plugin_settings() if self.window.get_plugin_settings else []
         if not sections:
             layout.addWidget(QLabel('Nenhum plugin com configurações está carregado.'))
@@ -452,6 +597,7 @@ class SettingsDialog(QDialog):
         select(0)
 
     def _build_security(self, layout):
+        layout = self._card(layout, 'Acesso e privacidade')
         self._security_layout = layout
         self._button(layout, 'Gerenciar acesso remoto', self._remote,
                      'Abra o endereço, QR code e gerenciamento da chave de acesso pelo celular.')
@@ -466,6 +612,7 @@ class SettingsDialog(QDialog):
         self._restyle_forms()
 
     def _build_system(self, layout):
+        layout = self._card(layout, 'Inicialização e manutenção')
         self._button(layout, 'Criar atalho na área de trabalho', self.window._create_desktop_shortcut)
         button = self._button(layout, self.window._autostart_btn.text(), self.window._toggle_autostart)
         button.clicked.connect(lambda: button.setText(self.window._autostart_btn.text()))
@@ -500,25 +647,7 @@ class SettingsDialog(QDialog):
             cyber_preview.theme = resolved_settings_theme(DEFAULT_SETTINGS_THEME)
             cyber_preview.update()
         self._styling = True
-        self.setStyleSheet(f'''
-            QDialog#SettingsCentral {{ background: {t.bg}; }}
-            QWidget {{ color: {t.text}; font-family: {DISPLAY_CSS}; }}
-            QLabel {{ background: transparent; }}
-            QScrollArea, QStackedWidget, QScrollArea > QWidget > QWidget {{ background: {t.bg}; border: none; }}
-            QListWidget {{ background: {t.panel}; border: none; border-radius: {t.radius}px; padding: 8px; }}
-            QListWidget::item {{ padding: 12px 8px; border-radius: {t.radius}px; }}
-            QListWidget::item:selected {{ background: {t.selected}; color: {t.accent}; }}
-            QPushButton {{ background: {t.panel}; color: {t.text}; border: 1px solid {t.border};
-                border-radius: {t.radius}px; padding: 7px 12px; }}
-            QPushButton:hover, QPushButton:focus {{ border-color: {t.accent}; }}
-            QPushButton:checked {{ background: {t.selected}; border: 2px solid {t.accent}; }}
-            QLineEdit, QComboBox, QTextEdit, QTableWidget {{ background: {t.field}; color: {t.text};
-                border: 1px solid {t.border}; border-radius: {t.radius}px; padding: 7px; }}
-            QComboBox QAbstractItemView {{ background: {t.panel}; color: {t.text}; selection-background-color: {t.selected}; }}
-            QScrollBar:vertical {{ background: {t.bg}; width: 10px; }}
-            QScrollBar::handle:vertical {{ background: {t.border}; min-height: 24px; border-radius: 4px; }}
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
-        ''')
+        self.setStyleSheet(settings_stylesheet(self.theme_id, t, DISPLAY_CSS))
         self._styling = False
         palette = self.palette()
         for role, color in ((QPalette.ColorRole.Window, t.bg), (QPalette.ColorRole.Base, t.field),

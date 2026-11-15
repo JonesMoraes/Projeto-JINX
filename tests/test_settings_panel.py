@@ -57,6 +57,28 @@ class SettingsTests(unittest.TestCase):
         QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
         self.app.processEvents()
 
+    def test_five_reference_visual_styles_and_native_cards(self):
+        from gui.settings_visuals import visual_skin
+        from gui.settings_themes import resolved_settings_theme
+        skins = {key: visual_skin(key, resolved_settings_theme(key)) for key in SETTINGS_THEMES}
+        self.assertEqual(len(skins), 5)
+        self.assertEqual(len({skin.accent for skin in skins.values()}), 5)
+        self.assertEqual(len({skin.background for skin in skins.values()}), 5)
+        self.dialog.show_category('appearance')
+        self.assertEqual(len(self.dialog._theme_buttons), 5)
+        self.assertTrue(self.dialog.findChildren(QWidget, 'SettingsHeader'))
+        self.assertTrue(self.dialog.findChildren(QWidget, 'SettingsCard'))
+        styles = []
+        for key in SETTINGS_THEMES:
+            self.dialog.select_theme(key)
+            self.app.processEvents()
+            styles.append(self.dialog.styleSheet())
+            self.assertIn(skins[key].accent, self.dialog.styleSheet())
+            self.assertEqual(config.load_api_keys()['settings_theme'], key)
+        self.assertEqual(len(set(styles)), 5)
+        self.dialog.show_category('audio')
+        self.assertGreaterEqual(len(self.dialog.findChildren(QWidget, 'SettingsCard')), 2)
+
     def test_hud_typography_and_no_emoji_in_settings_labels(self):
         from gui.style import DISPLAY_FAMILIES
         from gui.settings_panel import clean_settings_label

@@ -20,15 +20,15 @@ class SettingsTheme:
 DEFAULT_SETTINGS_THEME = 'cyber_hud'
 SETTINGS_THEMES = {
     'minimal_light': SettingsTheme('Minimal Light', 'Claro, direto e essencial.',
-        '#f3f6fb', '#ffffff', '#f8faff', '#18273d', '#52627b', '#245bd8', '#ccd6e5', '#e5edff', 8),
+        '#f4f7fd', '#ffffff', '#f8faff', '#15213a', '#64738b', '#1474ff', '#d5dfec', '#deebff', 16),
     'nature_ui': SettingsTheme('Nature UI', 'Tons naturais e formas suaves.',
-        '#f2ecdf', '#fcf8ee', '#f5efdf', '#293d30', '#626954', '#36704b', '#d4d1b9', '#dfe9d6', 18),
+        '#f7ebd8', '#fffaf1', '#fff9ee', '#30251c', '#726952', '#607c36', '#cbbb9e', '#dce5c5', 22),
     'titanium_dark': SettingsTheme('Titanium Dark', 'Grafite, precisão e laranja.',
-        '#17191c', '#24272c', '#1c1f23', '#f0f1f3', '#aeb4be', '#ffad60', '#454b54', '#3d3026', 2),
+        '#090a0b', '#202122', '#171819', '#f6f6f6', '#b9bbbd', '#ff9900', '#515357', '#382407', 9),
     'cyber_hud': SettingsTheme('Cyber HUD', 'Ciano e a identidade futurista da JINX.',
         '#07121d', '#0d2030', '#091925', '#e1f6ff', '#9ab9cb', '#51d8ff', '#284a60', '#123a50', 6),
     'neon_glass': SettingsTheme('Neon Glass', 'Violeta, magenta e luz.',
-        '#19132e', '#29203f', '#211a36', '#f4edff', '#c0afd9', '#e59bff', '#634779', '#48305f', 16),
+        '#100b2b', '#31235a', '#251c53', '#f5f2ff', '#c7b9e6', '#d54dff', '#6e61aa', '#5c328b', 20),
 }
 
 
