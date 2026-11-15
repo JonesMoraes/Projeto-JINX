@@ -1631,7 +1631,8 @@ class PluginSettingsOverlay(QWidget):
         values = sec.get("values") or {}
 
         form.addSpacing(4)
-        form.addWidget(self._lbl(title, 10, True, C.PRI))
+        sec_title = self._lbl(title, 11, True, C.PRI)
+        form.addWidget(sec_title)
 
         for field in fields:
             if not isinstance(field, dict) or not field.get("key"):
@@ -1639,10 +1640,12 @@ class PluginSettingsOverlay(QWidget):
             key   = field["key"]
             ftype = (field.get("type") or "text").lower()
             label = field.get("label") or key
+            help_text = field.get("help") or field.get("hint") or ""
             default = field.get("default")
             stored  = values.get(key, default)
 
-            form.addWidget(self._lbl(label.upper(), 8, color=C.TEXT_DIM))
+            form.addSpacing(6)
+            form.addWidget(self._lbl(label, 9, color=C.TEXT))
 
             if ftype == "choice":
                 w = QComboBox()
@@ -1652,6 +1655,7 @@ class PluginSettingsOverlay(QWidget):
                 w.setStyleSheet(
                     f"QComboBox {{ background: #000d12; color: {C.TEXT}; "
                     f"border: 1px solid {C.BORDER}; border-radius: 3px; padding: 2px 8px; }}"
+                    f"QComboBox:hover {{ border-color: {C.BORDER_B}; }}"
                     f"QComboBox QAbstractItemView {{ background: #000d12; color: {C.TEXT}; "
                     f"selection-background-color: {C.PRI_GHO}; }}")
                 if stored is not None:
@@ -1660,8 +1664,8 @@ class PluginSettingsOverlay(QWidget):
                 w = QPushButton()
                 w.setCheckable(True)
                 w.setChecked(bool(stored))
-                w.setFixedHeight(28)
-                w.setFont(hud_font(8, QFont.Weight.Bold))
+                w.setFixedHeight(30)
+                w.setFont(hud_font(9, QFont.Weight.Bold))
                 w.setCursor(Qt.CursorShape.PointingHandCursor)
                 self._style_toggle(w)
                 w.toggled.connect(lambda _=False, b=w: self._style_toggle(b))
@@ -1679,13 +1683,18 @@ class PluginSettingsOverlay(QWidget):
             self._types[(ns, key)]   = ftype
             form.addWidget(w)
 
+            if help_text:
+                h = self._lbl(help_text, 8, color=C.TEXT_DIM)
+                h.setWordWrap(True)
+                form.addWidget(h)
+
         # optional test/connect action button + status line
         action = sec.get("action")
         if isinstance(action, dict) and callable(action.get("run")):
-            form.addSpacing(2)
+            form.addSpacing(6)
             ab = QPushButton(str(action.get("label") or "TESTAR"))
-            ab.setFixedHeight(30)
-            ab.setFont(hud_font(8, QFont.Weight.Bold))
+            ab.setFixedHeight(32)
+            ab.setFont(hud_font(9, QFont.Weight.Bold))
             ab.setCursor(Qt.CursorShape.PointingHandCursor)
             ab.setStyleSheet(f"""
                 QPushButton {{ background: #00091a; color: {C.PRI};
@@ -1700,7 +1709,7 @@ class PluginSettingsOverlay(QWidget):
         form.addWidget(status)
 
         line = QFrame(); line.setFrameShape(QFrame.Shape.HLine)
-        line.setStyleSheet(f"color: {C.BORDER}; margin: 4px 0;")
+        line.setStyleSheet(f"color: {C.BORDER}; margin: 8px 0 4px 0;")
         form.addWidget(line)
 
     def _style_toggle(self, btn: QPushButton):
