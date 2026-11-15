@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import (QApplication, QComboBox, QDialog, QFrame, QGridLayo
     QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QPushButton,
     QScrollArea, QSizePolicy, QStackedWidget, QVBoxLayout, QWidget)
 
-from gui.style import hud_font
+from gui.style import hud_font, DISPLAY_FAMILIES, DISPLAY_CSS
 from gui.theme import C
 from gui.settings_themes import (SETTINGS_THEMES, DEFAULT_SETTINGS_THEME,
                                  settings_theme_id, resolved_settings_theme)
@@ -23,6 +23,19 @@ from memory import config_manager as config
 def normalized(text):
     return ''.join(c for c in unicodedata.normalize('NFD', text.casefold())
                    if unicodedata.category(c) != 'Mn')
+
+
+# Decorative emoji are removed only from displayed settings labels, never
+# from editable values, plugin IDs, saved settings, or secret fields.
+_EMOJI = re.compile(r'[\U0001F000-\U0001FAFF\u2600-\u27BF\uFE0E\uFE0F\u200D\u20E3]')
+
+
+def clean_settings_label(value):
+    if not value:
+        return value
+    cleaned = _EMOJI.sub('', value)
+    cleaned = re.sub(r'^[\s\u25C8\u25B8\u25B6\u25CF\u25C6]+', '', cleaned)
+    return re.sub(r' {2,}', ' ', cleaned).strip()
 
 
 # Search terms describe controls, not just category titles.
@@ -405,7 +418,7 @@ class SettingsDialog(QDialog):
                 button = self._button(layout, source.text(), getattr(self.window, callback))
                 # Existing runtime refreshes these labels, including asynchronous wake setup.
                 timer = QTimer(button)
-                timer.timeout.connect(lambda b=button, s=source: b.setText(s.text()))
+                timer.timeout.connect(lambda b=button, s=source: b.setText(clean_settings_label(s.text())))
                 timer.start(500)
 
     def _build_integrations(self, layout):
@@ -489,7 +502,7 @@ class SettingsDialog(QDialog):
         self._styling = True
         self.setStyleSheet(f'''
             QDialog#SettingsCentral {{ background: {t.bg}; }}
-            QWidget {{ color: {t.text}; }}
+            QWidget {{ color: {t.text}; font-family: {DISPLAY_CSS}; }}
             QLabel {{ background: transparent; }}
             QScrollArea, QStackedWidget, QScrollArea > QWidget > QWidget {{ background: {t.bg}; border: none; }}
             QListWidget {{ background: {t.panel}; border: none; border-radius: {t.radius}px; padding: 8px; }}
@@ -546,10 +559,35 @@ class SettingsDialog(QDialog):
         finally:
             self._styling = False
 
+    def _uniform_hud_labels(self):
+        """Use HUD display families and plain text for all settings controls.
+
+        Preserve each widget's font size/weight and never change edit contents.
+        """
+        for widget in [self, *self.findChildren(QWidget)]:
+            if isinstance(widget, (QLabel, QPushButton, QComboBox, QLineEdit, QListWidget)):
+                current = widget.font()
+                if current.families() != DISPLAY_FAMILIES:
+                    font = QFont(current)
+                    font.setFamilies(DISPLAY_FAMILIES)
+                    widget.setFont(font)
+            if isinstance(widget, (QLabel, QPushButton)):
+                value = widget.text()
+                cleaned = clean_settings_label(value)
+                if value != cleaned:
+                    widget.setText(cleaned)
+            elif isinstance(widget, QComboBox):
+                for index in range(widget.count()):
+                    value = widget.itemText(index)
+                    cleaned = clean_settings_label(value)
+                    if cleaned != value:
+                        widget.setItemText(index, cleaned)
+
     def _restyle_forms(self):
         for panel in self._embedded:
             for widget in [panel, *panel.findChildren(QWidget)]:
                 self._restyle_widget(widget)
+        self._uniform_hud_labels()
 
     def eventFilter(self, obj, event):
         if not self._styling and isinstance(obj, QWidget) and self.isAncestorOf(obj):

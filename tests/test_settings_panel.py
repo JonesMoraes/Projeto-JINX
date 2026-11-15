@@ -57,6 +57,31 @@ class SettingsTests(unittest.TestCase):
         QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
         self.app.processEvents()
 
+    def test_hud_typography_and_no_emoji_in_settings_labels(self):
+        from gui.style import DISPLAY_FAMILIES
+        from gui.settings_panel import clean_settings_label
+        from PyQt6.QtWidgets import QLineEdit
+        self.assertEqual(clean_settings_label('🎙  PALAVRA DE ATIVAÇÃO'), 'PALAVRA DE ATIVAÇÃO')
+        self.assertEqual(clean_settings_label('🔌  MOTOR DE IA'), 'MOTOR DE IA')
+        self.assertEqual(clean_settings_label('⛶  TELA CHEIA [F11]'), 'TELA CHEIA [F11]')
+        with patch('gui.providers_panel.threading.Thread'), patch('core.audio_devices.list_devices', return_value=[]):
+            for key, *_ in CATEGORIES:
+                self.dialog.show_category(key)
+                self.app.processEvents()
+                for widget in self.dialog.stack.currentWidget().findChildren(QWidget):
+                    if isinstance(widget, (QLabel, QPushButton, QComboBox, QLineEdit)):
+                        self.assertEqual(widget.font().families()[:len(DISPLAY_FAMILIES)], DISPLAY_FAMILIES,
+                                         (key, type(widget).__name__))
+                    if isinstance(widget, (QLabel, QPushButton)):
+                        self.assertEqual(widget.text(), clean_settings_label(widget.text()), (key, widget.text()))
+                    if isinstance(widget, QComboBox):
+                        for idx in range(widget.count()):
+                            self.assertEqual(widget.itemText(idx), clean_settings_label(widget.itemText(idx)), key)
+        self.dialog.show_category('general')
+        self.dialog.user_name.setText('💙 meu apelido')
+        self.dialog._apply_theme()
+        self.assertEqual(self.dialog.user_name.text(), '💙 meu apelido')
+
     def test_default_and_corrupt_preference_fall_back(self):
         self.assertEqual(self.dialog.theme_id, 'cyber_hud')
         for value in (None, {}, [], 'missing'):
