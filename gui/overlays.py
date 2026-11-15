@@ -1557,6 +1557,11 @@ class PluginSettingsOverlay(QWidget):
         root.setSpacing(8)
 
         root.addWidget(self._lbl("⚙  CONFIGURAÇÕES DOS PLUG-INS", 12, True))
+        hint = QLabel("Ajustes específicos de cada plug-in instalado.")
+        hint.setWordWrap(True)
+        hint.setFont(hud_font(8))
+        hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        root.addWidget(hint)
         sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
         root.addWidget(sep)
