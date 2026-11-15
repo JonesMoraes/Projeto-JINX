@@ -1475,20 +1475,19 @@ class MainWindow(QMainWindow):
         lay.addLayout(name_col)
         lay.addSpacing(8)
 
-        # Two drawers, and the split is by how often a thing is touched: the
-        # ones you set once behind the gear, the everyday switches behind the
-        # sliders. Separating them is what keeps each list short enough to
-        # read at a glance.
+        # All settings and daily controls are available from one gear menu.
         self._drawer_btn = IconButton("gear", 32)
         self._drawer_btn.setCheckable(True)
-        self._drawer_btn.setToolTip("Configurações — opções definidas uma vez")
+        self._drawer_btn.setToolTip("Configurações e controles")
         self._drawer_btn.clicked.connect(self._toggle_drawer)
         lay.addWidget(self._drawer_btn)
         self._ctrl_btn = IconButton("sliders", 32)
         self._ctrl_btn.setCheckable(True)
-        self._ctrl_btn.setToolTip("Controles — ajustes do dia a dia")
+        # Kept for compatibility with existing shortcuts, but not shown.
+        # Its actions now live in the unified settings dialog.
+        self._ctrl_btn.setToolTip("Controles na central de configurações")
         self._ctrl_btn.clicked.connect(self._toggle_controls)
-        lay.addWidget(self._ctrl_btn)
+        self._ctrl_btn.hide()
         lay.addStretch()
 
         self._state_chip = StateChip()
@@ -1990,19 +1989,15 @@ class MainWindow(QMainWindow):
             if key == category:
                 dialog.navigation.setCurrentRow(index)
                 break
+        dialog._apply_theme()  # Resync Cyber HUD with the live app palette.
         dialog.show()
         dialog.raise_()
         dialog.activateWindow()
 
     def _toggle_controls(self, checked: bool):
-        if checked:
-            self._close_setup()
-            self._refresh_wake_btns()   # cheap now: the state was warmed at boot
-            self._position_ctrl_drawer()
-            self._ctrl_drawer.show()
-            self._ctrl_drawer.raise_()
-        else:
-            self._ctrl_drawer.hide()
+        # Legacy entry point: never open a second, differently styled menu.
+        self._close_controls()
+        self._open_settings('automation')
 
     def _close_setup(self):
         if hasattr(self, "_quick_drawer"):

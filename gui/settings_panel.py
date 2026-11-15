@@ -15,7 +15,8 @@ from PyQt6.QtWidgets import (QApplication, QComboBox, QDialog, QFrame, QGridLayo
 
 from gui.style import hud_font
 from gui.theme import C
-from gui.settings_themes import SETTINGS_THEMES, DEFAULT_SETTINGS_THEME, settings_theme_id
+from gui.settings_themes import (SETTINGS_THEMES, DEFAULT_SETTINGS_THEME,
+                                 settings_theme_id, resolved_settings_theme)
 from memory import config_manager as config
 
 
@@ -80,6 +81,7 @@ class SettingsDialog(QDialog):
         self._styling = False
         self._current = 'general'
         self._theme_buttons = {}
+        self._theme_previews = {}
         root = QVBoxLayout(self)
         root.setContentsMargins(16, 20, 16, 16)
         header = QHBoxLayout()
@@ -270,7 +272,9 @@ class SettingsDialog(QDialog):
             card.setToolTip(theme.description)
             inner = QVBoxLayout(card)
             inner.setContentsMargins(12, 10, 12, 10)
-            inner.addWidget(ThemePreview(theme))
+            preview = ThemePreview(resolved_settings_theme(key))
+            self._theme_previews[key] = preview
+            inner.addWidget(preview)
             label = QLabel(theme.name)
             label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
             inner.addWidget(label)
@@ -316,7 +320,9 @@ class SettingsDialog(QDialog):
         try:
             config.update_config(ui_color=color)
             self.window._preview_ui_color(color)
-            self.status.setText('Cor do HUD aplicada e salva.')
+            # The Cyber HUD settings style follows the same live accent.
+            self._apply_theme()
+            self.status.setText('Cor da JINX aplicada e salva.')
         except Exception as exc:
             self.status.setText(f'Não foi possível aplicar a cor: {exc}')
 
@@ -349,7 +355,7 @@ class SettingsDialog(QDialog):
         self.voice_status.setWordWrap(True)
         self.preview = VoicePreviewController(self, lambda active: (
             self.window.on_voice_preview_state(active) if self.window.on_voice_preview_state else None))
-        self.voice.preview_theme = SETTINGS_THEMES[self.theme_id]
+        self.voice.preview_theme = resolved_settings_theme(self.theme_id)
         self.preview.status.connect(lambda voice, msg: self.voice_status.setText(f'{voice}: {msg}'))
         self.voice.preview_requested.connect(self.preview.player.request)
         actions = QHBoxLayout()
@@ -384,9 +390,15 @@ class SettingsDialog(QDialog):
         self._embed(layout, MemoryOverlay())
 
     def _build_automation(self, layout):
+        layout.addWidget(QLabel('Controles do dia a dia'))
+        if hasattr(self.window, '_toggle_fullscreen'):
+            self._button(layout, 'Alternar tela cheia [F11]', self.window._toggle_fullscreen)
+        if hasattr(self.window, '_refresh_wake_btns'):
+            self.window._refresh_wake_btns()
         self._button(layout, 'Abrir agenda', lambda: self._open_extra('agenda'),
                      'Eventos locais e sincronização manual com Google Agenda.')
         for attribute, callback in (('_brief_btn', '_toggle_brief'), ('_wake_btn', '_toggle_wake_word'),
+                                    ('_wake_sleep_btn', '_tap_wake_manual'),
                                     ('_ptt_btn', '_toggle_ptt'), ('_gesture_btn', '_toggle_gestures')):
             source = getattr(self.window, attribute, None)
             if source is not None:
@@ -468,7 +480,12 @@ class SettingsDialog(QDialog):
         self._restyle_forms()
 
     def _apply_theme(self):
-        t = SETTINGS_THEMES[self.theme_id]
+        t = resolved_settings_theme(self.theme_id)
+        # Update the Cyber preview when the user changes the HUD accent.
+        cyber_preview = self._theme_previews.get(DEFAULT_SETTINGS_THEME)
+        if cyber_preview is not None:
+            cyber_preview.theme = resolved_settings_theme(DEFAULT_SETTINGS_THEME)
+            cyber_preview.update()
         self._styling = True
         self.setStyleSheet(f'''
             QDialog#SettingsCentral {{ background: {t.bg}; }}
@@ -507,7 +524,7 @@ class SettingsDialog(QDialog):
             return
         source = self._original_styles.setdefault(widget, widget.styleSheet())
         colors = self._source_palettes.setdefault(widget, {key: value for key, value in vars(C).items() if key.isupper()})
-        t = SETTINGS_THEMES[self.theme_id]
+        t = resolved_settings_theme(self.theme_id)
         mapping = {}
         for role in ('BG', 'PANEL', 'PANEL2', 'DARK', 'BAR_BG'):
             mapping[colors[role].lower()] = t.field if role == 'DARK' else t.panel

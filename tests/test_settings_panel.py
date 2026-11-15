@@ -193,8 +193,9 @@ class SettingsTests(unittest.TestCase):
             self.app.processEvents()
             self.assertEqual(self.dialog.stack.currentWidget().horizontalScrollBar().maximum(), 0)
 
-    def test_hud_accent_change_cannot_recolor_settings(self):
+    def test_cyber_hud_follows_actual_accent_other_themes_stay_independent(self):
         from gui.theme import C, apply_ui_accent, retheme_all_widgets, current_palette
+        from gui.settings_themes import resolved_settings_theme
         self.dialog.show_category('integrations')
         panel = self.dialog._embedded[-1]
         original = [w.styleSheet() for w in panel.findChildren(QWidget)]
@@ -203,11 +204,16 @@ class SettingsTests(unittest.TestCase):
             apply_ui_accent('#993399')
             retheme_all_widgets(palette, current_palette())
             self.dialog.select_theme('minimal_light')
+            self.assertEqual(resolved_settings_theme('minimal_light').accent, SETTINGS_THEMES['minimal_light'].accent)
             self.dialog.select_theme('cyber_hud')
-            self.assertEqual([w.styleSheet() for w in panel.findChildren(QWidget)], original)
+            self.assertEqual(resolved_settings_theme('cyber_hud').accent, C.PRI)
+            self.assertEqual(resolved_settings_theme('cyber_hud').bg, C.BG)
+            self.assertNotEqual([w.styleSheet() for w in panel.findChildren(QWidget)], original)
+            self.assertTrue(any(C.PRI.lower() in w.styleSheet().lower() for w in panel.findChildren(QWidget)))
         finally:
             for key, value in palette.items():
                 setattr(C, key, value)
+            self.dialog._apply_theme()
 
     def test_hud_color_validation_and_independent_persistence(self):
         self.dialog.show_category('appearance')

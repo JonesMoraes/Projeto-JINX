@@ -34,3 +34,19 @@ SETTINGS_THEMES = {
 
 def settings_theme_id(value):
     return value if isinstance(value, str) and value in SETTINGS_THEMES else DEFAULT_SETTINGS_THEME
+
+
+def resolved_settings_theme(value):
+    """Cyber HUD inherits the actual, possibly customized, JINX palette.
+
+    Other four themes intentionally remain independent user choices.
+    Reading the live palette here (instead of persisting a second color) keeps
+    the default settings window visually consistent with the HUD.
+    """
+    key = settings_theme_id(value)
+    if key != DEFAULT_SETTINGS_THEME:
+        return SETTINGS_THEMES[key]
+    from gui.theme import C
+    return SettingsTheme('Cyber HUD', 'Aparência atual da interface JINX.',
+        C.BG, C.PANEL, C.DARK, C.WHITE, C.TEXT_MED,
+        C.PRI, C.BORDER_B, C.PRI_GHO, 6)
