@@ -223,6 +223,28 @@ def save_push_to_talk_enabled(enabled: bool) -> None:
 HUD_STYLES = ("face", "core", "aurora")
 
 
+# Temas completos da interface: cada um troca a cor de destaque (PRI) e
+# rederiva toda a paleta teal, aplicada em painéis, bordas e botões.
+THEMES = {
+    "Ciano":   "#00d4ff",
+    "Aurora":  "#00ff88",
+    "Âmbar":   "#ff8c00",
+    "Violeta": "#a855f7",
+    "Rubi":    "#ff3355",
+}
+DEFAULT_THEME = "Ciano"
+
+
+def get_theme() -> str:
+    v = str(load_api_keys().get("ui_theme", DEFAULT_THEME)).strip()
+    return v if v in THEMES else DEFAULT_THEME
+
+
+def save_theme(name: str) -> None:
+    s = str(name or "").strip()
+    _save_flag("ui_theme", s if s in THEMES else DEFAULT_THEME)
+
+
 def get_hud_style() -> str:
     """Which centrepiece the HUD draws: face, JINX core, or Brahma orbs.
 

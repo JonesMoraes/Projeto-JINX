@@ -2842,17 +2842,6 @@ class MainWindow(QMainWindow):
         labels = {"face": "rosto animado", "core": "núcleo reator", "aurora": "aurora"}
         self._log.append_log(f"SYS: HUD alterado para {labels[want]}.")
 
-        # Tema completo da interface: cada modelo carrega sua própria cor,
-        # aplicada instantaneamente em painéis, bordas e botões (e persistida).
-        from gui.theme import apply_ui_accent, current_palette, retheme_all_widgets
-        from memory.config_manager import update_config
-        _STYLE_ACCENTS = {"face": "#00d4ff", "core": "#00d4ff", "aurora": "#00ff88"}
-        accent = _STYLE_ACCENTS.get(want, "#00d4ff")
-        old = current_palette()
-        if apply_ui_accent(accent):
-            retheme_all_widgets(old, current_palette())
-            update_config(ui_color=accent)
-
     def _toggle_ptt(self):
         from memory.config_manager import (get_push_to_talk_enabled,
                                            save_push_to_talk_enabled)

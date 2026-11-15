@@ -315,6 +315,16 @@ class CustomizeOverlay(QWidget):
             w.setStyleSheet(f"color: {color}; background: transparent;")
             return w
 
+        def _section(txt):
+            w = QLabel(txt)
+            w.setFont(hud_font(10, QFont.Weight.Bold))
+            w.setStyleSheet(f"color: {C.PRI}; background: transparent; "
+                            f"padding-top: 6px; padding-bottom: 2px;")
+            lay.addWidget(w)
+            rule = QFrame(); rule.setFrameShape(QFrame.Shape.HLine)
+            rule.setStyleSheet(f"color: {C.BORDER_B}; margin: 0 0 4px 0;")
+            lay.addWidget(rule)
+
         _fs = (f"QLineEdit {{ background: #000d12; color: {C.TEXT}; "
                f"border: 1px solid {C.BORDER}; border-radius: 3px; padding: 4px 8px; }}"
                f"QLineEdit:focus {{ border: 1px solid {C.PRI}; }}")
@@ -450,6 +460,33 @@ class CustomizeOverlay(QWidget):
         lay.addWidget(self._hex_input)
 
         lay.addSpacing(6)
+        # ── 4. Tema completo da interface ────────────────────────────────────
+        _section("4.  TEMA DA INTERFACE")
+        _hint = QLabel("Troca a cor de destaque em toda a interface de uma vez.")
+        _hint.setWordWrap(True)
+        _hint.setFont(hud_font(8))
+        _hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
+        lay.addWidget(_hint)
+        from memory.config_manager import THEMES, get_theme, save_theme
+        self._sel_theme = get_theme()
+        self._theme_combo = QComboBox()
+        self._theme_combo.setFixedHeight(30)
+        self._theme_combo.setFont(hud_font(9))
+        self._theme_combo.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._theme_combo.setStyleSheet(
+            f"QComboBox {{ background: #000d12; color: {C.TEXT}; "
+            f"border: 1px solid {C.BORDER}; border-radius: 3px; padding: 4px 8px; }}"
+            f"QComboBox:hover {{ border-color: {C.BORDER_B}; }}"
+            f"QComboBox QAbstractItemView {{ background: #000d12; color: {C.TEXT}; "
+            f"selection-background-color: {C.PRI_GHO}; border: 1px solid {C.BORDER}; }}")
+        for name, hexv in THEMES.items():
+            self._theme_combo.addItem(f"{name}  —  {hexv}", name)
+        self._theme_combo.setCurrentIndex(
+            max(0, self._theme_combo.findData(self._sel_theme)))
+        self._theme_combo.currentIndexChanged.connect(self._on_theme_changed)
+        lay.addWidget(self._theme_combo)
+
+        lay.addSpacing(6)
         btn_row = QHBoxLayout(); btn_row.setSpacing(8)
 
         save_btn = QPushButton("✓  APLICAR E SALVAR")
@@ -542,8 +579,34 @@ class CustomizeOverlay(QWidget):
         name = self._name_input.text().strip() or "JINX"
         user = self._user_input.text().strip()
         voice = self._voice_combo.currentData() or self._sel_voice
+        from memory.config_manager import save_theme, THEMES
+        sel_theme = self._theme_combo.currentData() or self._sel_theme
+        save_theme(sel_theme)
+        # tema completo: aplica a cor do tema em toda a interface
+        accent = THEMES.get(sel_theme)
+        if accent:
+            from gui.theme import apply_ui_accent
+            apply_ui_accent(accent)
+            self._sel_color = accent
         self.saved.emit(name, user, self._sel_color or DEFAULT_UI_COLOR, voice)
         self.hide()
+
+    def _on_theme_changed(self, _idx):
+        from memory.config_manager import THEMES
+        from gui.theme import apply_ui_accent, current_palette, retheme_all_widgets
+        name = self._theme_combo.currentData()
+        if name not in THEMES:
+            return
+        self._sel_theme = name
+        old = current_palette()
+        if apply_ui_accent(THEMES[name]):
+            retheme_all_widgets(old, current_palette())
+            self._sel_color = THEMES[name]
+            self._hex_input.blockSignals(True)
+            self._hex_input.setText(self._sel_color)
+            self._hex_input.blockSignals(False)
+            if self.on_preview:
+                self.on_preview(self._sel_color)
 
 
 class PluginManagerOverlay(QWidget):
