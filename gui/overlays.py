@@ -1101,7 +1101,8 @@ class AudioDeviceOverlay(_HudOverlay):
         changed = (new_in != get_input_device()) or (new_out != get_output_device())
         save_input_device(new_in)
         save_output_device(new_out)
-        self.hide()
+        if not self.property("settingsEmbedded"):
+            self.hide()
         # Only rebuild the session if something actually moved — a no-op Apply
         # should not cost a reconnect.
         if changed:
@@ -1183,6 +1184,9 @@ class MemoryOverlay(_HudOverlay):
         leaves its former pixels on screen, since nothing tells the parent that
         region changed. The repaint has to cover the union of the old and new
         rectangles."""
+        if self.property("settingsEmbedded"):
+            self.updateGeometry()
+            return
         self._lay.invalidate()
         self._lay.activate()
         self.updateGeometry()
@@ -1433,8 +1437,9 @@ class PluginSettingsOverlay(QWidget):
     _test_done = pyqtSignal(str, bool, str)   # namespace, ok, message
     _OW = 460
 
-    def __init__(self, sections: list[dict], parent=None):
+    def __init__(self, sections: list[dict], parent=None, compact=False):
         super().__init__(parent)
+        self._compact = compact
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(f"""
             PluginSettingsOverlay {{
@@ -1529,6 +1534,10 @@ class PluginSettingsOverlay(QWidget):
         form.addSpacing(4)
         form.addWidget(self._lbl(title, 10, True, C.PRI))
 
+        advanced = QWidget()
+        advanced_form = QVBoxLayout(advanced)
+        advanced_form.setContentsMargins(0, 0, 0, 0)
+        advanced_count = 0
         for field in fields:
             if not isinstance(field, dict) or not field.get("key"):
                 continue
@@ -1538,7 +1547,11 @@ class PluginSettingsOverlay(QWidget):
             default = field.get("default")
             stored  = values.get(key, default)
 
-            form.addWidget(self._lbl(label.upper(), 8, color=C.TEXT_DIM))
+            is_advanced = self._compact and (ftype == "password" or any(
+                term in key.lower() for term in ("token", "secret", "endpoint", "api_key", "url")))
+            target = advanced_form if is_advanced else form
+            advanced_count += bool(is_advanced)
+            target.addWidget(self._lbl(label.upper(), 8, color=C.TEXT_DIM))
 
             if ftype == "choice":
                 w = QComboBox()
@@ -1573,7 +1586,17 @@ class PluginSettingsOverlay(QWidget):
 
             self._widgets[(ns, key)] = w
             self._types[(ns, key)]   = ftype
-            form.addWidget(w)
+            target.addWidget(w)
+
+        if advanced_count:
+            toggle = QPushButton("Credenciais e opções avançadas")
+            toggle.setCheckable(True)
+            toggle.toggled.connect(advanced.setVisible)
+            form.addWidget(toggle)
+            form.addWidget(advanced)
+            advanced.hide()
+        else:
+            advanced.deleteLater()
 
         # optional test/connect action button + status line
         action = sec.get("action")

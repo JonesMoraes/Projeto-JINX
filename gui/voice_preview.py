@@ -36,6 +36,14 @@ class VoicePicker(QComboBox):
             play.setAccessibleName(f'Ouvir prévia da voz {voice}')
             play.setToolTip(f'Ouvir {voice} sem aplicar')
             play.clicked.connect(lambda checked=False, v=voice: self.preview_requested.emit(v))
+            theme = getattr(self, 'preview_theme', None)
+            if theme is not None:
+                item.setStyleSheet(f'background: {theme.panel}; color: {theme.text};')
+                for button in (choose, play):
+                    button.setStyleSheet(
+                        f'QPushButton {{background: {theme.panel}; color: {theme.text}; '
+                        f'border: 1px solid {theme.border}; border-radius: {theme.radius}px; padding: 4px;}}'
+                        f'QPushButton:hover {{background: {theme.selected}; color: {theme.accent};}}')
             self.preview_buttons[voice] = play
             layout.addWidget(choose, 1)
             layout.addWidget(play)

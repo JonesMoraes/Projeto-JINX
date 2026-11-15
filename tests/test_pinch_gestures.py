@@ -149,7 +149,8 @@ class PluginAndInstallerTests(unittest.TestCase):
             response.headers = headers
             replies.append(response)
             return response
-        with patch.object(gesture_install.urllib.request, 'urlopen', side_effect=head), \
+        with patch.object(gesture_install.sys, 'platform', manifest['platform']), \
+                patch.object(gesture_install.urllib.request, 'urlopen', side_effect=head), \
                 patch.object(gesture_install.subprocess, 'run') as process:
             plan = gesture_install.prepare()
         self.assertEqual(plan['bytes'], manifest['bytes'])

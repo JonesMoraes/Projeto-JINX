@@ -504,7 +504,7 @@ class MainWindow(QMainWindow):
         sc_command = QShortcut(QKeySequence('Ctrl+Space'), self)
         sc_command.activated.connect(self._orb_mode.show_command)
         sc_audio = QShortcut(QKeySequence('F8'), self)
-        sc_audio.activated.connect(self._open_audio_devices)
+        sc_audio.activated.connect(lambda: self._open_settings("audio"))
         sc_camera = QShortcut(QKeySequence('F9'), self)
         sc_camera.activated.connect(self._toggle_webcam)
         sc_gestures = QShortcut(QKeySequence('F10'), self)
@@ -1976,13 +1976,23 @@ class MainWindow(QMainWindow):
         threading.Thread(target=work, daemon=True, name="wake-state-warm").start()
 
     def _toggle_drawer(self, checked: bool):
-        if checked:
-            self._close_controls()
-            self._position_quick_drawer()
-            self._quick_drawer.show()
-            self._quick_drawer.raise_()
-        else:
-            self._quick_drawer.hide()
+        self._close_controls()
+        self._close_setup()
+        self._open_settings()
+
+    def _open_settings(self, category="general"):
+        from gui.settings_panel import SettingsDialog, CATEGORIES
+        dialog = getattr(self, "_settings_dialog", None)
+        if dialog is None:
+            dialog = SettingsDialog(self)
+            self._settings_dialog = dialog
+        for index, (key, *_rest) in enumerate(CATEGORIES):
+            if key == category:
+                dialog.navigation.setCurrentRow(index)
+                break
+        dialog.show()
+        dialog.raise_()
+        dialog.activateWindow()
 
     def _toggle_controls(self, checked: bool):
         if checked:

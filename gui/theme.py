@@ -190,6 +190,8 @@ def retheme_all_widgets(old: dict[str, str], new: dict[str, str]) -> None:
         return
     for w in app.allWidgets():
         try:
+            if w.window().objectName() == "SettingsCentral":
+                continue
             ss = w.styleSheet()
             if ss:
                 s2 = ss

@@ -1457,3 +1457,28 @@ mais cartões suspendem reconciliação para evitar conclusões por resposta par
 O painel mostra as pendências; não há resolução automática de conflitos nesta versão.
 Sincronização desligada não faz chamadas à API. Sem dependências novas.
 Validação com conta real e voz requer suas credenciais, inseridas somente na UI.
+
+
+### Central de configurações e temas
+
+Clique na engrenagem do HUD para abrir a central com busca e nove categorias:
+Geral, Aparência, Voz e áudio, Inteligência artificial, Memória, Automação,
+Integrações, Segurança e Sistema. O atalho **F8** abre Voz e áudio diretamente.
+Os formulários são carregados quando necessários e mantêm os rascunhos durante
+a navegação. Use **Aplicar** ou **Salvar** no próprio painel.
+
+Em **Aparência**, escolha **Minimal Light**, **Nature UI**, **Titanium Dark**,
+**Cyber HUD** (padrão) ou **Neon Glass**. A escolha é aplicada imediatamente e
+salva para a próxima abertura; **Restaurar Cyber HUD** restaura somente o tema.
+A cor e o visual do HUD têm controles próprios nessa mesma categoria.
+
+Em **Integrações**, escolha um plugin por vez. Credenciais e opções avançadas
+ficam recolhidas e os campos de senha continuam mascarados. Os botões de teste
+usam os diagnósticos reais de cada integração. Em **Voz e áudio**, ouvir uma
+prévia não altera a voz ativa; aplique a voz ou os dispositivos para confirmar.
+
+Validação automatizada: `QT_QPA_PLATFORM=offscreen python -m pytest -q`.
+Os testes usam configurações temporárias e simulam serviços externos e hardware.
+No Linux, os testes de áudio requerem a biblioteca de sistema PortAudio.
+A validação com microfone, alto-falantes e contas reais deve ser feita na instalação
+em que a JINX será utilizada.

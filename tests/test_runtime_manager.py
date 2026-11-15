@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 import runtime_manager as runtime
 
@@ -65,9 +66,12 @@ class RuntimeTests(unittest.TestCase):
                     patch.object(runtime, 'ROOT', Path(folder)), \
                     patch.object(runtime, 'latest', return_value=('3.15.2', 'url', 'sha')), \
                     patch.object(runtime, 'version_of', return_value='3.15.0'), \
-                    patch.object(runtime, 'prepare', side_effect=RuntimeError('fixture failure')), \
+                    patch.object(runtime, 'prepare', side_effect=RuntimeError('fixture failure')) as prepare, \
+                    patch.object(runtime, 'sys', SimpleNamespace(platform='win32')), \
+                    patch.dict('sys.modules', {'msvcrt': Mock()}), \
                     patch('sys.argv', ['runtime_manager.py']):
                 self.assertEqual(runtime.main(), 1)
+                prepare.assert_called_once()
             self.assertEqual(current.read_text(), contents)
 
 
