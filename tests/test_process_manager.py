@@ -1,3 +1,4 @@
+import os
 import threading
 import unittest
 from types import SimpleNamespace
@@ -63,7 +64,7 @@ class ProcessTest(unittest.TestCase):
         self.process.kill.assert_not_called()
 
     def test_same_executable_protected(self):
-        with patch.object(manager.appidentity, "own_exes", return_value={self.target.exe.lower()}):
+        with patch.object(manager.appidentity, "own_exes", return_value={os.path.normcase(self.target.exe)}):
             with self.assertRaises(ValueError):
                 manager._guard(self.target)
 

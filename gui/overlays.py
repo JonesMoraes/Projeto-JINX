@@ -75,13 +75,8 @@ class SetupOverlay(QWidget):
             w.setStyleSheet(f"color: {color}; background: transparent;")
             return w
 
-        layout.addWidget(_lbl("◈  CONFIGURAÇÃO INICIAL", 13, True))
-        _hint = QLabel("Informe sua chave de API do Gemini para começar. "
-                       "O sistema operacional foi detectado automaticamente.")
-        _hint.setWordWrap(True)
-        _hint.setFont(hud_font(8))
-        _hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
-        layout.addWidget(_hint)
+        layout.addWidget(_lbl("◈  CONFIGURAÇÃO INICIAL NECESSÁRIA", 13, True))
+        layout.addWidget(_lbl("Configure o JINX antes de iniciar.", 9, color=C.PRI_DIM))
         layout.addSpacing(6)
 
         sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
@@ -315,32 +310,15 @@ class CustomizeOverlay(QWidget):
             w.setStyleSheet(f"color: {color}; background: transparent;")
             return w
 
-        def _section(txt):
-            w = QLabel(txt)
-            w.setFont(hud_font(10, QFont.Weight.Bold))
-            w.setStyleSheet(f"color: {C.PRI}; background: transparent; "
-                            f"padding-top: 6px; padding-bottom: 2px;")
-            lay.addWidget(w)
-            rule = QFrame(); rule.setFrameShape(QFrame.Shape.HLine)
-            rule.setStyleSheet(f"color: {C.BORDER_B}; margin: 0 0 4px 0;")
-            lay.addWidget(rule)
-
         _fs = (f"QLineEdit {{ background: #000d12; color: {C.TEXT}; "
                f"border: 1px solid {C.BORDER}; border-radius: 3px; padding: 4px 8px; }}"
                f"QLineEdit:focus {{ border: 1px solid {C.PRI}; }}")
 
         lay.addWidget(_lbl("⚙  PERSONALIZAR ASSISTENTE", 12, True))
-        _hint = QLabel("Altere nome, voz e cor. Mudanças de cor são pré-visualizadas "
-                       "ao vivo; clique em APLICAR para salvar.")
-        _hint.setWordWrap(True)
-        _hint.setFont(hud_font(8))
-        _hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
-        lay.addWidget(_hint)
         sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
         lay.addWidget(sep)
 
-        lay.addWidget(_lbl("1. IDENTIDADE", 9, True, color=C.PRI))
         lay.addWidget(_lbl("NOME DO ASSISTENTE", 8, color=C.TEXT_DIM,
                             align=Qt.AlignmentFlag.AlignLeft))
         self._name_input = QLineEdit(assistant_name)
@@ -350,7 +328,7 @@ class CustomizeOverlay(QWidget):
         lay.addWidget(self._name_input)
 
         lay.addSpacing(4)
-        lay.addWidget(_lbl("SEU NOME  (opcional, em branco = detecção automática)", 8,
+        lay.addWidget(_lbl("SEU NOME  (deixe em branco para usar senhor/senhora)", 8,
                             color=C.TEXT_DIM, align=Qt.AlignmentFlag.AlignLeft))
         self._user_input = QLineEdit(user_name)
         self._user_input.setPlaceholderText("ex.: Ana  (deixe em branco para detecção automática)")
@@ -364,11 +342,7 @@ class CustomizeOverlay(QWidget):
         # styles come from the supported-voice catalog in config_manager.
         from memory.config_manager import AVAILABLE_VOICES, DEFAULT_VOICE, VOICE_STYLES
         lay.addSpacing(4)
-        lay.addWidget(_lbl("2. VOZ DO ASSISTENTE  (PT-BR)", 9, True, color=C.PRI))
-        _vhint = QLabel("Escolha a voz e ouça uma amostra antes de aplicar.")
-        _vhint.setFont(hud_font(8)); _vhint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
-        lay.addWidget(_vhint)
-        lay.addWidget(_lbl("VOZ", 8, color=C.TEXT_DIM,
+        lay.addWidget(_lbl("VOZ DO ASSISTENTE  —  PT-BR", 8, color=C.TEXT_DIM,
                             align=Qt.AlignmentFlag.AlignLeft))
         self._sel_voice   = (voice or DEFAULT_VOICE)
         if self._sel_voice not in AVAILABLE_VOICES:
@@ -417,15 +391,11 @@ class CustomizeOverlay(QWidget):
 
         # ── UI colour — colour wheel ─────────────────────────────────────────
         lay.addSpacing(4)
-        lay.addWidget(_lbl("3. COR DA INTERFACE", 9, True, color=C.PRI))
-        _chint = QLabel("Arraste o seletor ou digite um hex. Pré-visualizado ao vivo.")
-        _chint.setFont(hud_font(8)); _chint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
-        lay.addWidget(_chint)
         clr_hdr = QHBoxLayout()
-        clr_hdr.addWidget(_lbl("COR  (hex)", color=C.TEXT_DIM,
-                               align=Qt.AlignmentFlag.AlignLeft))
+        clr_hdr.addWidget(_lbl("COR DA INTERFACE  —  arraste o seletor", 8,
+                               color=C.TEXT_DIM, align=Qt.AlignmentFlag.AlignLeft))
         clr_hdr.addStretch()
-        df_btn = QPushButton("RESETAR COR")
+        df_btn = QPushButton("PADRÃO")
         df_btn.setFixedSize(64, 20)
         df_btn.setFont(hud_font(7, QFont.Weight.Bold))
         df_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -460,36 +430,9 @@ class CustomizeOverlay(QWidget):
         lay.addWidget(self._hex_input)
 
         lay.addSpacing(6)
-        # ── 4. Tema completo da interface ────────────────────────────────────
-        _section("4.  TEMA DA INTERFACE")
-        _hint = QLabel("Troca a cor de destaque em toda a interface de uma vez.")
-        _hint.setWordWrap(True)
-        _hint.setFont(hud_font(8))
-        _hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
-        lay.addWidget(_hint)
-        from memory.config_manager import THEMES, get_theme, save_theme
-        self._sel_theme = get_theme()
-        self._theme_combo = QComboBox()
-        self._theme_combo.setFixedHeight(30)
-        self._theme_combo.setFont(hud_font(9))
-        self._theme_combo.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._theme_combo.setStyleSheet(
-            f"QComboBox {{ background: #000d12; color: {C.TEXT}; "
-            f"border: 1px solid {C.BORDER}; border-radius: 3px; padding: 4px 8px; }}"
-            f"QComboBox:hover {{ border-color: {C.BORDER_B}; }}"
-            f"QComboBox QAbstractItemView {{ background: #000d12; color: {C.TEXT}; "
-            f"selection-background-color: {C.PRI_GHO}; border: 1px solid {C.BORDER}; }}")
-        for name, hexv in THEMES.items():
-            self._theme_combo.addItem(f"{name}  —  {hexv}", name)
-        self._theme_combo.setCurrentIndex(
-            max(0, self._theme_combo.findData(self._sel_theme)))
-        self._theme_combo.currentIndexChanged.connect(self._on_theme_changed)
-        lay.addWidget(self._theme_combo)
-
-        lay.addSpacing(6)
         btn_row = QHBoxLayout(); btn_row.setSpacing(8)
 
-        save_btn = QPushButton("✓  APLICAR E SALVAR")
+        save_btn = QPushButton("▸  APLICAR ALTERAÇÕES")
         save_btn.setFixedHeight(34)
         save_btn.setFont(hud_font(9, QFont.Weight.Bold))
         save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -579,34 +522,8 @@ class CustomizeOverlay(QWidget):
         name = self._name_input.text().strip() or "JINX"
         user = self._user_input.text().strip()
         voice = self._voice_combo.currentData() or self._sel_voice
-        from memory.config_manager import save_theme, THEMES
-        sel_theme = self._theme_combo.currentData() or self._sel_theme
-        save_theme(sel_theme)
-        # tema completo: aplica a cor do tema em toda a interface
-        accent = THEMES.get(sel_theme)
-        if accent:
-            from gui.theme import apply_ui_accent
-            apply_ui_accent(accent)
-            self._sel_color = accent
         self.saved.emit(name, user, self._sel_color or DEFAULT_UI_COLOR, voice)
         self.hide()
-
-    def _on_theme_changed(self, _idx):
-        from memory.config_manager import THEMES
-        from gui.theme import apply_ui_accent, current_palette, retheme_all_widgets
-        name = self._theme_combo.currentData()
-        if name not in THEMES:
-            return
-        self._sel_theme = name
-        old = current_palette()
-        if apply_ui_accent(THEMES[name]):
-            retheme_all_widgets(old, current_palette())
-            self._sel_color = THEMES[name]
-            self._hex_input.blockSignals(True)
-            self._hex_input.setText(self._sel_color)
-            self._hex_input.blockSignals(False)
-            if self.on_preview:
-                self.on_preview(self._sel_color)
 
 
 class PluginManagerOverlay(QWidget):
@@ -634,12 +551,6 @@ class PluginManagerOverlay(QWidget):
         hdr.setFont(hud_font(12, QFont.Weight.Bold))
         hdr.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         lay.addWidget(hdr)
-        hint = QLabel("Ative ou desative plugins instalados. "
-                      "Plugins desativados não aparecem para o assistente.")
-        hint.setWordWrap(True)
-        hint.setFont(hud_font(8))
-        hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
-        lay.addWidget(hint)
         sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
         lay.addWidget(sep)
@@ -879,11 +790,6 @@ class AudioDeviceOverlay(_HudOverlay):
         hdr.setFont(hud_font(12, QFont.Weight.Bold))
         hdr.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         lay.addWidget(hdr)
-        hint = QLabel("Escolha o microfone e os alto-falantes. Teste cada um antes de aplicar.")
-        hint.setWordWrap(True)
-        hint.setFont(hud_font(8))
-        hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
-        lay.addWidget(hint)
 
         sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
@@ -1195,7 +1101,8 @@ class AudioDeviceOverlay(_HudOverlay):
         changed = (new_in != get_input_device()) or (new_out != get_output_device())
         save_input_device(new_in)
         save_output_device(new_out)
-        self.hide()
+        if not self.property("settingsEmbedded"):
+            self.hide()
         # Only rebuild the session if something actually moved — a no-op Apply
         # should not cost a reconnect.
         if changed:
@@ -1277,6 +1184,9 @@ class MemoryOverlay(_HudOverlay):
         leaves its former pixels on screen, since nothing tells the parent that
         region changed. The repaint has to cover the union of the old and new
         rectangles."""
+        if self.property("settingsEmbedded"):
+            self.updateGeometry()
+            return
         self._lay.invalidate()
         self._lay.activate()
         self.updateGeometry()
@@ -1301,11 +1211,6 @@ class MemoryOverlay(_HudOverlay):
         hdr.setFont(hud_font(12, QFont.Weight.Bold))
         hdr.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         self._lay.addWidget(hdr)
-        hint = QLabel("Fatos que o assistente guardou. Remova os que não quiser mais.")
-        hint.setWordWrap(True)
-        hint.setFont(hud_font(8))
-        hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
-        self._lay.addWidget(hint)
 
         sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
@@ -1532,8 +1437,9 @@ class PluginSettingsOverlay(QWidget):
     _test_done = pyqtSignal(str, bool, str)   # namespace, ok, message
     _OW = 460
 
-    def __init__(self, sections: list[dict], parent=None):
+    def __init__(self, sections: list[dict], parent=None, compact=False):
         super().__init__(parent)
+        self._compact = compact
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(f"""
             PluginSettingsOverlay {{
@@ -1557,11 +1463,6 @@ class PluginSettingsOverlay(QWidget):
         root.setSpacing(8)
 
         root.addWidget(self._lbl("⚙  CONFIGURAÇÕES DOS PLUG-INS", 12, True))
-        hint = QLabel("Ajustes específicos de cada plug-in instalado.")
-        hint.setWordWrap(True)
-        hint.setFont(hud_font(8))
-        hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
-        root.addWidget(hint)
         sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
         root.addWidget(sep)
@@ -1631,21 +1532,26 @@ class PluginSettingsOverlay(QWidget):
         values = sec.get("values") or {}
 
         form.addSpacing(4)
-        sec_title = self._lbl(title, 11, True, C.PRI)
-        form.addWidget(sec_title)
+        form.addWidget(self._lbl(title, 10, True, C.PRI))
 
+        advanced = QWidget()
+        advanced_form = QVBoxLayout(advanced)
+        advanced_form.setContentsMargins(0, 0, 0, 0)
+        advanced_count = 0
         for field in fields:
             if not isinstance(field, dict) or not field.get("key"):
                 continue
             key   = field["key"]
             ftype = (field.get("type") or "text").lower()
             label = field.get("label") or key
-            help_text = field.get("help") or field.get("hint") or ""
             default = field.get("default")
             stored  = values.get(key, default)
 
-            form.addSpacing(6)
-            form.addWidget(self._lbl(label, 9, color=C.TEXT))
+            is_advanced = self._compact and (ftype == "password" or any(
+                term in key.lower() for term in ("token", "secret", "endpoint", "api_key", "url")))
+            target = advanced_form if is_advanced else form
+            advanced_count += bool(is_advanced)
+            target.addWidget(self._lbl(label.upper(), 8, color=C.TEXT_DIM))
 
             if ftype == "choice":
                 w = QComboBox()
@@ -1655,7 +1561,6 @@ class PluginSettingsOverlay(QWidget):
                 w.setStyleSheet(
                     f"QComboBox {{ background: #000d12; color: {C.TEXT}; "
                     f"border: 1px solid {C.BORDER}; border-radius: 3px; padding: 2px 8px; }}"
-                    f"QComboBox:hover {{ border-color: {C.BORDER_B}; }}"
                     f"QComboBox QAbstractItemView {{ background: #000d12; color: {C.TEXT}; "
                     f"selection-background-color: {C.PRI_GHO}; }}")
                 if stored is not None:
@@ -1664,8 +1569,8 @@ class PluginSettingsOverlay(QWidget):
                 w = QPushButton()
                 w.setCheckable(True)
                 w.setChecked(bool(stored))
-                w.setFixedHeight(30)
-                w.setFont(hud_font(9, QFont.Weight.Bold))
+                w.setFixedHeight(28)
+                w.setFont(hud_font(8, QFont.Weight.Bold))
                 w.setCursor(Qt.CursorShape.PointingHandCursor)
                 self._style_toggle(w)
                 w.toggled.connect(lambda _=False, b=w: self._style_toggle(b))
@@ -1681,20 +1586,25 @@ class PluginSettingsOverlay(QWidget):
 
             self._widgets[(ns, key)] = w
             self._types[(ns, key)]   = ftype
-            form.addWidget(w)
+            target.addWidget(w)
 
-            if help_text:
-                h = self._lbl(help_text, 8, color=C.TEXT_DIM)
-                h.setWordWrap(True)
-                form.addWidget(h)
+        if advanced_count:
+            toggle = QPushButton("Credenciais e opções avançadas")
+            toggle.setCheckable(True)
+            toggle.toggled.connect(advanced.setVisible)
+            form.addWidget(toggle)
+            form.addWidget(advanced)
+            advanced.hide()
+        else:
+            advanced.deleteLater()
 
         # optional test/connect action button + status line
         action = sec.get("action")
         if isinstance(action, dict) and callable(action.get("run")):
-            form.addSpacing(6)
+            form.addSpacing(2)
             ab = QPushButton(str(action.get("label") or "TESTAR"))
-            ab.setFixedHeight(32)
-            ab.setFont(hud_font(9, QFont.Weight.Bold))
+            ab.setFixedHeight(30)
+            ab.setFont(hud_font(8, QFont.Weight.Bold))
             ab.setCursor(Qt.CursorShape.PointingHandCursor)
             ab.setStyleSheet(f"""
                 QPushButton {{ background: #00091a; color: {C.PRI};
@@ -1709,7 +1619,7 @@ class PluginSettingsOverlay(QWidget):
         form.addWidget(status)
 
         line = QFrame(); line.setFrameShape(QFrame.Shape.HLine)
-        line.setStyleSheet(f"color: {C.BORDER}; margin: 8px 0 4px 0;")
+        line.setStyleSheet(f"color: {C.BORDER}; margin: 4px 0;")
         form.addWidget(line)
 
     def _style_toggle(self, btn: QPushButton):
@@ -1827,11 +1737,7 @@ class RemoteKeyOverlay(QWidget):
             return w
 
         lay.addWidget(_lbl("◈  ACESSO REMOTO", 12, True))
-        _hint = QLabel("Escaneie o QR code com o celular ou use a chave manual abaixo.")
-        _hint.setWordWrap(True)
-        _hint.setFont(hud_font(8))
-        _hint.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
-        lay.addWidget(_hint)
+        sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 1px 0;")
         lay.addWidget(sep)
 

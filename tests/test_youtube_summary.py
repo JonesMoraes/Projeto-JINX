@@ -32,7 +32,9 @@ class YoutubeTest(unittest.TestCase):
             api.list.return_value.find_transcript.assert_called_once_with(["pt-BR", "pt", "en"])
 
     def test_legacy_action_routes_summary_with_url(self):
-        from actions.youtube_video import _handle_summarize
+        # Summary routing does not use the desktop; isolate that optional import.
+        with patch.dict('sys.modules', {'pyautogui': Mock()}):
+            from actions.youtube_video import _handle_summarize
         with patch.object(y, "run", return_value="verified") as run:
             self.assertEqual(_handle_summarize({"url": "https://youtu.be/abcdefghijk"}, None, None), "verified")
             run.assert_called_once()

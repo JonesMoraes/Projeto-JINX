@@ -270,7 +270,15 @@ class ProvidersOverlay(_HudOverlay):
         b.setCheckable(True)
         b.setMinimumHeight(84)
         b.setCursor(Qt.CursorShape.PointingHandCursor)
-        b.setText(f"{title}\n\n{body}")
+        b.setAccessibleName(title)
+        content = QVBoxLayout(b)
+        content.setContentsMargins(12, 10, 12, 10)
+        for text in (title, body):
+            label = QLabel(text)
+            label.setWordWrap(True)
+            label.setFont(hud_font(7))
+            label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            content.addWidget(label)
         b.setFont(hud_font(7))
         b.clicked.connect(lambda _=0, v=value: self._set_mode(v))
         b.setProperty("modeValue", value)
@@ -1270,7 +1278,8 @@ class ProvidersOverlay(_HudOverlay):
         except Exception:
             pass
 
-        self.hide()
+        if not self.property("settingsEmbedded"):
+            self.hide()
         # Background-request and coding settings take effect on the next call
         # with no reconnect. Only the conversation engine needs the session
         # rebuilt — and it does whenever anything it was BUILT from changed.
@@ -1284,6 +1293,7 @@ class ProvidersOverlay(_HudOverlay):
         # themselves.
         if self._engine_fingerprint() != self._opened_engine:
             self.changed.emit()
+        self._opened_engine = self._engine_fingerprint()
 
     @staticmethod
     def _engine_fingerprint() -> str:

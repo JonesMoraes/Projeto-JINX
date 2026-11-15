@@ -95,7 +95,7 @@ class ResultPopup(QFrame):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setStyleSheet('background:transparent; border:0;' + scroll_css())
+        scroll.setStyleSheet('QScrollArea {background:transparent; border:0;}' + scroll_css())
         container = QWidget()
         self.body = QVBoxLayout(container)
         self.body.setContentsMargins(0, 3, 0, 0)
@@ -106,7 +106,7 @@ class ResultPopup(QFrame):
         self.text.setOpenExternalLinks(False)
         self.text.setFont(px_font(13))
         self.text.setMinimumHeight(180)
-        self.text.setStyleSheet(f'background:transparent; color:{C.TEXT}; border:0;' + scroll_css())
+        self.text.setStyleSheet(f'QTextBrowser {{background:transparent; color:{C.TEXT}; border:0;}}' + scroll_css())
         self.body.addWidget(self.text)
         self.hide()
 
