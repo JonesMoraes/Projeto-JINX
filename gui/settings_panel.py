@@ -11,7 +11,7 @@ from PyQt6.QtCore import QEvent, Qt, QTimer
 from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QPalette
 from PyQt6.QtWidgets import (QApplication, QComboBox, QDialog, QFrame, QGridLayout,
     QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QPushButton,
-    QScrollArea, QStackedWidget, QVBoxLayout, QWidget)
+    QScrollArea, QSizePolicy, QStackedWidget, QVBoxLayout, QWidget)
 
 from gui.style import hud_font
 from gui.theme import C
@@ -81,7 +81,7 @@ class SettingsDialog(QDialog):
         self._current = 'general'
         self._theme_buttons = {}
         root = QVBoxLayout(self)
-        root.setContentsMargins(24, 20, 24, 16)
+        root.setContentsMargins(16, 20, 16, 16)
         header = QHBoxLayout()
         brand = QLabel('JINX  /  Configurações')
         brand.setFont(hud_font(16, QFont.Weight.Bold))
@@ -96,9 +96,9 @@ class SettingsDialog(QDialog):
         root.addLayout(header)
         root.addSpacing(14)
         body = QHBoxLayout()
-        body.setSpacing(24)
+        body.setSpacing(12)
         self.navigation = QListWidget()
-        self.navigation.setFixedWidth(195)
+        self.navigation.setFixedWidth(175)
         self.navigation.setAccessibleName('Categorias de configuração')
         for key, title, description, terms in CATEGORIES:
             item = QListWidgetItem(title)
@@ -222,6 +222,14 @@ class SettingsDialog(QDialog):
         widget.setWindowFlags(Qt.WindowType.Widget)
         widget.setMinimumWidth(0)
         widget.setMaximumWidth(16777215)
+        widget.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        # Provider/device lists may contain long model and hardware names;
+        # their size hints must not force the entire settings page wider.
+        for combo in widget.findChildren(QComboBox):
+            combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+            combo.setMinimumContentsLength(8)
+            combo.setMinimumWidth(0)
+            combo.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         # Existing forms retain their save logic. Closing belongs to this window.
         for button in widget.findChildren(QPushButton):
             if button.text().strip() in ('FECHAR', 'CANCELAR'):
