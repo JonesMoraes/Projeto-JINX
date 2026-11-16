@@ -83,9 +83,8 @@ def routines(parameters: dict, player=None) -> str:
             if trigger:
                 fields["trigger"] = trigger
             options = {}
-            for key in ("news_topic", "extra", "news"):
-                if a.get(key) is not None:
-                    options[key] = a[key]
+            if a.get("extra") is not None:
+                options["extra"] = a["extra"]
             if a.get("focuses"):
                 options["focuses"] = [str(f) for f in a["focuses"] if str(f).strip()]
             if options:
@@ -124,8 +123,9 @@ TOOL = {
         "HH:MM' (once) | time 'HH:MM' + optional days (numbers 1=Mon…7=Sun; weekdays = [1,2,3,4,5]) | "
         "monthly_day 1-31 + time | every_minutes + optional between 'HH:MM-HH:MM' | on 'startup' | "
         "on 'idle' + idle_minutes. "
-        "The built-in routines are builtin 'briefing' (the opening briefing: news_topic, extra, "
-        "news true/false), 'checkin' (unprompted check-ins: focuses = what they may be about) and "
+        "The built-in routines are builtin 'briefing' (the opening briefing: "
+        "extra = anything the user wants added to it), 'checkin' (unprompted check-ins: "
+        "focuses = what they may be about) and "
         "'news_watch' (the watched topics' headlines). list = all routines with ids; update = change "
         "one by id or builtin (enabled, when, text, and the options above); remove = delete by id; "
         "run_now = do it now; quiet_hours = 'HH:MM-HH:MM' when unprompted routines stay silent "
@@ -157,8 +157,6 @@ TOOL = {
             "deliver": {"type": "STRING", "enum": ["voice", "panel", "silent"]},
             "agent": {"type": "STRING"},
             "minutes": {"type": "INTEGER"},
-            "news_topic": {"type": "STRING"},
-            "news": {"type": "BOOLEAN"},
             "extra": {"type": "STRING"},
             "focuses": {"type": "ARRAY", "items": {"type": "STRING"}},
         },

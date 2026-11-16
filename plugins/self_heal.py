@@ -6,7 +6,7 @@ PLUGIN = {
     "name": "self_heal",
     "description": "Check self-repair status, enable or disable it, generate a syntax-checked repair proposal for a project Python file, list proposals, or request human review. Repairs are OFF by default and are never applied without the HUD confirmation.",
     "parameters": {"type": "OBJECT", "properties": {
-        "action": {"type": "STRING", "enum": ["status", "enable", "disable", "propose", "list", "review"]},
+        "action": {"type": "STRING", "enum": ["status", "enable", "disable", "propose", "list", "review", "reject"]},
         "path": {"type": "STRING", "description": "Project-relative Python file path for propose"},
         "diagnostic": {"type": "STRING", "description": "Error report for a candidate repair"},
         "candidate_id": {"type": "STRING"}}, "required": ["action"]}}
@@ -38,6 +38,8 @@ def run(parameters: dict, player=None, session_memory=None) -> str:
             return "Checking the file and preparing a syntax-checked candidate. No source file will change until you review and confirm it."
         if action == "list":
             return str(self_heal.list_pending() or "No repair proposals pending.")
+        if action == "reject":
+            return "Repair proposal rejected." if self_heal.reject(parameters.get("candidate_id", "")) else "Proposal not found."
         if action == "review":
             return self_heal.review(parameters.get("candidate_id", ""), player)
         return "Unknown self-repair action."

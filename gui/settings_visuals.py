@@ -103,7 +103,7 @@ def settings_stylesheet(theme_id, theme, font_css):
             outline: none;
         }}
         QListWidget#SettingsNavigation::item {{
-            padding: 12px 10px;
+            padding: 9px 10px;
             border-radius: {min(s.radius, 12)}px;
             margin-bottom: 3px;
             color: {s.text};
@@ -137,8 +137,8 @@ def settings_stylesheet(theme_id, theme, font_css):
             color: {s.text};
             border: 1px solid {s.border};
             border-radius: {min(s.radius, 13)}px;
-            padding: 8px 12px;
-            min-height: 20px;
+            padding: 4px 10px;
+            min-height: 18px;
         }}
         QPushButton:hover, QPushButton:focus {{
             border: 1px solid {s.accent};
@@ -163,7 +163,7 @@ def settings_stylesheet(theme_id, theme, font_css):
             color: {primary_text if accent_button else s.background};
             border: 1px solid {s.strong_border};
             font-weight: 700;
-            padding: 9px 17px;
+            padding: 5px 14px;
         }}
         QPushButton#SettingsPrimary:hover {{
             background: {s.accent_secondary};
@@ -175,7 +175,7 @@ def settings_stylesheet(theme_id, theme, font_css):
             color: {s.text};
             border: 1px solid {s.border};
             border-radius: {min(s.radius, 12)}px;
-            padding: 7px 9px;
+            padding: 5px 8px;
             selection-background-color: {s.accent};
         }}
         QLineEdit:focus, QComboBox:focus, QTextEdit:focus {{

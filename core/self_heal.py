@@ -75,6 +75,8 @@ def propose(relative: str, diagnostic: str) -> dict:
     if len(candidate.encode("utf-8")) > MAX_CANDIDATE:
         raise ValueError("Candidate exceeds the size limit")
     ast.parse(candidate, filename=rel)
+    if candidate.strip() == current.strip():
+        raise ValueError("Candidate has no changes; original preserved")
     with _lock:
         if len(_pending) >= 8:
             raise RuntimeError("Review an existing candidate first")
@@ -83,6 +85,11 @@ def propose(relative: str, diagnostic: str) -> dict:
                "candidate": candidate}
         _pending[key] = row
         return {k: v for k, v in row.items() if k != "candidate"}
+
+
+def reject(candidate_id: str) -> bool:
+    with _lock:
+        return _pending.pop(candidate_id, None) is not None
 
 
 def list_pending() -> list[dict]:

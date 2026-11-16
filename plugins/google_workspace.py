@@ -25,7 +25,7 @@ PLUGIN_SETTINGS = {"namespace": "google_workspace", "title": "GOOGLE — CONECTA
         {"key": "calendar_sync", "label": "Permitir sync manual da agenda / Allow manual agenda sync", "type": "toggle", "default": False},
         {"key": "drive", "label": "Drive: arquivos deste app / Drive: this app's files", "type": "toggle", "default": False},
         {"key": "youtube", "label": "Upload YouTube + leitura para verificar / YouTube upload + verification", "type": "toggle", "default": False}],
-    "action": {"label": "CONECTAR NO NAVEGADOR / CONNECT IN BROWSER", "run": api.connect}}
+    "action": {"label": "ENTRAR COM GOOGLE (YOUTUBE EM ETAPA SEPARADA)", "run": api.connect}}
 
 _lock = threading.RLock()
 _job = None

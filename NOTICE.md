@@ -118,3 +118,10 @@ automation profiles/accessibility snapshots, and reviewed learned preferences
 were implemented locally from this project's functional requirements. No
 third-party repository or asset was copied for these additions. Existing
 upstream credits and license terms remain applicable.
+
+
+## Continuação local da Fase 6 — 15/11/2026
+
+Extração conservadora de memória, painel de revisão e testes desta continuação
+foram escritos diretamente para o projeto; não houve port de fonte externa nem
+nova dependência. Mantidos os créditos e licenças anteriores dos módulos adaptados.

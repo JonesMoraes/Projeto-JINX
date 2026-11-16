@@ -15,9 +15,11 @@ from PyQt6.QtWidgets import (QApplication, QBoxLayout, QComboBox, QDialog, QFram
 
 from gui.style import hud_font, DISPLAY_FAMILIES, DISPLAY_CSS
 from gui.settings_visuals import settings_stylesheet
-from gui.theme import C
+from gui.theme import C, retheme_all_widgets
+from gui.settings_controls import ToggleSwitch, ToggleRow
 from gui.settings_themes import (SETTINGS_THEMES, DEFAULT_SETTINGS_THEME,
-                                 settings_theme_id, resolved_settings_theme)
+                                 settings_theme_id, resolved_settings_theme,
+                                 apply_settings_theme_palette)
 from memory import config_manager as config
 
 
@@ -46,6 +48,8 @@ CATEGORIES = (
     ('audio', 'Voz e áudio', 'Voz, microfone e saída de som', 'volume dispositivos teste entrada saida gemini previa'),
     ('ai', 'Inteligência artificial', 'Mecanismo e provedores', 'modelo stt llm tts api chave token ollama pipeline'),
     ('memory', 'Memória', 'Informações que a JINX lembra', 'esquecer excluir dados lembrancas'),
+    ('learned_rules', 'Regras aprendidas', 'Preferências de comportamento que você aprova',
+     'learned rules regras preferencias comportamento estilo fluxo aprovar exportar importar backup'),
     ('automation', 'Automação', 'Agenda e controles do dia a dia', 'eventos calendario resumo gestos camera palavra de ativacao wake push to talk pressionar falar'),
     ('integrations', 'Integrações', 'Configure um plugin por vez', 'plugins spotify discord google trello contas'),
     ('security', 'Segurança', 'Acesso remoto', 'celular chave acesso token remoto'),
@@ -134,7 +138,7 @@ class SettingsDialog(QDialog):
         self.setObjectName('SettingsCentral')
         self.setWindowTitle('JINX — Configurações')
         self.setFont(hud_font(9))
-        self.resize(1180, 780)
+        self.resize(1080, 740)
         self.setMinimumSize(760, 540)
         self.theme_id = settings_theme_id(config.load_api_keys().get('settings_theme'))
         self._pages = {}
@@ -177,7 +181,7 @@ class SettingsDialog(QDialog):
         body.setSpacing(14)
         self.navigation = QListWidget()
         self.navigation.setObjectName('SettingsNavigation')
-        self.navigation.setFixedWidth(205)
+        self.navigation.setFixedWidth(190)
         self.navigation.setAccessibleName('Categorias de configuração')
         for key, title, description, terms in CATEGORIES:
             item = QListWidgetItem(title)
@@ -188,7 +192,7 @@ class SettingsDialog(QDialog):
         right = QVBoxLayout()
         self.heading = QLabel()
         self.heading.setObjectName('SettingsHeading')
-        self.heading.setFont(hud_font(20, QFont.Weight.Bold))
+        self.heading.setFont(hud_font(17, QFont.Weight.Bold))
         self.subtitle = QLabel()
         self.subtitle.setObjectName('SettingsSubtitle')
         self.subtitle.setWordWrap(True)
@@ -213,7 +217,7 @@ class SettingsDialog(QDialog):
         footer.addWidget(self.status, 1)
         close = QPushButton('Concluir')
         close.setObjectName('SettingsPrimary')
-        close.setMinimumWidth(128)
+        close.setMinimumWidth(96)
         close.clicked.connect(self.close)
         footer.addWidget(close)
         root.addWidget(footer_host)
@@ -247,10 +251,11 @@ class SettingsDialog(QDialog):
 
     def _button(self, layout, title, callback, description=''):
         button = QPushButton(title)
-        button.setMinimumHeight(38)
+        button.setFixedHeight(32)
+        button.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
         button.setCursor(Qt.CursorShape.PointingHandCursor)
         button.clicked.connect(lambda checked=False: callback())
-        layout.addWidget(button)
+        layout.addWidget(button, alignment=Qt.AlignmentFlag.AlignLeft)
         if description:
             note = QLabel(description)
             note.setWordWrap(True)
@@ -373,6 +378,9 @@ class SettingsDialog(QDialog):
         self._button(layout, 'Aplicar identidade', save)
 
     def _build_appearance(self, layout):
+        from gui.app_icon_picker import AppIconPicker
+        icon_body = self._card(layout, 'Ícone da JINX')
+        icon_body.addWidget(AppIconPicker(self.window))
         themes_body = self._card(layout, 'Escolha seu ambiente',
                                  'Cinco designs próprios. Clique em um cartão para aplicar imediatamente.')
         grid = QGridLayout()
@@ -457,6 +465,9 @@ class SettingsDialog(QDialog):
             self._sync_theme_buttons()
             return
         self.theme_id = key
+        before, after = apply_settings_theme_palette(
+            key, config.load_api_keys().get('ui_color'))
+        retheme_all_widgets(before, after)
         self._apply_theme()
         self.status.setText(f'Tema {SETTINGS_THEMES[key].name} aplicado e salvo.')
 
@@ -540,29 +551,73 @@ class SettingsDialog(QDialog):
         panel.changed.connect(self.window._on_providers_applied)
 
     def _build_memory(self, layout):
+        from gui.memory_proposals_panel import MemoryProposalsPanel
+        self._embed(self._card(layout, 'Propostas de memória'), MemoryProposalsPanel())
         from gui.overlays import MemoryOverlay
         self._embed(self._card(layout, 'Memória da JINX'), MemoryOverlay())
 
+    def _build_learned_rules(self, layout):
+        from gui.learned_rules_panel import LearnedRulesPanel
+        self._embed(self._card(layout, 'Learned Rules',
+                               'Regras de estilo e fluxo. Nada é salvo sem a sua aprovação.'),
+                    LearnedRulesPanel())
+
+    def _runtime_toggle(self, layout, title, description, source, callback, getter):
+        row = ToggleRow(title, description)
+        layout.addWidget(row)
+        def sync():
+            try:
+                active = bool(getter())
+                row.switch.setChecked(active)
+                row.switch.setEnabled(source.isEnabled())
+                row.switch.setToolTip(clean_settings_label(source.text()))
+            except Exception:
+                row.switch.setEnabled(False)
+                row.state.setText('Indisponível')
+        def apply():
+            try:
+                callback()
+            except Exception:
+                if self is not None:
+                    self.status.setText('Não foi possível alterar esta opção. Confira o estado atual.')
+            finally:
+                sync()
+        # Programmatic refreshes never execute a user action.
+        row.switch.clicked.connect(apply)
+        timer = QTimer(row)
+        timer.timeout.connect(sync)
+        timer.start(1000)
+        sync()
+        return row
+
     def _build_automation(self, layout):
-        layout = self._card(layout, 'Controles e atalhos',
-                            'Os comandos da antiga aba Controles estão reunidos aqui.')
-        layout.addWidget(QLabel('Controles do dia a dia'))
+        actions = self._card(layout, 'Agenda e exibição')
+        self._button(actions, 'Abrir agenda', lambda: self._open_extra('agenda'))
         if hasattr(self.window, '_toggle_fullscreen'):
-            self._button(layout, 'Alternar tela cheia [F11]', self.window._toggle_fullscreen)
-        if hasattr(self.window, '_refresh_wake_btns'):
-            self.window._refresh_wake_btns()
-        self._button(layout, 'Abrir agenda', lambda: self._open_extra('agenda'),
-                     'Eventos locais e sincronização manual com Google Agenda.')
-        for attribute, callback in (('_brief_btn', '_toggle_brief'), ('_wake_btn', '_toggle_wake_word'),
-                                    ('_wake_sleep_btn', '_tap_wake_manual'),
-                                    ('_ptt_btn', '_toggle_ptt'), ('_gesture_btn', '_toggle_gestures')):
+            self._button(actions, 'Alternar tela cheia [F11]', self.window._toggle_fullscreen)
+        controls = self._card(layout, 'Ativação e controles',
+                              'As chaves refletem o estado atual. As alterações são aplicadas ao clicar.')
+        from core.gesture_control import control
+        specs = (
+            ('Resumo da manhã', 'Receba um resumo ao iniciar o dia.', '_brief_btn', '_toggle_brief', config.get_brief_enabled),
+            ('Palavra de ativação', 'Ative a escuta pelo nome. A preparação existente é mantida.', '_wake_btn', '_toggle_wake_word', config.get_wake_word_enabled),
+            ('Pressionar para falar', 'Mantenha a tecla configurada pressionada para usar o microfone.', '_ptt_btn', '_toggle_ptt', config.get_push_to_talk_enabled),
+            ('Controle por gestos', 'Use a câmera para controlar o ponteiro.', '_gesture_btn', '_toggle_gestures', lambda: control.status()['active']),
+        )
+        for title, description, attribute, callback, getter in specs:
             source = getattr(self.window, attribute, None)
             if source is not None:
-                button = self._button(layout, source.text(), getattr(self.window, callback))
-                # Existing runtime refreshes these labels, including asynchronous wake setup.
-                timer = QTimer(button)
-                timer.timeout.connect(lambda b=button, s=source: b.setText(clean_settings_label(s.text())))
-                timer.start(500)
+                self._runtime_toggle(controls, title, description, source, getattr(self.window, callback), getter)
+        source = getattr(self.window, '_wake_sleep_btn', None)
+        if source is not None:
+            button = self._button(actions, clean_settings_label(source.text()), self.window._tap_wake_manual)
+            timer = QTimer(button)
+            def sync_manual():
+                button.setText(clean_settings_label(source.text()))
+                button.setVisible(not source.isHidden())
+            timer.timeout.connect(sync_manual)
+            timer.start(1000)
+            sync_manual()
 
     def _build_integrations(self, layout):
         layout = self._card(layout, 'Integrações instaladas',
@@ -576,7 +631,8 @@ class SettingsDialog(QDialog):
         self.plugin_picker = picker
         picker.setAccessibleName('Selecionar integração')
         for section in sections:
-            picker.addItem(section.get('title') or section.get('namespace') or 'Plugin')
+            title = section.get('title') or section.get('namespace') or 'Plugin'
+            picker.addItem(title.split(' / ')[0].split(' — ')[0])
         layout.addWidget(picker)
         stack = QStackedWidget()
         layout.addWidget(stack)
@@ -613,9 +669,12 @@ class SettingsDialog(QDialog):
 
     def _build_system(self, layout):
         layout = self._card(layout, 'Inicialização e manutenção')
+        self._button(layout, 'Escolher ícone da JINX', lambda: self.show_category('appearance'))
         self._button(layout, 'Criar atalho na área de trabalho', self.window._create_desktop_shortcut)
-        button = self._button(layout, self.window._autostart_btn.text(), self.window._toggle_autostart)
-        button.clicked.connect(lambda: button.setText(self.window._autostart_btn.text()))
+        self._runtime_toggle(layout, 'Iniciar com o Windows',
+                             'Abra a JINX automaticamente ao entrar no computador.',
+                             self.window._autostart_btn, self.window._toggle_autostart,
+                             getattr(self.window, '_check_autostart', lambda: False))
         self._button(layout, 'Plugins carregados', lambda: self._open_extra('plugins'))
 
     def _open_extra(self, key):
@@ -717,6 +776,12 @@ class SettingsDialog(QDialog):
             for widget in [panel, *panel.findChildren(QWidget)]:
                 self._restyle_widget(widget)
         self._uniform_hud_labels()
+        theme = resolved_settings_theme(self.theme_id)
+        for switch in self.findChildren(ToggleSwitch):
+            for name, color in (('switchAccent', theme.accent), ('switchBorder', theme.border),
+                                ('switchTrack', theme.field), ('switchKnob', theme.text)):
+                switch.setProperty(name, color)
+            switch.update()
 
     def eventFilter(self, obj, event):
         if not self._styling and isinstance(obj, QWidget) and self.isAncestorOf(obj):

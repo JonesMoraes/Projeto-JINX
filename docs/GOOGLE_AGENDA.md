@@ -50,3 +50,13 @@ logs/google-agenda-default-tests.log.
 
 Consentimento, sincronização e edição reais no Google ainda dependem de
 configuração/autorização do usuário e não foram declarados validados.
+
+## Login guiado pelo navegador (15/11/2026)
+
+Use Configurações → Agenda → Entrar com Google no navegador, ou o botão equivalente em Integrações → Google. Se ainda não houver cliente OAuth Desktop, abre uma preparação com link para o Google Cloud, importação de JSON e alternativa para informar ID/segredo do cliente. Não é necessário copiar o JSON manualmente para config/. A configuração fica local e nenhuma permissão de conta é obtida até o consentimento no navegador. O Google exige um cliente registrado; a preparação não cria esse registro nem habilita APIs automaticamente. O segredo solicitado é do aplicativo, nunca a senha Google. Cancelar preserva a conta anterior e não sincroniza eventos.
+
+## Autorizações separadas para YouTube (15/11/2026)
+
+O Google recusou drive.file junto de youtube.readonly/youtube.upload (400 invalid_request). O login agora solicita Gmail/Agenda/Drive e YouTube em etapas separadas, sem combinar permissões anteriores automaticamente (include_granted_scopes=false). Cada grupo usa seu próprio arquivo local: google_workspace_token.json e google_youtube_token.json. Pedidos e renovações escolhem a credencial do serviço; credenciais YouTube antigas no arquivo original continuam legíveis. Se uma das autorizações falhar, nenhum token anterior é substituído antes de concluir todos os consentimentos. Não há alteração automática dos serviços escolhidos.
+
+Seis testes de regressão em tests/test_google_scope_groups.py passaram, incluindo URLs geradas pela biblioteca instalada, isolamento dos tokens, autorização parcial e compatibilidade com tokens antigos. Autorização real ainda depende do usuário.

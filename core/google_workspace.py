@@ -29,6 +29,21 @@ BASES = {"gmail": "https://gmail.googleapis.com/gmail/v1/users/me",
          "drive": "https://www.googleapis.com/drive/v3",
          "youtube": "https://www.googleapis.com/youtube/v3"}
 TOKEN_NAME = "google_workspace_token.json"
+YOUTUBE_TOKEN_NAME = "google_youtube_token.json"
+
+
+def token_name(service=None):
+    return YOUTUBE_TOKEN_NAME if service == "youtube" else TOKEN_NAME
+
+
+def scope_groups(scopes):
+    """Drive file consent cannot be combined with YouTube consent."""
+    youtube = {SCOPES["youtube"], SCOPES["youtube_read"]}
+    workspace = sorted(set(scopes) - youtube)
+    video = sorted(set(scopes) & youtube)
+    return [(name, group) for name, group in ((TOKEN_NAME, workspace),
+                                              (YOUTUBE_TOKEN_NAME, video)) if group]
+
 _auth_lock = threading.RLock()
 
 
@@ -79,6 +94,16 @@ def client_definition(cfg):
         if path.stat().st_size > 65536:
             raise ValueError()
         data = json.loads(path.read_text(encoding="utf-8-sig"))
+        return validate_client_definition(data)
+    except GoogleError:
+        raise
+    except Exception:
+        raise GoogleError("Prepare a conexão Google em Configurações: importe o JSON ou informe o cliente OAuth Desktop e depois entre pelo navegador.") from None
+
+
+def validate_client_definition(data):
+    """Only Google's registered Desktop clients and fixed Google endpoints."""
+    try:
         desktop = data["installed"]
         if (not str(desktop["client_id"]).endswith(".apps.googleusercontent.com") or
                 desktop.get("auth_uri") not in ("https://accounts.google.com/o/oauth2/auth",
@@ -89,12 +114,40 @@ def client_definition(cfg):
     except GoogleError:
         raise
     except Exception:
-        raise GoogleError("Coloque seu JSON OAuth Desktop em config/google_client_secret.json / Provide your Desktop OAuth JSON in config/") from None
+        raise GoogleError("Configuração inválida. Use um cliente OAuth do tipo Aplicativo para computador, criado no Google Cloud.") from None
 
 
-def _read_token():
+def configure_desktop_client(cfg, *, source=None, client_id="", client_secret=""):
+    """Explicit local setup action; never starts OAuth or changes selected services."""
+    if source is not None:
+        try:
+            path = Path(source)
+            if path.stat().st_size > 65536:
+                raise ValueError()
+            data = json.loads(path.read_text(encoding="utf-8-sig"))
+        except Exception:
+            raise GoogleError("Não foi possível ler o JSON selecionado. Escolha o arquivo OAuth Desktop baixado do Google.") from None
+    else:
+        data = {"installed": {
+            "client_id": str(client_id).strip(), "client_secret": str(client_secret).strip(),
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": ["http://localhost"],
+        }}
+    validate_client_definition(data)
+    if not isinstance(data['installed'].get('client_secret'), str) or not data['installed']['client_secret'].strip():
+        raise GoogleError("Informe o segredo do cliente OAuth Desktop (não é a senha da sua conta).")
+    with _auth_lock:
+        write_secret(secret_path(str(cfg.get('client_file') or 'google_client_secret.json')), data)
+
+
+def _read_token(service=None):
     try:
-        path = secret_path(TOKEN_NAME)
+        path = secret_path(token_name(service))
+        # Existing installations may already have a legacy YouTube grant.
+        # Read it only when no separate YouTube file exists; refresh migrates it.
+        if service == "youtube" and not path.exists():
+            path = secret_path(TOKEN_NAME)
         if path.stat().st_size > 65536:
             raise ValueError()
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -105,9 +158,9 @@ def _read_token():
         raise GoogleError("Conecte sua conta pelo botão GOOGLE em configurações / Connect your Google account in settings") from None
 
 
-def connection_signature(cfg=None):
+def connection_signature(cfg=None, service=None):
     cfg = config() if cfg is None else cfg
-    token = _read_token()
+    token = _read_token(service)
     desktop = client_definition(cfg)["installed"]
     if token.get("client_id") != desktop["client_id"]:
         raise GoogleError("Cliente OAuth mudou; reconecte a conta / OAuth client changed; reconnect")
@@ -127,21 +180,31 @@ def connect(values):
             return False, "Selecione apenas os serviços desejados / Select the services you need"
         definition = client_definition(cfg)
         from google_auth_oauthlib.flow import InstalledAppFlow
-        flow = InstalledAppFlow.from_client_config(definition, scopes=scopes,
-                                                   autogenerate_code_verifier=True)
-        creds = flow.run_local_server(host="127.0.0.1", port=0, open_browser=True,
-            timeout_seconds=180, authorization_prompt_message="Autorize o JINX no navegador / Authorize JINX in your browser",
-            success_message="JINX: pode fechar esta aba / You may close this tab.", prompt="consent")
-        granted = creds.granted_scopes if creds.granted_scopes is not None else creds.scopes
-        if not creds.valid or not creds.refresh_token or not set(scopes).issubset(set(granted or [])):
-            raise GoogleError("Consentimento incompleto; conexão anterior preservada / Incomplete consent; previous connection preserved")
-        # Ignore a consent result if settings changed while the browser was open.
-        current = config()
-        if selected_scopes(current) != scopes or client_definition(current) != definition:
-            raise GoogleError("Configuração mudou durante o login; tente novamente / Settings changed during login; retry")
-        data = json.loads(creds.to_json())
-        data["scopes"] = list(granted)
-        write_secret(secret_path(TOKEN_NAME), data)
+        staged = []
+        groups = scope_groups(scopes)
+        for index, (filename, group) in enumerate(groups, 1):
+            flow = InstalledAppFlow.from_client_config(definition, scopes=group,
+                                                       autogenerate_code_verifier=True)
+            label = "YouTube" if filename == YOUTUBE_TOKEN_NAME else "Gmail / Agenda / Drive"
+            creds = flow.run_local_server(host="127.0.0.1", port=0, open_browser=True,
+                timeout_seconds=180,
+                authorization_prompt_message=f"JINX: autorize {label} no navegador ({index}/{len(groups)}).",
+                success_message=(f"JINX: autorização {index}/{len(groups)} recebida. "
+                                 "Volte para o aplicativo; pode haver outra etapa no navegador."),
+                prompt="consent", include_granted_scopes="false")
+            granted = creds.granted_scopes if creds.granted_scopes is not None else creds.scopes
+            if not creds.valid or not creds.refresh_token or not set(group).issubset(set(granted or [])):
+                raise GoogleError("Consentimento incompleto; conexão anterior preservada / Incomplete consent; previous connection preserved")
+            # Check again after every browser round; do not mix changed clients/settings.
+            current = config()
+            if selected_scopes(current) != scopes or client_definition(current) != definition:
+                raise GoogleError("Configuração mudou durante o login; tente novamente / Settings changed during login; retry")
+            data = json.loads(creds.to_json())
+            data["scopes"] = list(granted)
+            staged.append((filename, data))
+        # No previous token is replaced if either browser consent was denied.
+        for filename, data in staged:
+            write_secret(secret_path(filename), data)
         return True, "Conta conectada; serviços selecionados autorizados / Account connected for selected services"
     except GoogleError as exc:
         return False, str(exc)
@@ -162,8 +225,8 @@ def credentials(service, write=False):
             needed = [SCOPES['youtube'], SCOPES['youtube_read']]
         if not set(needed).issubset(set(selected_scopes(cfg))):
             raise GoogleError("Serviço desligado; selecione e conecte em GOOGLE / Service disabled; select and connect in GOOGLE")
-        info = _read_token()
-        signature = connection_signature(cfg)
+        info = _read_token(service)
+        signature = connection_signature(cfg, service)
         if not set(needed).issubset(set(info.get("scopes") or [])):
             raise GoogleError("Permissão ausente; reconecte pelo botão GOOGLE / Missing permission; reconnect in settings")
         from google.oauth2.credentials import Credentials
@@ -180,7 +243,7 @@ def credentials(service, write=False):
                 creds.refresh(bounded_request)
                 refreshed = json.loads(creds.to_json())
                 refreshed["scopes"] = info["scopes"]
-                write_secret(secret_path(TOKEN_NAME), refreshed)
+                write_secret(secret_path(token_name(service)), refreshed)
             except Exception:
                 raise GoogleError("Não foi possível renovar a sessão; reconecte / Cannot refresh session; reconnect") from None
             finally:
@@ -196,7 +259,7 @@ class Client:
         self.creds, self.signature = credentials(service, write)
 
     def check_connection(self):
-        if connection_signature() != self.signature:
+        if connection_signature(service=self.service) != self.signature:
             raise GoogleError("Conta/configuração mudou; solicite novamente / Account or settings changed; request again")
 
     def request(self, method, path, *, params=None, body=None, etag=None):

@@ -50,6 +50,8 @@ downloads/
 screenshots/
 .jinx_update/
 .jinx_runtime/
+Manus/
+screenshot_manus.png
 
 # The task engine writes these while it works: a finished task leaves a JSON
 # record, a transcript and a report behind. They describe one run on one
@@ -70,3 +72,5 @@ config/*
 !config/jinx.ico
 memory/*.json
 config/learned_rules.json
+
+~/

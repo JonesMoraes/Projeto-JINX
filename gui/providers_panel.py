@@ -97,9 +97,9 @@ class ProvidersOverlay(_HudOverlay):
     # Which provider fills each slot, and what the slot is FOR — in the words
     # somebody configuring it would use, not the words the code uses.
     _SLOTS = (
-        ("stt", "①", "HEARING",  "Transforma sua fala em texto." ),
-        ("llm", "②", "THINKING", "Interpreta, decide e usa suas ferramentas."),
-        ("tts", "③", "SPEAKING", "Lê a resposta em voz alta."),
+        ("stt", "①", "ESCUTA",  "Transforma sua fala em texto." ),
+        ("llm", "②", "RACIOCÍNIO", "Interpreta, decide e usa suas ferramentas."),
+        ("tts", "③", "FALA", "Lê a resposta em voz alta."),
     )
 
     def __init__(self, parent=None):
@@ -777,9 +777,9 @@ class ProvidersOverlay(_HudOverlay):
         brow = QHBoxLayout(); brow.setSpacing(6)
         brow.addWidget(self._btn("TESTAR", lambda _=0, p=pid: self._test(p), C.PRI))
         if decl.get("id") == "groq_stt":
-            brow.addWidget(self._btn("🎙 GRAVAR 4 S E TESTAR / RECORD", lambda _=0, p=pid: self._test_hearing(p, True), C.ACC2))
+            brow.addWidget(self._btn("🎙 GRAVAR 4 S E TESTAR", lambda _=0, p=pid: self._test_hearing(p, True), C.ACC2))
         if decl.get("id") == "edge_tts":
-            brow.addWidget(self._btn("▶ OUVIR TESTE / LISTEN", lambda _=0, p=pid: self._edge_job(p, "play"), C.ACC2))
+            brow.addWidget(self._btn("▶ OUVIR TESTE", lambda _=0, p=pid: self._edge_job(p, "play"), C.ACC2))
         # Not "LIST" any more: the list arrives on its own when a service is
         # chosen. This is the button for when it did not — the server was
         # starting up, or a model has just been pulled.
@@ -1100,13 +1100,13 @@ class ProvidersOverlay(_HudOverlay):
             return
         values = self._values(pid)
         if self._registry.missing_fields(pid, values):
-            self._say(pid, "Cadastre SUA chave antes de testar / Enter YOUR key before testing", C.RED)
+            self._say(pid, "Cadastre sua chave antes de testar", C.RED)
             return
         self._hearing_tests.add(pid)
         cancel = threading.Event()
         self._hearing_cancels[pid] = cancel
-        self._say(pid, ("🔴 GRAVANDO 4 S — diga uma frase; áudio enviado à Groq / RECORDING; audio sent to Groq"
-                        if record else "Verificando conexão e modelo / Checking connection and model…"), C.ACC)
+        self._say(pid, ("🔴 GRAVANDO 4 S — diga uma frase; áudio enviado à Groq"
+                        if record else "Verificando conexão e modelo…"), C.ACC)
         def work():
             try:
                 # A fresh test instance avoids changing the live recognizer's language state.
@@ -1114,7 +1114,7 @@ class ProvidersOverlay(_HudOverlay):
                 inst = GroqSTT(values)
                 ok, message = inst.record_test(cancel) if record else inst.probe()
             except Exception:
-                ok, message = False, "Teste não verificado; confira chave/modelo/microfone / Test unverified; check key/model/microphone"
+                ok, message = False, "Teste não verificado; confira chave, modelo e microfone"
             try:
                 self._hearing_test_ready.emit(pid, ok, message)
             except RuntimeError:
@@ -1128,9 +1128,9 @@ class ProvidersOverlay(_HudOverlay):
         self._edge_jobs.add(pid)
         cancel = threading.Event()
         self._hearing_cancels[pid] = cancel
-        labels = {"install": "Conferindo dependências opcionais (limite 20 MB) / Checking optional dependencies…",
-                  "voices": "Consultando vozes PT-BR/EN / Listing voices…",
-                  "probe": "Verificando voz / Checking voice…", "play": "Sintetizando e enviando teste à saída escolhida / Preparing playback test…"}
+        labels = {"install": "Conferindo dependências opcionais (limite 20 MB)…",
+                  "voices": "Consultando vozes PT-BR/EN…",
+                  "probe": "Verificando voz…", "play": "Sintetizando e enviando teste à saída escolhida…"}
         self._say(pid, labels.get(job, "…"), C.ACC)
         def work():
             try:

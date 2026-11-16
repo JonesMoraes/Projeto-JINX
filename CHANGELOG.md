@@ -302,3 +302,37 @@
 - Baseline de inicialização, conexão de áudio e consulta local registrado em docs/historico/BASELINE.md; teste falado PT-BR/EN confirmado pelo usuário.
 - Git local e branch feature/expansion preparados; exclusão de assets Brahma, arquivos locais e dados pessoais do versionamento.
 - Nenhuma funcionalidade nova, alteração de segurança ou dependência instalada nesta fase.
+
+
+## 2026-11-15 — Fase 6, continuação local
+
+- Propostas automáticas conservadoras de memória factual PT-BR/EN; painel de
+  aprovação/rejeição, deduplicação, conflito e desfazer; gravação JSON atômica.
+- Dev agent: pasta aprovada resolvida, recusa de caminhos absolutos gerados,
+  preservação de edições intermediárias e posteriores no undo; validação
+  indisponível não é sucesso.
+- Autorreparo: descartar proposta e recusar candidato sem mudanças.
+- Skill Forge: recusar blocos de código; rascunho continua sem registro/execução.
+- Testes e limites em docs/PHASE_6_LOCAL_CONTINUATION.md.
+
+## 2026-11-15 — Login Google guiado
+
+- Entrar com Google no navegador na Agenda e Integrações; preparação local com importação de JSON ou ID/segredo OAuth Desktop quando faltar configuração, preservando tokens e serviços selecionados.
+- Sete testes novos de preparação, cancelamento, validação e preservação local. OAuth real depende do registro e consentimento do usuário.
+
+## 2026-11-15 — Correção de permissões Google incompatíveis
+
+- Separar consentimento e credenciais de YouTube e Gmail/Agenda/Drive, evitando o erro 400 por combinar drive.file com YouTube.
+- Renovação e verificação de conta usam a credencial de cada grupo; login incompleto preserva tokens anteriores antes da gravação. Seis testes novos.
+
+## 2026-11-15 — Configurações compactas e chaves de ativação
+
+- Botões de ação menores, alinhados à esquerda; navegação, campos e títulos mais compactos.
+- Chaves nativas acessíveis por mouse/teclado, com Ligado/Desligado, em integrações,
+  plugins, automação, inicialização e sincronização manual da agenda.
+- Automação separa ações de ativações; as chaves acompanham o estado real sem
+  executar callbacks durante atualizações. Credenciais e IDs avançados recolhidos.
+- Preservados callbacks existentes, permissões, armazenamento e temas. Nas
+  integrações, mudanças continuam sendo aplicadas por Salvar ou pela ação de conexão.
+- 44 módulos da suíte interna aprovados, sem falhas/timeouts; cinco testes novos
+  de interação, persistência e sincronização. Renderização Qt conferida em fixtures.

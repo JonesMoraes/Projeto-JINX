@@ -101,6 +101,16 @@ def _apply_ui_scale() -> None:
 class JinxUI:
     def __init__(self, face_path: str, size=None):
         _apply_ui_scale()
+        if sys.platform == "win32" and QApplication.instance() is None:
+            try:
+                import ctypes
+                set_id = ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID
+                set_id.argtypes = [ctypes.c_wchar_p]
+                set_id.restype = ctypes.c_long
+                if set_id("JonesMoraes.JINX") != 0:
+                    print("[Icon] Windows did not accept the application taskbar identity")
+            except Exception as exc:
+                print(f"[Icon] Taskbar identity unavailable: {type(exc).__name__}")
         self._app = QApplication.instance() or QApplication(sys.argv)
         self._app.setStyle("Fusion")
         self._win = MainWindow(face_path)

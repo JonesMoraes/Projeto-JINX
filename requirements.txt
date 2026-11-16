@@ -139,10 +139,12 @@ pynvml                       # system_monitor + the HUD's GPU meter (NVIDIA)
 # only ever uses Gemini should not pay for them. Deleting providers/ removes
 # the whole feature and the app runs exactly as it did before it existed.
 
-# ── Optional: local wake word ("Hey Jarvis") ──────────────────────────────────
-# Deliberately NOT installed by default — it's opt-in. Enable it (and download
-# the tiny model) with one click from ⚙ → WAKE WORD in the app, or install it
-# yourself with:  pip install openwakeword
+# ── Optional: local wake phrases ("Ei JINX", "Olá JINX", "JINX") ─────────────
+# Deliberately NOT installed by default — it is opt-in and stays on this device.
+# Install the recognizer with: pip install vosk
+# Then place a Portuguese Vosk model in models/vosk-model-small-pt-0.3, or set
+# JINX_VOSK_MODEL to the model directory. No audio is sent to an API while the
+# assistant is asleep.
 #
 # macOS / Linux OS actions (volume, brightness, reminders) shell out to native
 # tools (pactl / brightnessctl / osascript / systemd), so no extra Python

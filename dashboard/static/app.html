@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#07090f">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -140,13 +140,62 @@
       pointer-events:none; white-space:nowrap;
     }
     #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+    /* ── MOBILE SHELL ── */
+    html, body { min-height:100%; }
+    body { min-height:100dvh; }
+    .composer-main { flex:1; min-width:0; display:flex; align-items:center; gap:8px; }
+    .tool-row { display:flex; align-items:center; gap:8px; }
+    #inp { min-width:0; min-height:44px; }
+    .btn-send { min-height:44px; white-space:nowrap; }
+    .btn-attach, #mic-btn { min-width:44px; min-height:44px; padding:0; }
+    .device-menu summary { display:grid; min-width:44px; min-height:44px; place-items:center; }
+    .device-actions { width:min(260px, calc(100vw - 24px)); }
+    .device-actions button { min-height:44px; }
+    .visually-hidden { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    #file-inp:focus-visible + .btn-attach { outline:2px solid #aaaaff; outline-offset:3px; }
+    .pill { white-space:nowrap; }
+    button:focus-visible, summary:focus-visible, input:focus-visible, label:focus-visible {
+      outline:2px solid #aaaaff; outline-offset:3px;
+    }
+    @media (max-width:600px) {
+      header {
+        gap:8px; padding: max(8px, env(safe-area-inset-top)) 12px 8px;
+      }
+      .logo { font-size:14px; letter-spacing:4px; }
+      .pill { gap:5px; padding:6px 9px; font-size:9px; letter-spacing:.5px; }
+      .dot { width:7px; height:7px; flex:none; }
+      .enc-badge { padding:4px 6px; font-size:8px; letter-spacing:.4px; }
+      .url { display:none; }
+      main { padding:12px 12px 8px; gap:9px; }
+      .msg, .msg-file { max-width:92%; }
+      .msg { padding:10px 12px; font-size:14px; }
+      footer {
+        flex-direction:column; align-items:stretch; gap:8px;
+        padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+      }
+      .composer-main { width:100%; }
+      #inp { width:100%; min-height:46px; padding:0 12px; font-size:16px; }
+      .btn-send { min-height:46px; padding:0 13px; font-size:10px; letter-spacing:.6px; }
+      .tool-row { justify-content:flex-end; }
+      .device-actions { top:48px; }
+      #toast { top:calc(12px + env(safe-area-inset-top)); max-width:calc(100vw - 24px); overflow:hidden; text-overflow:ellipsis; }
+    }
+    @media (max-width:360px) {
+      .enc-badge { display:none !important; }
+      .pill { padding:6px 7px; font-size:8px; }
+      .btn-send { padding:0 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
+    }
   </style>
 </head>
 <body>
   <div id="toast"></div>
   <header>
-    <div class="logo">JINX</div>
-    <div class="pill" id="pill"><span class="dot"></span><span id="st">Conectando</span></div>
+    <div class="logo"><em>J</em>INX</div>
+    <div class="pill" id="pill" role="status" aria-live="polite"><span class="dot"></span><span id="st">Conectando</span></div>
     <div class="enc-badge" id="enc">AES-GCM</div>
     <div class="spacer"></div>
     <details class="device-menu">
@@ -158,14 +207,18 @@
     </details>
     <div class="url">__IP__:__PORT__</div>
   </header>
-  <main id="feed"></main>
-  <footer>
-    <input id="inp" placeholder="Envie um comando ao JINX…" autocomplete="off">
-    <label class="btn-attach" for="file-inp" title="Enviar arquivo">📎</label>
-    <input type="file" id="file-inp" multiple accept="*/*" style="display:none">
-    <button id="mic-btn" onclick="doMic()" title="Comando de voz">🎤</button>
-    <button class="btn btn-wake" id="wake" onclick="doWake()">ATIVAR</button>
-    <button class="btn btn-send" onclick="doSend()">ENVIAR</button>
+  <main id="feed" role="log" aria-live="polite" aria-label="Conversa remota"></main>
+  <footer class="composer">
+    <div class="composer-main">
+      <input id="inp" aria-label="Mensagem para o JINX" placeholder="Envie um comando ao JINX…" autocomplete="off" enterkeyhint="send">
+      <button class="btn btn-send" type="button" onclick="doSend()">ENVIAR</button>
+    </div>
+    <div class="tool-row">
+      <input type="file" id="file-inp" multiple accept="*/*" class="visually-hidden">
+      <label class="btn-attach" for="file-inp" title="Enviar arquivo" aria-label="Anexar arquivo">📎</label>
+      <button id="mic-btn" type="button" onclick="doMic()" title="Comando de voz" aria-label="Comando de voz">🎤</button>
+      <button class="btn btn-wake" id="wake" type="button" onclick="doWake()" aria-label="Ativar JINX">ATIVAR</button>
+    </div>
   </footer>
 
   <script>

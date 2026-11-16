@@ -19,6 +19,7 @@ import string
 import threading
 import time
 from pathlib import Path
+from .device_store import DeviceSessionStore, DeviceStoreUnavailable
 
 _DEPS_OK = False
 try:
@@ -725,7 +726,7 @@ class _Throttle:
 
 class DashboardServer:
 
-    def __init__(self):
+    def __init__(self, device_store: DeviceSessionStore | None = None):
         self._ip                          = _local_ip()
         # token -> issued-at. A set had no way to expire anything; this does,
         # and `_auth` sweeps as it reads so nothing has to run a timer.
@@ -739,7 +740,9 @@ class DashboardServer:
         self._connect_callback            = None
         self._pending_keys: dict[str, float] = {}
         self._throttle                    = _Throttle()
-        self._device_sessions: dict[str, dict] = {}  # device_token → {session_key}
+        self._device_store                = (
+            device_store if device_store is not None else DeviceSessionStore()
+        )
         self._phone_audio_queue: asyncio.Queue    = asyncio.Queue(maxsize=200)
         self._uploads_dir                 = UPLOADS_DIR
         # Set by serve() when the port could not be taken, so the UI can say
@@ -920,10 +923,26 @@ class DashboardServer:
                               f"{int(wait) + 1} segundos."},
                     status_code=429,
                 )
-            body    = await req.json()
+            try:
+                body = await req.json()
+            except Exception:
+                return JSONResponse({"ok": False}, status_code=400)
+            if not isinstance(body, dict):
+                return JSONResponse({"ok": False}, status_code=400)
             entered = str(body.get("pin", "")).strip().upper()
+            remember = body.get("remember") is True
             now     = time.time()
             if entered in self._pending_keys and self._pending_keys[entered] > now:
+                dev_tok = secrets.token_urlsafe(32) if remember else ""
+                if dev_tok:
+                    try:
+                        self._device_store.register(dev_tok, entered)
+                    except DeviceStoreUnavailable:
+                        return JSONResponse(
+                            {"ok": False,
+                             "error": "Não foi possível salvar a autorização deste celular."},
+                            status_code=503,
+                        )
                 self._throttle.clear(who)
                 del self._pending_keys[entered]          # one-time use
                 tok = secrets.token_urlsafe(32)
@@ -936,7 +955,10 @@ class DashboardServer:
                     {"type": "sys", "text": "Conexão remota estabelecida."}
                 ))
                 # Bearer token in response body — no cookies needed (works on any browser/HTTP)
-                return JSONResponse({"ok": True, "token": tok})
+                result = {"ok": True, "token": tok}
+                if dev_tok:
+                    result["device_token"] = dev_tok
+                return JSONResponse(result)
             self._throttle.record_failure(who)
             return JSONResponse({"ok": False, "error": "Chave inválida ou expirada"},
                                 status_code=401)
@@ -957,13 +979,20 @@ class DashboardServer:
 <p>Abra <strong style="color:#dde3ed">Acesso remoto</strong> no JINX para gerar um novo QR code.</p>
 </div></body></html>""")
 
-            del self._pending_keys[key]
             tok     = secrets.token_urlsafe(32)
             dev_tok = secrets.token_urlsafe(32)
+            try:
+                self._device_store.register(dev_tok, key)
+            except DeviceStoreUnavailable:
+                return HTMLResponse("""<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width">
+<style>body{background:#07090f;color:#dde3ed;font:16px system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;padding:24px;text-align:center}main{max-width:360px}h2{color:#f4b942}p{color:#8b91a5;line-height:1.5}</style></head>
+<body><main><h2>Não foi possível salvar este pareamento</h2>
+<p>O JINX não conseguiu proteger a autorização do celular. Volte ao aplicativo e tente novamente.</p></main></body></html>""", status_code=503)
+            del self._pending_keys[key]
             self._tokens[tok] = time.time()
             self._token_keys[tok] = key
             self._aes_key(key)
-            self._device_sessions[dev_tok] = {"session_key": key}
 
             if self._connect_callback:
                 self._connect_callback()
@@ -995,10 +1024,23 @@ class DashboardServer:
                 body = await req.json()
             except Exception:
                 return JSONResponse({"ok": False}, status_code=400)
-            dev_tok = (body.get("device_token") or "").strip()
-            if not dev_tok or dev_tok not in self._device_sessions:
+            if not isinstance(body, dict):
+                return JSONResponse({"ok": False}, status_code=400)
+            raw_dev_tok = body.get("device_token")
+            dev_tok = raw_dev_tok.strip() if isinstance(raw_dev_tok, str) else ""
+            if self._device_store.unavailable:
+                return JSONResponse(
+                    {"ok": False, "error": "Armazenamento de autorizações indisponível."},
+                    status_code=503,
+                )
+            session_key = self._device_store.resolve(dev_tok) if dev_tok else None
+            if self._device_store.unavailable:
+                return JSONResponse(
+                    {"ok": False, "error": "Armazenamento de autorizações indisponível."},
+                    status_code=503,
+                )
+            if not session_key:
                 return JSONResponse({"ok": False}, status_code=401)
-            session_key = self._device_sessions[dev_tok]["session_key"]
             tok = secrets.token_urlsafe(32)
             self._tokens[tok] = time.time()
             self._token_keys[tok] = session_key
@@ -1017,7 +1059,13 @@ class DashboardServer:
             try: body = await req.json()
             except Exception: body = {}
             dev_tok = str(body.get("device_token") or "").strip()
-            removed = bool(dev_tok and self._device_sessions.pop(dev_tok, None))
+            try:
+                removed = bool(dev_tok and self._device_store.remove(dev_tok))
+            except DeviceStoreUnavailable:
+                return JSONResponse(
+                    {"error": "Armazenamento de autorizações indisponível."},
+                    status_code=503,
+                )
             return JSONResponse({"ok": True, "unpaired": removed})
 
         @app.post("/api/logout")
@@ -1044,9 +1092,14 @@ class DashboardServer:
             # The caller's own token is kept, or pressing the button would log
             # out the person who pressed it.
             mine  = req.headers.get("authorization", "").removeprefix("Bearer ").strip()
-            count = len(self._device_sessions)
+            try:
+                count = self._device_store.clear()
+            except DeviceStoreUnavailable:
+                return JSONResponse(
+                    {"error": "Não foi possível limpar as autorizações salvas."},
+                    status_code=503,
+                )
             live  = len(self._tokens) - (1 if mine in self._tokens else 0)
-            self._device_sessions.clear()
             keep = self._tokens.get(mine)
             self._tokens.clear()
             self._token_keys = {k: v for k, v in self._token_keys.items() if k == mine}

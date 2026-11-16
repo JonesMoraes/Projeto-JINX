@@ -1482,3 +1482,22 @@ Os testes usam configurações temporárias e simulam serviços externos e hardw
 No Linux, os testes de áudio requerem a biblioteca de sistema PortAudio.
 A validação com microfone, alto-falantes e contas reais deve ser feita na instalação
 em que a JINX será utilizada.
+
+
+### Continuação local da Fase 6 (15/11/2026)
+
+⚙ → Memória agora mostra propostas locais de fatos extraídos de frases simples
+PT-BR/EN, com aprovação/rejeição antes de persistir e suporte a desfazer.
+Exemplos: “Meu nome é Jones”, “Moro em Recife”, “My current project is JINX-IA”.
+Propostas não aprovadas são temporárias e separadas das regras de comportamento.
+Agente de desenvolvimento preserva alterações intermediárias e autorreparo permite
+descartar propostas. Skill Forge permanece revisão de Markdown, sem execução.
+Escopo, testes e limites: docs/PHASE_6_LOCAL_CONTINUATION.md.
+
+### Controles de configuração compactos
+
+A central usa botões de ação compactos e chaves Ligado/Desligado para ativações.
+Automação reúne resumo da manhã, palavra de ativação, pressionar para falar e
+gestos; Sistema permite ativar a inicialização junto do Windows. Em Integrações,
+escolha o serviço, ajuste as chaves e clique em Salvar. Credenciais e IDs técnicos
+ficam em Credenciais e opções avançadas. A aparência acompanha o tema escolhido.

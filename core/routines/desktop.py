@@ -10,7 +10,8 @@ JINX, so nobody loses a morning briefing to an upgrade:
     news-watch   the topic watch, every 30 minutes
 
 They stay routines from then on: switch them off, move the briefing to 08:30,
-change its news topic or the check-in's subjects, by voice or from the panel.
+add something to it or change the check-in's subjects, by voice or from the
+panel.
 """
 from __future__ import annotations
 
@@ -44,7 +45,7 @@ def seed_defaults(engine, brief_enabled: bool) -> None:
     if engine.find_builtin("briefing") is None:
         engine.add(name="Opening briefing", kind="builtin", builtin="briefing",
                    trigger={"type": "startup"}, system=True, enabled=bool(brief_enabled),
-                   options={"news": True, "news_topic": "top world news today", "extra": ""})
+                   options={"extra": ""})
     if engine.find_builtin("checkin") is None:
         engine.add(name="Check-in", kind="builtin", builtin="checkin",
                    trigger={"type": "idle", "minutes": 15, "cooldown": 20}, system=True, quiet=True,

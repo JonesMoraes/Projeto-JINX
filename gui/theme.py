@@ -129,6 +129,12 @@ _HUE_LINKED = (
 _PALETTE_DEFAULTS: dict[str, str] = {k: getattr(C, k) for k in _HUE_LINKED}
 
 DEFAULT_UI_COLOR = _PALETTE_DEFAULTS["PRI"]
+_ACTIVE_UI_COLOR = DEFAULT_UI_COLOR
+
+
+def current_ui_color() -> str:
+    """Return the active accent, including a live preview not yet persisted."""
+    return _ACTIVE_UI_COLOR
 
 
 def apply_ui_accent(accent_hex: str) -> bool:
@@ -139,6 +145,7 @@ def apply_ui_accent(accent_hex: str) -> bool:
     frame; stylesheet-based panels pick it up when they are rebuilt.
     """
     import colorsys
+    global _ACTIVE_UI_COLOR
 
     accent_hex = (accent_hex or "").strip().lower()
     if not (accent_hex.startswith("#") and len(accent_hex) == 7):
@@ -147,6 +154,7 @@ def apply_ui_accent(accent_hex: str) -> bool:
         int(accent_hex[1:], 16)
     except ValueError:
         return False
+    _ACTIVE_UI_COLOR = accent_hex
 
     def _hsv(h: str) -> tuple[float, float, float]:
         r = int(h[1:3], 16) / 255

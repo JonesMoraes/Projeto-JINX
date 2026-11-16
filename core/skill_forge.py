@@ -24,7 +24,7 @@ def normalize_draft(text: str) -> str:
     if not all(section.casefold() in draft.casefold() for section in required):
         raise ValueError("The draft must define purpose, workflow and limits")
     # The artifact remains inert markdown. Reject obvious executable payloads.
-    if re.search(r"(?is)<script\b|javascript:|\\x[0-9a-f]{2}", draft):
+    if re.search(r"(?is)<script\b|javascript:|\\x[0-9a-f]{2}|```|~~~", draft):
         raise ValueError("The draft contains executable markup")
     return draft
 

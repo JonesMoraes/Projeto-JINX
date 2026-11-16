@@ -87,7 +87,6 @@ from actions.proactive         import ProactiveEngine
 from actions.background_monitor import (
     add_monitor, remove_monitor, list_monitors, check_all as monitor_check_all,
 )
-from actions.web_search        import _news as _fetch_news_sync
 from memory.config_manager     import (
     get_brief_enabled, get_media_resolution, get_proactive_audio_enabled,
     get_push_to_talk_enabled, get_thinking_enabled, get_turn_tuning, get_voice,
@@ -102,8 +101,10 @@ from core.action_loader        import discover_actions
 from core.echo                 import EchoGuard
 from core import barge_in
 from core.viseme               import VisemeStream
-from core.wake_word            import (
-    WakeWordDetector, is_ready as wake_is_ready, install_and_download as wake_install,
+from core.wake_phrase          import (
+    LocalWakePhraseDetector as WakeWordDetector,
+    is_ready as wake_is_ready,
+    install_and_download as wake_install,
 )
 
 # How long the assistant stays awake with no user speech before it auto-sleeps
@@ -661,6 +662,10 @@ class JinxLive:
         self.ui.on_remote_clicked = self._make_remote_key
         self.ui.on_interrupt      = self.interrupt
         self.ui.on_voice_change   = self._on_voice_change     # voice picker → rebuild session
+        # Optional bridge used by plugins/agent_manager. Switching agents must
+        # not resume the previous agent's server-side context.
+        self.ui.request_agent_reconnect = lambda: self.request_reconnect(
+            keep_context=False, reason="agente alterado")
         self._voice_preview_active = threading.Event()
         self._voice_preview_until = 0.0
         self.ui.on_voice_preview_state = self._on_voice_preview_state
@@ -813,7 +818,7 @@ class JinxLive:
 
     def _on_wake_detected(self) -> None:
         """Called from the detector thread when 'Hey Jarvis' is heard."""
-        self.wake(reason="wake word")
+        self.wake(reason="frase de ativação")
 
     def wake(self, reason: str = "wake word") -> None:
         if self._awake:
@@ -833,7 +838,9 @@ class JinxLive:
             detector.reset()        # nothing heard before sleeping may wake it again
         self.set_speaking(False)
         self.ui.set_state("SLEEPING")
-        self.ui.write_log(f"SYS: Sleeping — {reason}. Say 'Hey Jarvis' to wake me.")
+        self.ui.write_log(
+            f"SYS: Em espera — {reason}. Diga 'Ei JINX', 'Olá JINX' ou 'JINX' para me ativar."
+        )
 
     async def _run_sleep_watch(self) -> None:
         """Auto-sleep after the configured silence window (wake-word mode only)."""
@@ -849,7 +856,7 @@ class JinxLive:
             if speaking:
                 continue
             if (time.monotonic() - self._last_user_speech) > self._wake_sleep_timeout:
-                self.sleep(reason="no speech for 2 minutes")
+                self.sleep(reason="sem fala por 2 minutos")
 
     # ── Wake word: UI callbacks (called from the Qt thread) ──────────────────
 
@@ -862,15 +869,15 @@ class JinxLive:
             self._wake_enabled = True
             save_wake_word_enabled(True)
             if not self._ensure_wake_detector():
-                self.ui.write_log("SYS: Wake word is on, but the detector could not start — "
-                                  "listening normally.")
+                self.ui.write_log("SYS: A frase de ativação está ligada, mas o detector não pôde iniciar — "
+                                  "ouvindo normalmente.")
                 return "enabled"
-            self.sleep(reason="wake word enabled")
+            self.sleep(reason="frase de ativação ativada")
             return "enabled"
         else:
             self._wake_enabled = False
             save_wake_word_enabled(False)
-            self.wake(reason="wake word disabled")
+            self.wake(reason="frase de ativação desativada")
             return "disabled"
 
     def _ui_wake_manual(self) -> None:
@@ -878,9 +885,9 @@ class JinxLive:
         if not self._wake_enabled:
             return
         if self._awake:
-            self.sleep(reason="you tapped sleep")
+            self.sleep(reason="você tocou em dormir")
         else:
-            self.wake(reason="you tapped wake")
+            self.wake(reason="você tocou em ativar")
 
     def _ui_wake_install(self) -> tuple[bool, str]:
         """Download openwakeword + the model (runs in a UI worker thread)."""
@@ -1140,8 +1147,8 @@ class JinxLive:
             self._clear_stall()
             print(f"[JINX] ⚠️  No response for {_STALL_LIMIT:.0f}s — "
                   f"the live session is not answering. Rebuilding it.")
-            self.ui.write_log("SYS: The model stopped answering — reconnecting.")
-            self.request_reconnect(keep_context=True, reason="no response")
+            self.ui.write_log("SYS: O modelo parou de responder — reconectando.")
+            self.request_reconnect(keep_context=True, reason="sem resposta")
             return          # this session is going away; the new one gets its own watcher
 
     def request_reconnect(self, keep_context: bool = True, reason: str = ""):
@@ -1177,14 +1184,14 @@ class JinxLive:
         is that it restores the voice with it — which would make the picker
         appear to do nothing. Losing context here is acceptable because changing
         voice is a deliberate, rare act; losing it on a dropped packet was not."""
-        self.request_reconnect(keep_context=False, reason="new voice")
+        self.request_reconnect(keep_context=False, reason="nova voz")
 
     def _on_audio_device_change(self):
         """Microphone or speaker changed. Both streams are opened inside the
         session TaskGroup, so they can only be re-opened by rebuilding it —
         but the conversation is kept, which is the whole reason resumption
         landed before this feature did."""
-        self.request_reconnect(keep_context=True, reason="audio device")
+        self.request_reconnect(keep_context=True, reason="dispositivo de áudio")
 
     def _ensure_executor(self):
         """Give the loop a working thread pool before every connect.
@@ -1207,7 +1214,7 @@ class JinxLive:
         if ex is None or dead or getattr(loop, "_executor_shutdown_called", False):
             if dead:
                 print("[JINX] ⚠️  Thread pool was shut down — replacing it")
-                self.ui.write_log("SYS: Recovered from a stopped worker pool.")
+                self.ui.write_log("SYS: Pool de tarefas recuperado após uma parada.")
             # Without this flag reset, asyncio refuses the new pool as well.
             if getattr(loop, "_executor_shutdown_called", False):
                 loop._executor_shutdown_called = False
@@ -1223,8 +1230,8 @@ class JinxLive:
         keep   = self._reconnect_keep
         reason = getattr(self, "_reconnect_reason", "") or "settings"
         self.ui.write_log(
-            f"SYS: Applying {reason} — reconnecting"
-            + ("..." if keep else " (starting a fresh conversation)...")
+            f"SYS: Aplicando {reason} — reconectando"
+            + ("..." if keep else " (iniciando uma conversa nova)...")
         )
         raise _ReconnectSignal(keep_context=keep)
 
@@ -1253,6 +1260,13 @@ class JinxLive:
         return (url, key, f"{url}/auto-login?key={key}", manual,
                 getattr(self._dashboard, "_bind_error", "") or "")
 
+    def _observe_memory(self, text: str):
+        try:
+            from core.memory_extraction import observe
+            observe(text, self.ui)
+        except Exception as exc:
+            print(f"[Memory] Proposal unavailable: {type(exc).__name__}")
+
     def _on_text_command(self, text: str):
         from core.display_commands import parse as parse_display_command
         display_command = parse_display_command(text)
@@ -1272,8 +1286,12 @@ class JinxLive:
         # asleep either (the sleep gate is not just for the mic). Wake first with
         # "Hey Jarvis" or the WAKE NOW button.
         if self._wake_enabled and not self._awake:
-            self.ui.write_log("SYS: I'm asleep — say 'Hey Jarvis' or tap WAKE NOW first.")
+            self.ui.write_log(
+                "SYS: Estou em espera — diga 'Ei JINX', 'Olá JINX' ou 'JINX', "
+                "ou toque primeiro em ATIVAR AGORA."
+            )
             return
+        self._observe_memory(text)
         asyncio.run_coroutine_threadsafe(
             self.session.send_client_content(
                 turns={"role": "user", "parts": [{"text": text}]},
@@ -1409,7 +1427,7 @@ class JinxLive:
                 self._engine.interrupt()
             except Exception:
                 pass
-        self.ui.write_log("SYS: Interrupted — listening...")
+        self.ui.write_log("SYS: Interrompido — ouvindo...")
 
     def _voice_interruption_allowed(self):
         return (barge_in.enabled() and not self.ui.muted
@@ -1448,6 +1466,7 @@ class JinxLive:
 
     def _build_config(self) -> types.LiveConnectConfig:
         from datetime import datetime
+        from core.multi_agent import get_manager
 
         # Load customization from config
         try:
@@ -1536,6 +1555,15 @@ class JinxLive:
         })
 
         parts = [time_ctx, identity_ctx]
+        # JINX remains the default and contributes no extra instructions.
+        # Other profiles are bounded, data-only role guidance and are applied
+        # only when a new session is built after an explicit switch.
+        try:
+            _agent_ctx = get_manager(BASE_DIR).active_context()
+            if _agent_ctx:
+                parts.append(_agent_ctx)
+        except Exception as _agent_error:
+            print(f"[Agents] profile context unavailable: {_agent_error}")
         if mem_str:
             parts.append(mem_str)
         parts.append(sys_prompt)
@@ -2127,6 +2155,12 @@ class JinxLive:
                                 self._last_out_logged = ""   # new exchange
                                 self.ui.write_log(f"You: {full_in}")
                                 self._session_log.append(f"User: {full_in}")
+                                try:
+                                    from core.multi_agent import get_manager
+                                    get_manager(BASE_DIR).add_turn("user", full_in)
+                                except Exception as _agent_log_error:
+                                    print(f"[Agents] input history unavailable: {_agent_log_error}")
+                                self._observe_memory(full_in)
                                 if self._dashboard:
                                     asyncio.create_task(self._dashboard.broadcast({
                                         "type": "log", "speaker": "user",
@@ -2146,6 +2180,11 @@ class JinxLive:
                                 self._last_out_logged = full_out
                                 self.ui.write_log(f"{self._asst_name}: {full_out}")
                                 self._session_log.append(f"{self._asst_name}: {full_out}")
+                                try:
+                                    from core.multi_agent import get_manager
+                                    get_manager(BASE_DIR).add_turn("agent", full_out)
+                                except Exception as _agent_log_error:
+                                    print(f"[Agents] output history unavailable: {_agent_log_error}")
                                 if self._dashboard:
                                     asyncio.create_task(self._dashboard.broadcast({
                                         "type": "log", "speaker": "jinx",
@@ -2323,12 +2362,10 @@ class JinxLive:
 
     async def _send_startup_briefing(self, options: dict | None = None) -> None:
         """
-        Two-phase briefing optimized for speed:
-          Phase 1 — instant greeting (no tools) → speech starts in <1s
-          Phase 2 — news pre-fetched in a background thread while Phase 1 plays,
-                    delivered as ready text (no Gemini tool-call round-trip) and
-                    shown on the UI content panel. Waits for turn_complete event
-                    instead of a fixed sleep so there is no unnecessary gap.
+        Instant greeting (no tools) → speech starts in <1s, then anything the
+        user added to the briefing (the routine's "extra") right after the
+        greeting's audio, waiting for turn_complete instead of a fixed sleep
+        so there is no unnecessary gap.
         """
         memory   = load_memory()
         identity = memory.get("identity", {})
@@ -2341,18 +2378,11 @@ class JinxLive:
         name = _val("name")
         time_str = datetime.now().strftime("%H:%M")
 
-        # What the briefing covers is the routine's to say (core/routines): the
-        # news and its topic, and anything the user added to it. No options is
-        # the briefing as it always was.
-        options   = options or {}
-        want_news = options.get("news", True) is not False
-        topic     = str(options.get("news_topic") or "").strip() or "top world news today"
-        extra     = str(options.get("extra") or "").strip()
-
-        # Start fetching news immediately — runs in parallel while phase 1 plays
-        loop = asyncio.get_event_loop()
-        news_future = (loop.run_in_executor(None, _fetch_news_sync, topic)
-                       if want_news else None)
+        # What the briefing covers beyond the greeting is the routine's to say
+        # (core/routines): anything the user added to it. No options is the
+        # briefing as it always was.
+        options = options or {}
+        extra   = str(options.get("extra") or "").strip()
 
         await asyncio.sleep(0.3)
         if not self.session:
@@ -2378,8 +2408,7 @@ class JinxLive:
             )
 
         p1 = (
-            f"Greet the user warmly, mention it is {time_str}"
-            f"{', and say you are fetching the news now' if want_news else ''}.{session_clause} "
+            f"Greet the user warmly, mention it is {time_str}.{session_clause} "
             f"Keep it to 2 short sentences max. Do not call any tools.{lang_clause}{name_clause}"
         )
 
@@ -2392,17 +2421,15 @@ class JinxLive:
             turn_complete=True,
         )
         print("[JINX] Briefing phase 1 (greeting) sent.")
-        if not want_news and not extra:
+        if not extra:
             return
 
         # ── Phase 2: fire as soon as Phase 1 audio is done ───────────────────
-        async def _deliver_news():
+        async def _deliver_extra():
             try:
                 lang_str = f" Speak in {lang}, using Brazilian Portuguese pronunciation and wording."
 
-                # Wait for news fetch (already running) and Phase 1 turn-complete
-                # in parallel — whichever takes longer determines the wait time
-                news_done   = asyncio.wrap_future(news_future) if news_future else None
+                # Wait for Phase 1 turn-complete so the extra does not talk over it
                 turn_waited = False
                 if self._turn_done_event:
                     try:
@@ -2420,59 +2447,23 @@ class JinxLive:
                 else:
                     await asyncio.sleep(1.0)
 
-                news_text = ""
-                if news_done is not None:
-                    try:
-                        news_text = await asyncio.wait_for(news_done, timeout=8.0)
-                    except Exception as e:
-                        self.ui.write_log(f"SYS: News fetch timed out/failed: {e!r}")
-                        news_text = ""
-
                 if not self.session:
                     return
 
-                extra_clause = (f"\n\nThen also do this, which the user asked to be part of "
-                                f"their briefing: {extra} — you may use tools for it."
-                                if extra else "")
-                no_tools = "" if extra else " Do not call any tools."
-
-                failed = (not news_text) or news_text.startswith(
-                    ("No news found", "Search failed", "Please provide")
-                )
-                if not want_news:
-                    p2 = (f"[BRIEFING] The user asked for this to be part of their briefing: "
-                          f"{extra} — do it now, using tools if it needs them.{lang_str}")
-                elif not failed:
-                    # Show on UI content panel immediately
-                    default_topic = topic == "top world news today"
-                    self.ui.show_content("NEWS — top world news today" if default_topic else "NEWS",
-                                         news_text)
-
-                    p2 = (
-                        f"[BRIEFING] Here are today's news headlines ({topic}):\n{news_text}\n\n"
-                        "Pick ONE headline, summarise it in one sentence, then say the full list "
-                        f"is displayed on screen.{no_tools}{extra_clause}{lang_str}"
-                    )
-                else:
-                    self.ui.write_log(
-                        f"SYS: News unavailable — backend returned: {news_text[:120]!r}"
-                    )
-                    p2 = (
-                        "News headlines could not be fetched right now. "
-                        f"Let the user know briefly.{extra_clause}{lang_str}"
-                    )
+                p2 = (f"[BRIEFING] The user asked for this to be part of their briefing: "
+                      f"{extra} — do it now, using tools if it needs them.{lang_str}")
 
                 await self.session.send_client_content(
                     turns={"role": "user", "parts": [{"text": p2}]},
                     turn_complete=True,
                 )
-                print("[JINX] Briefing phase 2 (news) sent.")
+                print("[JINX] Briefing phase 2 (extra) sent.")
             except Exception as e:
                 print(f"[Briefing] Phase 2 error: {e}")
                 print(f"[JINX] Briefing phase 2 failed: {e}")
-                self.ui.write_log("SYS: Could not fetch the news for the briefing.")
+                self.ui.write_log("SYS: Could not deliver the briefing extra.")
 
-        self._keep_task(asyncio.create_task(_deliver_news()))
+        self._keep_task(asyncio.create_task(_deliver_extra()))
 
     # ── Session memory ──────────────────────────────────────────────────────────
 
@@ -2778,8 +2769,8 @@ class JinxLive:
             # Falling back to Live is the whole reason the ladder exists, and
             # the reason is said out loud rather than left in a console.
             # Said once per reason, not on every reconnect attempt.
-            note = (f"SYS: local engine unavailable ({e}) — using Gemini Live."
-                    if _gemini_usable() else f"SYS: local engine unavailable ({e}).")
+            note = (f"SYS: mecanismo local indisponível ({e}) — usando o Gemini ao vivo."
+                    if _gemini_usable() else f"SYS: mecanismo local indisponível ({e}).")
             if note != getattr(self, "_engine_fail_said", ""):
                 self._engine_fail_said = note
                 self.ui.write_log(note)
@@ -2902,8 +2893,8 @@ class JinxLive:
                     if not getattr(self, "_no_engine_said", False):
                         self._no_engine_said = True
                         self.ui.write_log(
-                            "SYS: No Gemini key and no local engine set up yet — open ⚙ → "
-                            "ENGINE & PROVIDERS and choose MY OWN SETUP, or add a Gemini key.")
+                            "SYS: Nenhuma chave Gemini e nenhum mecanismo local configurado — abra ⚙ → "
+                            "MOTOR E PROVEDORES, escolha MINHA CONFIGURAÇÃO ou adicione uma chave Gemini.")
                     self.ui.set_state("SLEEPING")
                     await asyncio.sleep(5)
                     continue
@@ -2960,7 +2951,7 @@ class JinxLive:
                         self.ui.write_log("SYS: Reconnected — conversation restored.")
 
                     # Wake word: if enabled, come up ASLEEP (mic gated, silent)
-                    # until the user says "Hey Jarvis" or taps wake in the UI.
+                    # until the user says "Ei JINX", "Olá JINX" or "JINX".
                     #
                     # Only on the FIRST connect of a run. A reconnect — a dropped
                     # network, the server rotating the connection — used to put an
@@ -2980,12 +2971,24 @@ class JinxLive:
                         wake_ok = await asyncio.to_thread(self._ensure_wake_detector)
                         if not wake_ok:
                             self.ui.write_log(
-                                "SYS: Wake word could not start — listening normally instead. "
-                                "Turn WAKE WORD off and on in CONTROLS to set it up again.")
+                                "SYS: A frase de ativação não pôde iniciar — ouvindo normalmente. "
+                                "Desative e ative FRASE DE ATIVAÇÃO em CONTROLES para configurá-la novamente.")
                     if self._wake_enabled and wake_ok and (first_connect or not self._awake):
                         self._awake = False
                         self.ui.set_state("SLEEPING")
-                        self.ui.write_log("SYS: JINX online — sleeping. Say 'Hey Jarvis' to wake me.")
+                        self.ui.write_log(
+                            "SYS: JINX online — em espera. Diga 'Ei JINX', "
+                            "'Olá JINX' ou 'JINX' para me ativar."
+                        )
+                    elif self._wake_enabled and not wake_ok:
+                        # Fail closed: enabling the local gate must never fall
+                        # back to streaming arbitrary speech to the Live API.
+                        self._awake = False
+                        self.ui.set_state("SLEEPING")
+                        self.ui.write_log(
+                            "SYS: JINX online — detector da frase de ativação indisponível; "
+                            "instale o Vosk/modelo ou use ATIVAR AGORA."
+                        )
                     else:
                         self._awake = True
                         self.ui.set_state("LISTENING")
@@ -3147,13 +3150,13 @@ class JinxLive:
                 ):
                     self._enhanced_live = False
                     self.ui.write_log(
-                        "SYS: Proactive audio unavailable — reconnecting without it."
+                        "SYS: Áudio proativo indisponível — reconectando sem esse recurso."
                     )
                     continue
 
                 # Invalid API key — stop hammering the API, prompt re-configuration
                 if "API key not valid" in err_str or "1007" in err_str:
-                    self.ui.write_log("ERR: API key invalid — please re-enter your key.")
+                    self.ui.write_log("ERRO: Chave da API inválida — insira sua chave novamente.")
                     self.ui.set_state("SLEEPING")
                     self.ui.prompt_reconfig()
                     while not self.ui._win._ready:

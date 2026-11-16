@@ -5,6 +5,7 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
                              QCheckBox, QComboBox, QTableWidget, QTableWidgetItem, QAbstractItemView)
 from gui.theme import C
+from gui.settings_controls import ToggleRow
 from gui.style import hud_font
 from memory.config_manager import get_plugin_config, save_plugin_config
 
@@ -22,14 +23,15 @@ class AgendaPanel(QDialog):
         layout = QVBoxLayout(self)
         instructions = QLabel('Tarefas e eventos locais continuam disponíveis sem conta.\n'
             'Google Agenda: salve as configurações, conecte sua conta e use Sincronizar.\n'
-            'O JSON OAuth Desktop deve estar em config/ e ter a Calendar API habilitada.\n'
+            'Use Entrar com Google; na primeira vez, a preparação abre na própria tela.\n'
             'Não há sincronização automática; arquivar/desfazer localmente não apaga eventos no Google.')
         instructions.setWordWrap(True)
         layout.addWidget(instructions)
         cfg = get_plugin_config("google_workspace")
-        self.enabled = QCheckBox("Permitir sincronização manual com Google Agenda")
+        sync_row = ToggleRow("Sincronização manual com Google Agenda")
+        self.enabled = sync_row.switch
         self.enabled.setChecked(cfg.get("calendar_sync") is True)
-        layout.addWidget(self.enabled)
+        layout.addWidget(sync_row)
         self.calendar_id = QLineEdit(str(cfg.get('calendar_id') or 'primary'))
         self.calendar_id.setPlaceholderText('ID do Google Agenda (primary = calendário principal)')
         self.calendar_id.setToolTip('primary usa seu calendário principal; outros calendários exigem o ID e acesso da conta conectada.')
@@ -38,25 +40,25 @@ class AgendaPanel(QDialog):
         self.client_file.setPlaceholderText('Arquivo JSON OAuth Desktop dentro de config/')
         self.client_file.setToolTip('Nome/caminho relativo do JSON OAuth Desktop, armazenado dentro de config/.')
         layout.addWidget(self.client_file)
-        self.save_btn = QPushButton("Salvar configuração / Save settings")
+        self.save_btn = QPushButton("Salvar configuração")
         self.save_btn.clicked.connect(self._save)
         layout.addWidget(self.save_btn)
-        self.connect_btn = QPushButton('Conectar conta Google no navegador')
+        self.connect_btn = QPushButton('Entrar com Google no navegador')
         self.connect_btn.clicked.connect(self._connect_google)
         layout.addWidget(self.connect_btn)
         self.kind = QComboBox()
-        self.kind.addItem("Tarefas / Tasks", "task")
-        self.kind.addItem("Eventos / Events", "event")
+        self.kind.addItem("Tarefas", "task")
+        self.kind.addItem("Eventos", "event")
         self.kind.setCurrentIndex(1)
         layout.addWidget(self.kind)
         self.filter = QComboBox()
-        for label, value in (("Abertos / Open", "open"), ("Hoje / Today", "today"),
-                             ("Amanhã / Tomorrow", "tomorrow"), ("Atrasados / Overdue", "overdue"),
-                             ("Concluídos / Done", "done"), ("Todos / All", "all")):
+        for label, value in (("Abertos", "open"), ("Hoje", "today"),
+                             ("Amanhã", "tomorrow"), ("Atrasados", "overdue"),
+                             ("Concluídos", "done"), ("Todos", "all")):
             self.filter.addItem(label, value)
         layout.addWidget(self.filter)
         self.display = QTableWidget(0, 4)
-        self.display.setHorizontalHeaderLabels(["Título / Title", "Data / Date", "Estado / Status", "Prioridade / Priority"])
+        self.display.setHorizontalHeaderLabels(["Título", "Data", "Estado", "Prioridade"])
         self.display.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.display.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.display.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -65,21 +67,21 @@ class AgendaPanel(QDialog):
         self.selected_id = None
         layout.addWidget(self.display)
         self.title = QLineEdit()
-        self.title.setPlaceholderText("Título exato do evento / Exact event title")
+        self.title.setPlaceholderText("Título exato do evento")
         layout.addWidget(self.title)
         self.due = QLineEdit()
         self.due.setPlaceholderText("2026-11-14T17:00:00-03:00")
         layout.addWidget(self.due)
         self.priority = QComboBox()
-        for label, value in (("Baixa / Low", "low"), ("Normal", "normal"), ("Alta / High", "high")):
+        for label, value in (("Baixa", "low"), ("Normal", "normal"), ("Alta", "high")):
             self.priority.addItem(label, value)
         self.priority.setCurrentIndex(1)
         layout.addWidget(self.priority)
         self.buttons = [self.save_btn, self.connect_btn]
         row = None
-        for index, (label, action) in enumerate((("Atualizar / Refresh", "list"), ("Adicionar / Add", "add"),
-                              ("Alterar / Update", "update"), ("Concluir / Complete", "complete"),
-                              ("Reabrir / Reopen", "reopen"), ("Arquivar / Archive", "archive"),
+        for index, (label, action) in enumerate((("Atualizar", "list"), ("Adicionar", "add"),
+                              ("Alterar", "update"), ("Concluir", "complete"),
+                              ("Reabrir", "reopen"), ("Arquivar", "archive"),
                               ("Sincronizar Google Agenda", "sync"))):
             if index % 3 == 0:
                 row = QHBoxLayout()
@@ -116,16 +118,20 @@ class AgendaPanel(QDialog):
             self.status.setText('Google Agenda selecionado. Conecte sua conta se necessário; nenhum evento foi enviado.')
             return True
         except Exception:
-            self.status.setText("Falha ao salvar / Save failed")
+            self.status.setText("Falha ao salvar")
             return False
 
     def _connect_google(self):
         if not self._save():
             return
         values = get_plugin_config('google_workspace')
+        from gui.google_auth_setup import ensure_google_client
+        if not ensure_google_client(self, values):
+            self.status.setText('Login cancelado. Sua conta anterior e os eventos foram preservados.')
+            return
         for button in self.buttons + [self.kind, self.filter]:
             button.setEnabled(False)
-        self.status.setText('Autorize os serviços Google selecionados no navegador. Nenhum evento será enviado ao conectar.')
+        self.status.setText('Autorize no navegador. Se YouTube estiver selecionado, haverá uma segunda etapa separada de Gmail, Agenda e Drive. Nenhum evento será enviado ao conectar.')
         def connect():
             try:
                 from core.google_workspace import connect as oauth_connect
@@ -154,7 +160,7 @@ class AgendaPanel(QDialog):
         # Listing is local and does not hold UI widgets on a worker thread.
         for button in self.buttons + [self.kind, self.filter]:
             button.setEnabled(False)
-        self.status.setText("Processando / Working…")
+        self.status.setText("Processando…")
         def work():
             try:
                 from plugins.organizer import run, _filtered
@@ -177,8 +183,8 @@ class AgendaPanel(QDialog):
         self.display.blockSignals(True)
         self.display.setRowCount(len(self.rows))
         for row, item in enumerate(self.rows):
-            state = ("Arquivado / Archived" if item.get("archived") else
-                     "Concluído / Done" if item.get("done") else "Aberto / Open")
+            state = ("Arquivado" if item.get("archived") else
+                     "Concluído" if item.get("done") else "Aberto")
             if item.get("sync_issue"):
                 state += " — " + str(item["sync_issue"])
             for col, value in enumerate((item["title"], item.get("due") or "—", state,

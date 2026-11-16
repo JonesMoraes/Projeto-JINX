@@ -2,222 +2,295 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>JINX</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#07090f">
+  <title>Acesso remoto · JINX</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; }
     :root {
-      --bg:     #07090f;
-      --card:   rgba(255,255,255,0.04);
-      --border: rgba(255,255,255,0.08);
-      --accent: #6366f1;
-      --adim:   rgba(99,102,241,0.15);
-      --text:   #dde3ed;
-      --muted:  #5e6a7e;
+      color-scheme: dark;
+      --bg: #07090f;
+      --card: #10131c;
+      --surface: #151923;
+      --border: #272d3d;
+      --accent: #7779ff;
+      --accent-dim: rgba(119,121,255,.14);
+      --text: #e7e9f2;
+      --muted: #9299ad;
+      --green: #45d483;
+      --red: #ff8087;
     }
-    html, body {
-      height: 100%;
-      background: var(--bg);
+    html { min-height: 100%; background: var(--bg); }
+    body {
+      min-height: 100vh;
+      min-height: 100svh;
+      margin: 0;
+      padding: max(20px, env(safe-area-inset-top)) 18px max(20px, env(safe-area-inset-bottom));
+      background: radial-gradient(ellipse at 50% 20%, #151638 0, #0b0d16 42%, var(--bg) 78%);
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      font: 15px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: grid;
+      place-items: center;
+      -webkit-tap-highlight-color: transparent;
     }
     .card {
-      width: 340px;
-      padding: 44px 36px;
-      background: var(--card);
+      width: min(100%, 420px);
+      padding: clamp(25px, 7vw, 38px);
+      background: linear-gradient(155deg, rgba(255,255,255,.035), transparent 40%), var(--card);
       border: 1px solid var(--border);
       border-radius: 22px;
-      text-align: center;
+      box-shadow: 0 20px 70px rgba(0,0,0,.32);
     }
-    .logo {
-      font-size: 28px;
-      font-weight: 700;
-      letter-spacing: 10px;
-      margin-bottom: 6px;
-    }
-    .logo em { color: var(--accent); font-style: normal; }
-    .sub {
-      font-size: 11px;
-      color: var(--muted);
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-    }
-    .hint {
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.55;
-      margin-bottom: 28px;
-    }
-    .key-wrap {
-      position: relative;
-      margin-bottom: 16px;
-    }
+    .brand { font-size: 20px; font-weight: 760; letter-spacing: 5px; }
+    .brand em { color: var(--accent); font-style: normal; }
+    .eyebrow { margin-top: 18px; color: #a9adbb; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; }
+    h1 { margin: 8px 0 8px; font-size: clamp(25px, 7vw, 31px); line-height: 1.12; letter-spacing: -.8px; }
+    .intro { margin: 0 0 25px; color: var(--muted); font-size: 13px; }
+    .field-label { display: block; margin: 0 0 8px; color: #bfc3d0; font-size: 10px; font-weight: 700; letter-spacing: 1.2px; }
     .key-input {
+      display: block;
       width: 100%;
-      padding: 18px 14px;
-      background: rgba(255,255,255,0.05);
-      border: 1.5px solid var(--border);
+      min-height: 60px;
+      padding: 10px 12px;
+      border: 1.5px solid #393d58;
       border-radius: 14px;
-      color: var(--text);
-      font-size: 30px;
-      font-weight: 700;
-      font-family: 'Courier New', monospace;
-      text-align: center;
-      letter-spacing: 10px;
-      text-transform: uppercase;
       outline: none;
-      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+      background: #0d1018;
+      color: var(--text);
       caret-color: var(--accent);
+      font: 700 clamp(22px, 7vw, 28px)/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      letter-spacing: clamp(5px, 2vw, 9px);
+      text-align: center;
+      text-transform: uppercase;
+      transition: border-color .15s, box-shadow .15s, background .15s;
     }
-    .key-input::placeholder {
-      color: rgba(94,106,126,0.5);
-      letter-spacing: 6px;
-      font-size: 20px;
+    .key-input:focus { border-color: var(--accent); background: #111326; box-shadow: 0 0 0 3px var(--accent-dim); }
+    .key-input::placeholder { color: #60677b; letter-spacing: 5px; }
+    .hint { min-height: 20px; margin: 8px 0 12px; color: var(--muted); font-size: 11px; }
+    .hint.error { color: var(--red); }
+    .hint.ok { color: var(--green); }
+    .remember {
+      display: flex;
+      gap: 11px;
+      align-items: flex-start;
+      min-height: 48px;
+      margin: 8px 0 17px;
+      padding: 11px 0 0;
+      cursor: pointer;
     }
-    .key-input:focus {
-      border-color: var(--accent);
-      background: var(--adim);
-      box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
-    }
-    .err {
-      font-size: 12px;
-      color: #f87171;
-      min-height: 18px;
-      margin-bottom: 14px;
-    }
+    .remember input { width: 19px; height: 19px; flex: none; margin: 1px 0 0; accent-color: var(--accent); }
+    .remember strong { display: block; color: var(--text); font-size: 12px; line-height: 1.4; }
+    .remember small { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.45; }
     .btn {
+      display: flex;
       width: 100%;
-      padding: 14px;
+      min-height: 48px;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      border-radius: 13px;
       background: var(--accent);
       color: #fff;
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: 3px;
-      border: none;
-      border-radius: 12px;
+      font: 700 12px/1 system-ui, sans-serif;
+      letter-spacing: 1.4px;
       cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
+      transition: opacity .15s, transform .1s;
     }
-    .btn:hover  { opacity: 0.88; }
-    .btn:active { transform: scale(0.98); }
-    @keyframes shake {
-      0%,100% { transform: translateX(0); }
-      20%,60% { transform: translateX(-7px); }
-      40%,80% { transform: translateX(7px); }
-    }
-    .shake { animation: shake 0.35s ease; }
-    .voice-note {
-      font-size: 10px;
-      color: var(--muted);
-      margin-top: 20px;
-      line-height: 1.6;
-      text-align: left;
-    }
-    .voice-note code {
-      background: rgba(255,255,255,0.07);
-      padding: 1px 4px;
-      border-radius: 3px;
-      font-family: 'Courier New', monospace;
-      font-size: 9px;
-    }
-    #reconnecting {
+    .btn:hover { opacity: .9; }
+    .btn:active { transform: scale(.985); }
+    .btn:disabled { cursor: wait; opacity: .65; }
+    button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid #aaaaff; outline-offset: 3px; }
+    .reconnect {
       display: none;
-      color: var(--muted);
-      font-size: 12px;
-      margin-bottom: 16px;
+      margin: 0 0 18px;
+      padding: 12px;
+      border: 1px solid #393d58;
+      border-radius: 13px;
+      background: #141629;
+    }
+    .reconnect.show { display: block; }
+    .reconnect p { margin: 0 0 10px; color: #c6c9d5; font-size: 12px; }
+    .retry { min-height: 44px; padding: 0 14px; border: 1px solid #454969; border-radius: 10px; background: transparent; color: var(--text); font-weight: 650; cursor: pointer; }
+    .voice-note { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); color: var(--muted); font-size: 11px; }
+    .voice-note summary { min-height: 44px; color: #b7bdcc; font-weight: 650; cursor: pointer; display:flex; align-items:center; }
+    .voice-note p { margin: 7px 0 0; line-height: 1.6; }
+    .voice-note code { padding: 1px 4px; border-radius: 4px; background: rgba(255,255,255,.07); font: 10px ui-monospace, monospace; overflow-wrap: anywhere; }
+    .shake { animation: shake .3s ease; }
+    @keyframes shake { 20%,60%{transform:translateX(-5px)} 40%,80%{transform:translateX(5px)} }
+    @media (max-width: 360px) {
+      body { padding-left: 14px; padding-right: 14px; }
+      .card { border-radius: 18px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
     }
   </style>
 </head>
 <body>
-  <div class="card" id="card">
-    <div class="logo"><em>J</em>INX</div>
-    <div class="sub">Acesso remoto</div>
-    <p id="reconnecting">Reconectando…</p>
-    <p class="hint">Toque em <strong style="color:var(--text)">Acesso remoto</strong> no aplicativo JINX para gerar um QR code ou uma chave de sessão.</p>
-    <div class="key-wrap">
-      <input class="key-input" id="key" type="text" maxlength="6"
-             autocomplete="off" autocorrect="off" spellcheck="false"
-             placeholder="· · · · · ·">
-    </div>
-    <div class="err" id="err"></div>
-    <button class="btn" onclick="doLogin()">CONECTAR</button>
-    <p class="voice-note">
-      🎤 <strong style="color:var(--text)">Comandos de voz:</strong> abra
-      <code>chrome://flags</code> no celular, pesquise
-      <code>Insecure origins treated as secure</code>, adicione o endereço do JINX e toque em Reiniciar navegador.
-    </p>
-  </div>
+  <main class="card" id="card">
+    <div class="brand"><em>J</em>INX</div>
+    <div class="eyebrow">Acesso remoto</div>
+    <h1>Seu JINX,<br>onde você estiver.</h1>
+    <p class="intro">Use a chave de 8 caracteres exibida no computador para conectar este celular.</p>
+
+    <section class="reconnect" id="reconnect-box" aria-live="polite">
+      <p id="reconnecting">Verificando a autorização deste celular…</p>
+      <button class="retry" id="retry-device" type="button" onclick="tryDeviceLogin()">Tentar novamente</button>
+    </section>
+
+    <form id="login-form" novalidate>
+      <label class="field-label" for="key">CHAVE DE PAREAMENTO</label>
+      <input class="key-input" id="key" name="pin" type="text" maxlength="8"
+             inputmode="text" autocomplete="one-time-code" autocapitalize="characters"
+             autocorrect="off" spellcheck="false" aria-describedby="hint"
+             placeholder="••••••••">
+      <p class="hint" id="hint" role="status" aria-live="polite">A chave tem 8 caracteres e só pode ser usada uma vez.</p>
+      <label class="remember" for="remember-device">
+        <input id="remember-device" name="remember" type="checkbox" checked>
+        <span><strong>Manter este celular autorizado</strong><small>Até sair ou revogar no JINX. Desative em aparelho compartilhado.</small></span>
+      </label>
+      <button class="btn" id="connect" type="submit">CONECTAR AO JINX</button>
+    </form>
+
+    <details class="voice-note">
+      <summary>Configurar comandos de voz</summary>
+      <p>Em alguns celulares, abra <code>chrome://flags</code>, pesquise <code>Insecure origins treated as secure</code>, adicione o endereço do JINX e reinicie o navegador.</p>
+    </details>
+  </main>
 
   <script>
-    // Try auto-reconnect with stored device token (set on first QR login)
-    (async function() {
-      const devTok = localStorage.getItem('jinx_device_token');
-      if (!devTok) return;
-      document.getElementById('reconnecting').style.display = 'block';
+    const form = document.getElementById('login-form');
+    const inp = document.getElementById('key');
+    const hint = document.getElementById('hint');
+    const connectButton = document.getElementById('connect');
+    const rememberInput = document.getElementById('remember-device');
+    const reconnectBox = document.getElementById('reconnect-box');
+    const reconnecting = document.getElementById('reconnecting');
+    let busy = false;
+    let autoTimer = null;
+
+    function setHint(message, kind = '') {
+      hint.textContent = message;
+      hint.className = `hint ${kind}`.trim();
+    }
+
+    function setBusy(value) {
+      busy = value;
+      connectButton.disabled = value;
+      connectButton.textContent = value ? 'CONECTANDO…' : 'CONECTAR AO JINX';
+      inp.disabled = value;
+    }
+
+    function saveSession(data, key) {
+      sessionStorage.setItem('jinx_key', data.key || key);
+      sessionStorage.setItem('jinx_token', data.token);
+      if (data.device_token) {
+        localStorage.setItem('jinx_device_token', data.device_token);
+      } else {
+        localStorage.removeItem('jinx_device_token');
+      }
+      location.replace('/');
+    }
+
+    async function tryDeviceLogin() {
+      const deviceToken = localStorage.getItem('jinx_device_token');
+      if (!deviceToken || busy) return;
+      reconnectBox.classList.add('show');
+      reconnecting.textContent = 'Verificando a autorização deste celular…';
+      setBusy(true);
       try {
         const r = await fetch('/api/device-login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ device_token: devTok }),
+          body: JSON.stringify({ device_token: deviceToken }),
         });
-        const d = await r.json();
-        if (d.ok && d.token) {
-          sessionStorage.setItem('jinx_key', d.key);
-          sessionStorage.setItem('jinx_token', d.token);
+        const data = await r.json().catch(() => ({}));
+        if (r.ok && data.ok && data.token) {
+          sessionStorage.setItem('jinx_key', data.key);
+          sessionStorage.setItem('jinx_token', data.token);
           location.replace('/');
           return;
         }
-      } catch (_) {}
-      // Device token rejected (server restarted) — clear it and show normal form
-      localStorage.removeItem('jinx_device_token');
-      document.getElementById('reconnecting').style.display = 'none';
-    })();
+        if (r.status === 401) {
+          localStorage.removeItem('jinx_device_token');
+          reconnecting.textContent = 'Este pareamento foi revogado. Digite uma nova chave para autorizar novamente.';
+          setHint('Pareamento revogado. Use uma nova chave de 8 caracteres.', 'error');
+          document.getElementById('retry-device').style.display = 'none';
+        } else {
+          reconnecting.textContent = data.error || 'Não foi possível validar agora. A autorização foi preservada; tente de novo.';
+          document.getElementById('retry-device').style.display = '';
+        }
+      } catch (_) {
+        reconnecting.textContent = 'Sem conexão com o JINX. A autorização foi preservada; tente novamente quando estiver conectado.';
+        document.getElementById('retry-device').style.display = '';
+      } finally {
+        setBusy(false);
+        inp.focus({ preventScroll: true });
+      }
+    }
 
-    const inp = document.getElementById('key');
-    inp.focus();
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      doLogin();
+    });
 
     inp.addEventListener('input', () => {
-      inp.value = inp.value.toUpperCase().replace(/[^A-Z2-9]/g, '');
-      if (inp.value.length === 6) doLogin();
+      inp.value = inp.value.toUpperCase().replace(/[^A-HJ-KM-NP-Z2-9]/g, '').slice(0, 8);
+      if (autoTimer) clearTimeout(autoTimer);
+      if (inp.value.length === 8) autoTimer = setTimeout(doLogin, 180);
     });
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
     async function doLogin() {
-      const key = inp.value.trim();
-      if (key.length < 6) { shake(); return; }
-      let data;
+      if (busy) return;
+      const key = inp.value.trim().toUpperCase();
+      if (key.length !== 8) {
+        setHint('Digite os 8 caracteres da chave exibida no computador.', 'error');
+        shake();
+        return;
+      }
+      setBusy(true);
+      setHint('Validando a chave…');
       try {
         const r = await fetch('/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: key })
+          body: JSON.stringify({ pin: key, remember: rememberInput.checked }),
         });
-        data = await r.json();
-      } catch (e) {
-        document.getElementById('err').textContent = 'Erro de conexão';
-        shake(); return;
-      }
-      if (data.ok && data.token) {
-        sessionStorage.setItem('jinx_key', key);
-        sessionStorage.setItem('jinx_token', data.token);
-        location.href = '/';
-      } else {
-        inp.value = '';
-        inp.focus();
-        document.getElementById('err').textContent = 'Chave inválida ou expirada';
+        const data = await r.json().catch(() => ({}));
+        if (r.ok && data.ok && data.token) {
+          saveSession(data, key);
+          return;
+        }
+        if (r.status === 429) {
+          setHint(data.error || 'Muitas tentativas. Aguarde e tente novamente.', 'error');
+        } else if (r.status === 503) {
+          setHint(data.error || 'Não foi possível salvar a autorização. Tente novamente.', 'error');
+        } else if (r.status === 401) {
+          setHint(data.error || 'Chave inválida ou expirada. Gere outra no computador.', 'error');
+        } else {
+          setHint(data.error || 'Não foi possível conectar ao JINX.', 'error');
+        }
+        inp.select();
         shake();
+      } catch (_) {
+        setHint('Falha de conexão. Verifique a rede e tente novamente.', 'error');
+        shake();
+      } finally {
+        setBusy(false);
       }
     }
 
     function shake() {
-      const c = document.getElementById('card');
-      c.classList.remove('shake');
-      void c.offsetWidth;
-      c.classList.add('shake');
+      const card = document.getElementById('card');
+      card.classList.remove('shake');
+      void card.offsetWidth;
+      card.classList.add('shake');
+    }
+
+    if (localStorage.getItem('jinx_device_token')) {
+      reconnectBox.classList.add('show');
+      document.getElementById('retry-device').style.display = 'none';
+      tryDeviceLogin();
     }
   </script>
 </body>

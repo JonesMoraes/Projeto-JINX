@@ -22,6 +22,9 @@ class SettingsTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
+        from gui.theme import current_ui_color
+        self._original_palette = current_palette()
+        self._original_ui_color = current_ui_color()
         directory = Path(self.temp.name)
         for name, value in (('CONFIG_DIR', directory), ('CONFIG_FILE', directory / 'api_keys.json')):
             item = patch.object(config, name, value)
@@ -56,6 +59,10 @@ class SettingsTests(unittest.TestCase):
         self.host.deleteLater()
         QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
         self.app.processEvents()
+        from gui import theme
+        for name, value in self._original_palette.items():
+            setattr(theme.C, name, value)
+        theme._ACTIVE_UI_COLOR = self._original_ui_color
 
     def test_five_reference_visual_styles_and_native_cards(self):
         from gui.settings_visuals import visual_skin
@@ -109,25 +116,46 @@ class SettingsTests(unittest.TestCase):
         for value in (None, {}, [], 'missing'):
             self.assertEqual(settings_theme_id(value), 'cyber_hud')
 
-    def test_every_theme_click_persists_without_modifying_hud_or_credentials(self):
+    def test_every_theme_click_updates_palette_without_changing_saved_color_or_credentials(self):
+        from gui.theme import C
         config.update_config(gemini_api_key='fixture', ui_color='#123456', providers={'mode': 'pipeline'})
         original = current_palette()
         self.dialog.show_category('appearance')
-        for key in SETTINGS_THEMES:
-            self.dialog._theme_buttons[key].click()
-            self.app.processEvents()
-            self.assertEqual(config.load_api_keys()['settings_theme'], key)
-            self.assertEqual(sum(b.isChecked() for b in self.dialog._theme_buttons.values()), 1)
-            self.assertEqual(current_palette(), original)
-        cfg = config.load_api_keys()
-        self.assertEqual(cfg['gemini_api_key'], 'fixture')
-        self.assertEqual(cfg['ui_color'], '#123456')
-        self.assertEqual(cfg['providers'], {'mode': 'pipeline'})
-        reopened = SettingsDialog(self.host)
-        self.assertEqual(reopened.theme_id, 'neon_glass')
-        reopened.deleteLater()
-        self.dialog.select_theme('cyber_hud')
-        self.assertEqual(config.load_api_keys()['settings_theme'], 'cyber_hud')
+        try:
+            for key in SETTINGS_THEMES:
+                self.dialog._theme_buttons[key].click()
+                self.app.processEvents()
+                self.assertEqual(config.load_api_keys()['settings_theme'], key)
+                self.assertEqual(sum(b.isChecked() for b in self.dialog._theme_buttons.values()), 1)
+                if key != 'cyber_hud':
+                    self.assertEqual(C.PRI.lower(), SETTINGS_THEMES[key].accent.lower())
+                self.assertEqual(config.load_api_keys()['ui_color'], '#123456')
+            cfg = config.load_api_keys()
+            self.assertEqual(cfg['gemini_api_key'], 'fixture')
+            self.assertEqual(cfg['providers'], {'mode': 'pipeline'})
+            reopened = SettingsDialog(self.host)
+            self.assertEqual(reopened.theme_id, 'neon_glass')
+            reopened.deleteLater()
+            self.dialog.select_theme('cyber_hud')
+            self.assertEqual(config.load_api_keys()['settings_theme'], 'cyber_hud')
+        finally:
+            for name, value in original.items():
+                setattr(C, name, value)
+
+    def test_selecting_theme_updates_main_window_stylesheet(self):
+        from gui.theme import C, current_palette
+        original = current_palette()
+        old_stylesheet = f'background: {C.BG}; color: {C.WHITE};'
+        self.host.setStyleSheet(old_stylesheet)
+        try:
+            self.dialog.select_theme('minimal_light')
+            main_style = self.host.styleSheet().lower()
+            self.assertIn(SETTINGS_THEMES['minimal_light'].bg, main_style)
+            self.assertIn(SETTINGS_THEMES['minimal_light'].text, main_style)
+        finally:
+            for name, value in original.items():
+                setattr(C, name, value)
+            self.host.setStyleSheet(old_stylesheet)
 
     def test_failed_save_keeps_previous_theme_and_selection(self):
         self.dialog.show_category('appearance')

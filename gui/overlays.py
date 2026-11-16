@@ -41,6 +41,7 @@ from gui.theme import (
 )
 
 from gui.style import hud_font
+from gui.settings_controls import ToggleSwitch, ToggleRow
 
 
 class SetupOverlay(QWidget):
@@ -591,8 +592,10 @@ class PluginManagerOverlay(QWidget):
         lbl.setWordWrap(False)
         row.addWidget(lbl, stretch=1)
 
-        btn = QPushButton()
-        btn.setFixedSize(72, 24)
+        btn = ToggleSwitch() if p["valid"] else QPushButton()
+        btn.setAccessibleName("Ativar " + p['name'])
+        if not p["valid"]:
+            btn.setFixedSize(72, 24)
         btn.setFont(hud_font(7, QFont.Weight.Bold))
         if not p["valid"]:
             btn.setText("COM ERRO")
@@ -611,6 +614,9 @@ class PluginManagerOverlay(QWidget):
         return row
 
     def _style_toggle(self, btn: QPushButton, enabled: bool):
+        if isinstance(btn, ToggleSwitch):
+            btn.setChecked(enabled)
+            return
         if enabled:
             btn.setText("ATIVADO")
             btn.setStyleSheet(f"""
@@ -1459,13 +1465,12 @@ class PluginSettingsOverlay(QWidget):
                     f"QLineEdit:focus {{ border: 1px solid {C.PRI}; }}")
 
         root = QVBoxLayout(self)
-        root.setContentsMargins(22, 16, 22, 16)
+        root.setContentsMargins(0, 0, 0, 0) if compact else root.setContentsMargins(18, 14, 18, 14)
         root.setSpacing(8)
-
-        root.addWidget(self._lbl("⚙  CONFIGURAÇÕES DOS PLUG-INS", 12, True))
-        sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
-        root.addWidget(sep)
+        if compact:
+            self.setStyleSheet("PluginSettingsOverlay { background: transparent; border: none; }")
+        else:
+            root.addWidget(self._lbl("Configurações das integrações", 12, True))
 
         if not self._sections:
             root.addWidget(self._lbl(
@@ -1486,7 +1491,12 @@ class PluginSettingsOverlay(QWidget):
                 self._build_section(form, sec)
             form.addStretch(1)
             scroll.setWidget(inner)
-            root.addWidget(scroll, 1)
+            if compact:
+                scroll.takeWidget()
+                scroll.deleteLater()
+                root.addWidget(inner)
+            else:
+                root.addWidget(scroll, 1)
 
         # ── bottom buttons ───────────────────────────────────────────────────
         btn_row = QHBoxLayout(); btn_row.setSpacing(8)
@@ -1514,6 +1524,7 @@ class PluginSettingsOverlay(QWidget):
         """)
         close_btn.clicked.connect(self.hide)
         btn_row.addWidget(close_btn)
+        btn_row.addStretch(1)
         root.addLayout(btn_row)
 
     # ── helpers ───────────────────────────────────────────────────────────────
@@ -1532,7 +1543,8 @@ class PluginSettingsOverlay(QWidget):
         values = sec.get("values") or {}
 
         form.addSpacing(4)
-        form.addWidget(self._lbl(title, 10, True, C.PRI))
+        if not self._compact:
+            form.addWidget(self._lbl(title, 10, True, C.PRI))
 
         advanced = QWidget()
         advanced_form = QVBoxLayout(advanced)
@@ -1548,10 +1560,11 @@ class PluginSettingsOverlay(QWidget):
             stored  = values.get(key, default)
 
             is_advanced = self._compact and (ftype == "password" or any(
-                term in key.lower() for term in ("token", "secret", "endpoint", "api_key", "url")))
+                term in key.lower() for term in ("token", "secret", "endpoint", "api_key", "url", "client_file", "calendar_id")))
             target = advanced_form if is_advanced else form
             advanced_count += bool(is_advanced)
-            target.addWidget(self._lbl(label.upper(), 8, color=C.TEXT_DIM))
+            if ftype != "toggle":
+                target.addWidget(self._lbl(label.split(' / ')[0], 8, color=C.TEXT_DIM))
 
             if ftype == "choice":
                 w = QComboBox()
@@ -1566,14 +1579,9 @@ class PluginSettingsOverlay(QWidget):
                 if stored is not None:
                     w.setCurrentText(str(stored))
             elif ftype == "toggle":
-                w = QPushButton()
-                w.setCheckable(True)
+                toggle_row = ToggleRow(label.split(' / ')[0])
+                w = toggle_row.switch
                 w.setChecked(bool(stored))
-                w.setFixedHeight(28)
-                w.setFont(hud_font(8, QFont.Weight.Bold))
-                w.setCursor(Qt.CursorShape.PointingHandCursor)
-                self._style_toggle(w)
-                w.toggled.connect(lambda _=False, b=w: self._style_toggle(b))
             else:  # text / password
                 w = QLineEdit("" if stored is None else str(stored))
                 w.setFont(hud_font(10))
@@ -1586,13 +1594,17 @@ class PluginSettingsOverlay(QWidget):
 
             self._widgets[(ns, key)] = w
             self._types[(ns, key)]   = ftype
-            target.addWidget(w)
+            if ftype == "toggle":
+                target.addWidget(toggle_row)
+            else:
+                target.addWidget(w)
 
         if advanced_count:
             toggle = QPushButton("Credenciais e opções avançadas")
             toggle.setCheckable(True)
             toggle.toggled.connect(advanced.setVisible)
-            form.addWidget(toggle)
+            toggle.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
+            form.addWidget(toggle, alignment=Qt.AlignmentFlag.AlignLeft)
             form.addWidget(advanced)
             advanced.hide()
         else:
@@ -1612,7 +1624,8 @@ class PluginSettingsOverlay(QWidget):
                 QPushButton:hover {{ background: {C.PRI_GHO}; border-color: {C.PRI}; }}
             """)
             ab.clicked.connect(lambda _=False, n=ns: self._run_action(n))
-            form.addWidget(ab)
+            ab.setSizePolicy(QSizePolicy.Policy.Maximum, QSizePolicy.Policy.Fixed)
+            form.addWidget(ab, alignment=Qt.AlignmentFlag.AlignLeft)
 
         status = self._lbl("", 8, color=C.TEXT_DIM)
         self._status_labels[ns] = status
@@ -1671,9 +1684,16 @@ class PluginSettingsOverlay(QWidget):
             return
         self._save_ns(ns)                 # persist what the user typed before testing
         values = self._gather(ns)
+        if ns == "google_workspace":
+            from gui.google_auth_setup import ensure_google_client
+            if not ensure_google_client(self, values):
+                lbl = self._status_labels.get(ns)
+                if lbl:
+                    lbl.setText("Login cancelado. Nenhuma conta foi conectada.")
+                return
         lbl = self._status_labels.get(ns)
         if lbl:
-            lbl.setText("Testando…")
+            lbl.setText("Autorize no navegador; YouTube abre uma etapa separada…" if ns == "google_workspace" else "Testando…")
             lbl.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
 
         def worker():

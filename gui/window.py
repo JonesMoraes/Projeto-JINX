@@ -134,7 +134,7 @@ class MainWindow(QMainWindow):
             self._meeting_toolbar.setMovable(False)
             self._meeting_toolbar.setStyleSheet(f"background: {C.BG}; border: 0;")
             self.addToolBar(Qt.ToolBarArea.TopToolBarArea, self._meeting_toolbar)
-            self._meeting_button = QPushButton("● GRAVANDO REUNIÃO — PARAR / RECORDING — STOP")
+            self._meeting_button = QPushButton("● GRAVANDO REUNIÃO — PARAR")
             self._meeting_button.setFont(hud_font(9, QFont.Weight.Bold))
             self._meeting_button.setStyleSheet(f"background: {C.BG}; color: {C.RED}; border: 2px solid {C.RED}; padding: 6px;")
             self._meeting_button.clicked.connect(self._stop_meeting)
@@ -176,8 +176,15 @@ class MainWindow(QMainWindow):
         _ui_color = (_cfg.get("ui_color") or "").strip()
         if _ui_color and _ui_color.lower() != DEFAULT_UI_COLOR:
             apply_ui_accent(_ui_color)
+        from gui.settings_themes import apply_settings_theme_palette
+        apply_settings_theme_palette(_cfg.get('settings_theme'), _ui_color)
 
         self.setWindowTitle(f"{_display} — {APP_VERSION}")
+        try:
+            from gui.app_icon_picker import apply_window_icon
+            apply_window_icon(self)
+        except (ValueError, OSError) as exc:
+            print(f"[Icon] Could not load application icon: {type(exc).__name__}")
         self.setMinimumSize(_MIN_W, _MIN_H)
         self.resize(_DEFAULT_W, _DEFAULT_H)
 
@@ -1235,7 +1242,8 @@ class MainWindow(QMainWindow):
         desktop = self._get_desktop_dir()
 
         # Arc-reactor icon (.ico — also exported as .png for Linux/macOS)
-        ico_path = Path(__file__).resolve().parent.parent / "config" / "jinx.ico"
+        from core.app_icons import selected_path
+        ico_path = selected_path()
         if not ico_path.exists():
             self._build_jinx_icon(ico_path)
 
@@ -2555,7 +2563,7 @@ class MainWindow(QMainWindow):
     def _build_footer(self) -> QWidget:
         self._status_strip = StatusStrip()
         self._status_strip.set_right(
-            "F4 MUDO   ·   F11 TELA CHEIA   ·   ESC INTERROMPER   ·   BY FATIHMAKES")
+            "F4 MUDO   ·   F11 TELA CHEIA   ·   ESC INTERROMPER   ·   Jones Moraes")
         self._refresh_status_strip()
         return self._status_strip
 
@@ -2984,6 +2992,9 @@ class MainWindow(QMainWindow):
         """Live preview — paints the whole interface the new colour (does NOT write to config)."""
         old = current_palette()
         if apply_ui_accent(hex_color):
+            from gui.settings_themes import apply_settings_theme_palette
+            settings_theme = _read_full_config().get('settings_theme')
+            apply_settings_theme_palette(settings_theme, hex_color)
             retheme_all_widgets(old, current_palette())
 
     def _apply_name_update(self, name: str, user_name: str, ui_color: str = "",
@@ -3001,6 +3012,9 @@ class MainWindow(QMainWindow):
         if ui_color:
             old = current_palette()
             if apply_ui_accent(ui_color):
+                from gui.settings_themes import apply_settings_theme_palette
+                settings_theme = _read_full_config().get('settings_theme')
+                apply_settings_theme_palette(settings_theme, ui_color)
                 # Live-paint the whole interface (panels, buttons, borders, HUD)
                 retheme_all_widgets(old, current_palette())
                 color_changed = old["PRI"] != C.PRI

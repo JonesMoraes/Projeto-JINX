@@ -1,4 +1,4 @@
-"""Settings-only themes. The HUD keeps its existing accent and visual choice."""
+"""Shared JINX visual themes with an independently persisted HUD accent."""
 from dataclasses import dataclass
 
 
@@ -50,3 +50,41 @@ def resolved_settings_theme(value):
     return SettingsTheme('Cyber HUD', 'Aparência atual da interface JINX.',
         C.BG, C.PANEL, C.DARK, C.WHITE, C.TEXT_MED,
         C.PRI, C.BORDER_B, C.PRI_GHO, 6)
+
+
+def apply_settings_theme_palette(value, ui_color=None):
+    """Apply a selected visual theme to the shared JINX palette.
+
+    The caller re-themes existing widgets with the returned before/after
+    snapshots. Cyber HUD deliberately restores the user's independent accent.
+    """
+    from gui.theme import C, DEFAULT_UI_COLOR, apply_ui_accent, current_palette, current_ui_color
+
+    key = settings_theme_id(value)
+    before = current_palette()
+    if key == DEFAULT_SETTINGS_THEME:
+        accent = ui_color or current_ui_color() or DEFAULT_UI_COLOR
+        if not apply_ui_accent(accent):
+            apply_ui_accent(DEFAULT_UI_COLOR)
+    else:
+        theme = SETTINGS_THEMES[key]
+        palette = {
+            'BG': theme.bg,
+            'PANEL': theme.panel,
+            'PANEL2': theme.panel,
+            'BORDER': theme.border,
+            'BORDER_B': theme.border,
+            'BORDER_A': theme.border,
+            'PRI': theme.accent,
+            'PRI_DIM': theme.muted,
+            'PRI_GHO': theme.selected,
+            'TEXT': theme.accent,
+            'TEXT_DIM': theme.muted,
+            'TEXT_MED': theme.muted,
+            'WHITE': theme.text,
+            'DARK': theme.field,
+            'BAR_BG': theme.panel,
+        }
+        for name, color in palette.items():
+            setattr(C, name, color)
+    return before, current_palette()

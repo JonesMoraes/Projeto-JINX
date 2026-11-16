@@ -294,20 +294,20 @@ class OrbMode(QObject):
         widget = None
         restore = None
         if kind == 'quiz':
-            if w._quiz is None: raise ValueError('Questionário encerrado / Quiz ended')
+            if w._quiz is None: raise ValueError('Questionário encerrado')
             widget = w._quiz_panel
             restore = lambda: w._center_split.insertWidget(2, widget)
         elif kind == 'media':
-            if not w._video_on: raise ValueError('Mídia encerrada / Media closed')
+            if not w._video_on: raise ValueError('Mídia encerrada')
             widget = w._video_cont
             restore = lambda: w._hud_cam_stack.insertWidget(2, widget)
         elif kind == 'camera':
-            if not w._cam_stream_active: raise ValueError('Câmera encerrada / Camera stopped')
+            if not w._cam_stream_active: raise ValueError('Câmera encerrada')
             widget = w._cam_cont
             restore = lambda: w._hud_cam_stack.insertWidget(1, widget)
         elif kind == 'confirm':
             widget = w._confirm_overlay
-            if widget is None: raise ValueError('Confirmação encerrada / Confirmation ended')
+            if widget is None: raise ValueError('Confirmação encerrada')
             restore = lambda: widget.setParent(w.centralWidget())
         elif kind == 'capture':
             widget = w._cam_preview

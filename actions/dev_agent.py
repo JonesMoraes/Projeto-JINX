@@ -935,7 +935,9 @@ def _json_object(text: str) -> dict:
 def _safe_rel(folder: Path, rel: str) -> str | None:
     """A model-supplied path, as a clean relative path inside the folder, or
     None if it points anywhere else."""
-    rel = str(rel or "").strip().replace("\\", "/").lstrip("/")
+    rel = str(rel or "").strip().replace("\\", "/")
+    if rel.startswith("/"):
+        return None
     if not rel or rel.startswith("~") or ":" in rel:
         return None
     parts = Path(rel).parts
@@ -1221,6 +1223,18 @@ def _blame(output: str, written: dict[str, str]) -> list[str]:
     return code[:4]
 
 
+def _replace_generated(folder: Path, rel: str, expected: str, new: str) -> bool:
+    """Best-effort optimistic concurrency check before each generated rewrite."""
+    safe = _safe_rel(folder, rel)
+    if safe is None:
+        return False
+    target = folder / safe
+    if not target.is_file() or _read_text(target) != expected:
+        return False
+    target.write_text(new, encoding="utf-8", newline="")
+    return True
+
+
 def _test_and_fix(folder: Path, written: dict[str, str], changes: list,
                   plan: dict, instruction: str, context: str, player,
                   stack: dict | None = None, originals: dict | None = None,
@@ -1233,7 +1247,7 @@ def _test_and_fix(folder: Path, written: dict[str, str], changes: list,
                                       static_problems, test_regressions)
     except Exception as e:
         _log(player, f"Testing unavailable: {str(e)[:120]}")
-        return {}
+        return {rel: "Validation unavailable; result unverified" for rel in written}
     stack = stack or detect_stack(folder)
     originals = originals or {}
     _update("testing")
@@ -1281,7 +1295,9 @@ def _test_and_fix(folder: Path, written: dict[str, str], changes: list,
             if why:
                 _log(player, f"Kept the previous {rel}: {why}.")
                 continue
-            (folder / rel).write_text(new, encoding="utf-8", newline="")
+            if not _replace_generated(folder, rel, written[rel], new):
+                problems[rel] = "File changed during generation; preserved"
+                continue
             written[rel] = new
             _update(file=rel, file_state="done")
     return problems
@@ -1403,6 +1419,13 @@ def _improve_folder(folder: Path, instruction: str, player=None) -> str:
             _update(file=rel, file_state="skipped")
             _log(player, f"Kept {rel} as it was — {why}.")
             continue
+        # Model generation can take minutes. Preserve intervening user edits.
+        checked_rel = _safe_rel(folder, rel)
+        unchanged = (target.is_file() and _read_text(target) == current) if c["action"] == "edit" else not target.exists()
+        if checked_rel is None or not unchanged:
+            _update(file=rel, file_state="skipped")
+            _log(player, f"Kept {rel}: file or path changed while generating.")
+            continue
         if c["action"] == "edit":
             dest = backup / rel
             dest.parent.mkdir(parents=True, exist_ok=True)
@@ -1441,7 +1464,9 @@ def _improve_folder(folder: Path, instruction: str, player=None) -> str:
         if why:
             _log(player, f"Kept the previous {rel} — {why}.")
         else:
-            (folder / rel).write_text(new, encoding="utf-8", newline="")
+            if not _replace_generated(folder, rel, written[rel], new):
+                _log(player, f"Kept {rel}: file changed during generation.")
+                continue
             written[rel] = new
         _update(file=rel, file_state="done")
     if not mismatched:
@@ -1466,7 +1491,9 @@ def _improve_folder(folder: Path, instruction: str, player=None) -> str:
             if why:
                 _log(player, f"Kept the previous {rel} — {why}.")
             else:
-                (folder / rel).write_text(new, encoding="utf-8", newline="")
+                if not _replace_generated(folder, rel, written[rel], new):
+                    _log(player, f"Kept {rel}: file changed during generation.")
+                    continue
                 written[rel] = new
             _update(file=rel, file_state="done")
     still_broken = [rel for rel, text in written.items() if _syntax_error(rel, text)]
@@ -1478,17 +1505,17 @@ def _improve_folder(folder: Path, instruction: str, player=None) -> str:
                             context, player, stack=stack, originals=texts,
                             baseline=baseline)
 
+    installed = {rel: text.encode("utf-8") for rel, text in written.items()}
+
     def restore() -> str:
+        # Refuse the whole undo if any file changed later; never silently clobber it.
+        for rel, data in installed.items():
+            if _safe_rel(folder, rel) is None or not (folder / rel).is_file() or (folder / rel).read_bytes() != data:
+                return f"Cannot restore: {rel} changed afterwards. Files preserved."
         for rel in edited:
-            try:
-                shutil.copy2(backup / rel, folder / rel)
-            except OSError:
-                pass
+            shutil.copy2(backup / rel, folder / rel)
         for rel in created:
-            try:
-                (folder / rel).unlink()
-            except OSError:
-                pass
+            (folder / rel).unlink()
         return f"Put '{folder.name}' back as it was before the change."
 
     try:
@@ -1631,7 +1658,7 @@ def dev_agent(
         why = _refusal(target)
         if why:
             return why
-        launch = lambda: _start_improve(folder, description, speak=speak, player=player)
+        launch = lambda: _start_improve(str(target), description, speak=speak, player=player)
         title = f"Allow coding agent to edit {target.name}?"
     else:
         language = str(p.get("language") or "python").strip()[:40]
