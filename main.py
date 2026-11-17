@@ -1674,6 +1674,38 @@ class JinxLive:
         return out
 
     async def _execute_tool(self, fc) -> types.FunctionResponse:
+        name = str(getattr(fc, "name", "unknown"))
+        started = time.monotonic()
+        response = None
+        try:
+            response = await self._execute_tool_impl(fc)
+        except Exception as exc:
+            try:
+                from core.audit import record_tool_call
+                record_tool_call("builtin", name, dict(getattr(fc, "args", {}) or {}),
+                                 f"status=failed reason={exc}",
+                                 (time.monotonic() - started) * 1000)
+            except Exception:
+                pass
+            raise
+        # Action/plugin registries record their own calls so dashboard dispatch
+        # is covered too. This wrapper records the core tools handled inline.
+        registries = (getattr(self, "_action_registry", None),
+                      getattr(self, "_plugin_registry", None))
+        registered = any(registry is not None and registry.has(name)
+                         for registry in registries)
+        if not registered:
+            try:
+                payload = getattr(response, "response", {})
+                result = payload.get("result", "unknown") if isinstance(payload, dict) else "unknown"
+                from core.audit import record_tool_call
+                record_tool_call("builtin", name, dict(getattr(fc, "args", {}) or {}), result,
+                                 (time.monotonic() - started) * 1000)
+            except Exception:
+                pass
+        return response
+
+    async def _execute_tool_impl(self, fc) -> types.FunctionResponse:
         name = fc.name
         args = dict(fc.args or {})
 

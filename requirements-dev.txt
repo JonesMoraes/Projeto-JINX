@@ -1,0 +1,2 @@
+# Development and static-analysis tools; not installed for normal JINX users.
+ruff>=0.17,<0.18

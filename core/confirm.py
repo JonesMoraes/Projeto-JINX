@@ -1,5 +1,5 @@
 """
-core/confirm.py — a confirmation the model cannot forge.
+core/confirm.py — asynchronous execution for user-requested actions.
 
 THE PROBLEM WITH THE OLD GATE
     computer_settings guarded shutdown and restart like this:
@@ -14,18 +14,12 @@ THE PROBLEM WITH THE OLD GATE
     coverage was two actions, so deleting files and switching off the WiFi the
     assistant is talking over went through with no gate at all.
 
-THE DESIGN HERE
-    The confirmation token is issued by the *interface*, never by the model:
-
-      1. An action calls `request(...)` with a callable that does the real work.
-      2. This module hands the UI a banner with CONFIRM / CANCEL and returns
-         IMMEDIATELY with a sentence for the model to say out loud.
-      3. If — and only if — the user presses CONFIRM, the UI calls `resolve()`,
-         which runs the stored callable off the Qt thread.
-
-    Nothing blocks. The model keeps talking while the banner is up, so this
-    costs no latency at all; in fact it is cheaper than the old gate, which
-    burned two tool round trips (reject, then re-call) on every shutdown.
+AUTONOMOUS EXECUTION
+    `request(...)` starts the action on a worker thread. The tool call returns
+    immediately and reports the result through the existing activity log.
+    Callers remain responsible for validating exact targets and verifying the
+    outcome. This module does not treat model-provided confirmation fields as
+    authorization.
 
 WHAT BELONGS HERE AND WHAT DOES NOT
     Only genuinely irreversible things. Anything that can be reversed should be
@@ -40,9 +34,8 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-# A pending confirmation is abandoned after this long. Chosen to outlast a
-# normal "hang on, let me look at the screen" pause without leaving a live
-# shutdown button sitting on the HUD for the rest of the day.
+# Kept for compatibility with the UI's resolve/hide signals. New requests no
+# longer create pending banners.
 TIMEOUT_SECONDS = 90.0
 
 
@@ -57,6 +50,7 @@ class _Pending:
 
 _pending: Optional[_Pending] = None
 _lock = threading.Lock()
+_running: set[str] = set()
 
 # Set once at startup by main.py. Signature: (title, detail) -> None for show,
 # and () -> None for hide. Both are marshalled onto the Qt thread by the UI.
@@ -80,36 +74,33 @@ def _log(msg: str) -> None:
 
 
 def request(key: str, title: str, detail: str, run: Callable[[], str]) -> str:
-    """Park an irreversible action behind the on-screen gate.
+    """Run a requested action asynchronously without an approval banner."""
+    from core import outcome
 
-    Returns the sentence the tool should hand back to the model — phrased as an
-    instruction so the assistant asks the user out loud in their own language,
-    rather than reading an English string verbatim."""
-    global _pending
-
-    if _show_cb is None:
-        # No interface bound (headless, or a very early call). Refuse rather
-        # than silently performing something irreversible.
-        return (f"I cannot confirm '{title}' right now because the interface is "
-                f"not available, so I have not done it.")
-
+    action_key = str(key or "action")
     with _lock:
-        _pending = _Pending(key=key, title=title, detail=detail,
-                            run=run, at=time.monotonic())
+        if action_key in _running:
+            return outcome.unverified(action_key, "The same operation is already running.")
+        _running.add(action_key)
+
+    def _worker() -> None:
+        try:
+            result = run() or "Action returned no result."
+            _log(f"SYS: Autonomous action — {title}. {result}")
+        except Exception as exc:
+            _log(f"ERR: Autonomous action — {title}. {type(exc).__name__}: {str(exc)[:240]}")
+        finally:
+            with _lock:
+                _running.discard(action_key)
 
     try:
-        _show_cb(title, detail)
-    except Exception as e:
+        threading.Thread(target=_worker, daemon=True,
+                         name=f"autonomous-{action_key}").start()
+    except Exception as exc:
         with _lock:
-            _pending = None
-        return f"Could not ask for confirmation: {e}. Nothing was done."
-
-    _log(f"SYS: Awaiting confirmation — {title}")
-    return (
-        f"[CONFIRMATION_PENDING] I have put a confirmation on screen for: {title}. "
-        f"Say ONE short sentence in the user's own language telling them you need "
-        f"them to confirm it on the HUD before you do it. Do not claim it is done."
-    )
+            _running.discard(action_key)
+        return outcome.failed(action_key, f"Could not start the operation: {type(exc).__name__}.")
+    return outcome.started(action_key, title=title)
 
 
 def resolve(accepted: bool) -> None:
@@ -152,7 +143,7 @@ def resolve(accepted: bool) -> None:
 
 
 def pending_title() -> str:
-    """'' when nothing is waiting. Lets an action avoid stacking two banners."""
+    """Compatibility hook; autonomous requests do not queue approval banners."""
     with _lock:
         if _pending is None:
             return ""

@@ -343,7 +343,7 @@ class PluginTest(unittest.TestCase):
 
     def wait(self):
         until = time.monotonic() + 2
-        while plugin._job and plugin._job["state"] in ("running", "preparing_confirmation") and time.monotonic() < until:
+        while plugin._job and plugin._job["state"] in ("running", "starting_send") and time.monotonic() < until:
             time.sleep(.005)
 
     def test_fast_async_dispatch_panel_and_speech_untrusted(self):
@@ -353,27 +353,26 @@ class PluginTest(unittest.TestCase):
         self.assertIn("status=started", result); self.assertEqual(plugin._job["state"], "done")
         self.assertIn("<<<UNTRUSTED", player.request_say.call_args.args[0])
 
-    def test_headless_send_never_posts(self):
-        with patch.object(api, "Client"), patch.object(api, "gmail_send") as send:
+    def test_headless_send_runs_without_hud_approval(self):
+        with patch.object(api, "Client"), patch.object(api, "gmail_send", return_value={"message_id": "headless"}) as send:
             plugin.run({"action": "gmail_send", "to": "a@example.com", "subject": "Hi", "body": "Draft"})
-            self.wait(); send.assert_not_called()
-        self.assertEqual(plugin._job["state"], "unverified")
+            self.wait(); send.assert_called_once()
+        self.assertEqual(plugin._job["state"], "done")
 
-    def test_model_confirmed_flag_does_not_send_cancel_safe(self):
+    def test_model_confirmed_flag_is_ignored_and_send_is_autonomous(self):
         player = Mock(); confirm.bind(player.show_confirm, player.hide_confirm)
-        with patch.object(api, "Client"), patch.object(api, "gmail_send") as send:
+        with patch.object(api, "Client"), patch.object(api, "gmail_send", return_value={"message_id": "abc"}) as send:
             plugin.run({"action": "gmail_send", "to": "a@example.com", "subject": "Hi", "body": "Draft", "confirmed": True}, player)
-            self.wait(); send.assert_not_called()
-            self.assertEqual(plugin._job["state"], "awaiting_confirmation")
-            confirm.resolve(False); send.assert_not_called()
+            self.wait(); send.assert_called_once()
+            player.show_confirm.assert_not_called()
             plugin.run({"action": "status"}, player)
-        self.assertEqual(plugin._job["state"], "confirmation_closed")
+        self.assertEqual(plugin._job["state"], "done")
 
-    def test_confirm_sends_once_and_reports_receipt(self):
+    def test_autonomous_send_runs_once_and_reports_receipt(self):
         player = Mock(); confirm.bind(player.show_confirm, player.hide_confirm)
         with patch.object(api, "Client"), patch.object(api, "gmail_send", return_value={"message_id": "abc", "sent_verified": True}) as send:
             plugin.run({"action": "gmail_send", "to": "a@example.com", "subject": "Hi", "body": "Draft"}, player)
-            self.wait(); confirm.resolve(True); confirm.resolve(True); self.wait()
+            self.wait()
             send.assert_called_once()
         self.assertEqual(plugin._job["state"], "done")
 

@@ -46,10 +46,10 @@ class ProcessTest(unittest.TestCase):
             self.assertEqual(manager.inspect_processes()[0]["pid"], 2)
             self.assertEqual(manager.inspect_processes(name="A")[0]["pid"], 1)
 
-    def test_close_only_registers_confirmation(self):
-        with patch.object(manager.confirm, "request", return_value="pending") as request:
+    def test_close_dispatches_autonomously(self):
+        with patch.object(manager.confirm, "request", return_value="status=started") as request:
             result = manager.process_manager({"action": "close", "pid": 50000, "confirmed": True})
-            self.assertEqual(result, "pending")
+            self.assertEqual(result, "status=started")
             request.assert_called_once()
             self.process.kill.assert_not_called()
             self.process.terminate.assert_not_called()
@@ -96,7 +96,7 @@ class ProcessTest(unittest.TestCase):
             gate.assert_not_called()
         self.process.kill.assert_not_called()
 
-    def test_force_still_waits_for_new_confirmation(self):
+    def test_force_dispatches_after_graceful_attempt(self):
         manager._attempts.add((50000, 10.))
         with patch.object(manager.confirm, "request", return_value="pending") as gate:
             self.assertEqual(manager.process_manager({"action": "force", "pid": 50000}), "pending")
@@ -122,16 +122,15 @@ class ProcessTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 manager._targets(name="document title")
 
-    def test_real_gate_cancel_does_not_execute(self):
-        previous = (confirm._show_cb, confirm._hide_cb, confirm._log_cb)
-        confirm.bind(lambda *args: None, lambda: None)
-        try:
-            self.assertIn("CONFIRMATION_PENDING", manager.process_manager({"action": "close", "pid": 50000}))
-            confirm.resolve(False)
-            self.process.kill.assert_not_called()
-            self.process.terminate.assert_not_called()
-        finally:
-            confirm.bind(*previous)
+    def test_close_runs_asynchronously_without_hud_confirmation(self):
+        finished = threading.Event()
+        with patch.object(manager, "_perform", side_effect=lambda *_args, **_kwargs:
+                          (finished.set(), "status=done action=process_close")[1]) as perform:
+            result = manager.process_manager({"action": "close", "pid": 50000})
+            self.assertIn("status=started", result)
+            self.assertTrue(finished.wait(2))
+            perform.assert_called_once()
+        self.assertEqual(confirm.pending_title(), "")
 
 
 if __name__ == "__main__":

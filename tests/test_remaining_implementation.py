@@ -32,6 +32,7 @@ class CircuitGuideTests(unittest.TestCase):
         result = circuit_guide.guide("3.3V", "bare", "Pro Mini 3.3V/8MHz")
         self.assertTrue(any("DHT11 pin 3" in wire for wire in result["wires"]))
         self.assertIn("FTDI 5 V TX", result["code"])
+        self.assertIn("#include <math.h>", result["code"])
         self.assertIn("No firmware was written", result["warning"])
         # Unknown # directives made the delivered Arduino sketch uncompilable.
         for line in result['code'].splitlines():
@@ -102,6 +103,12 @@ class UpdaterTests(unittest.TestCase):
     def test_production_marker_and_backup_root_match_writer(self):
         self.assertEqual(boot_sentry.UPDATE_STATE, updater.ROOT / '.jinx_update')
         self.assertEqual(boot_sentry.UPDATE_MARKER, boot_sentry.UPDATE_STATE / 'pending-update.json')
+
+    def test_update_backup_tag_cannot_escape_backup_directory(self):
+        self.assertEqual(update_apply._backup_tag('release-2026.11'), 'release-2026.11')
+        for tag in ('../outside', r'..\\outside', '/absolute', '', '.', '..', 'release/tag'):
+            with self.assertRaises(ValueError):
+                update_apply._backup_tag(tag)
 
     def test_healthy_update_clears_the_actual_marker(self):
         with tempfile.TemporaryDirectory() as folder:

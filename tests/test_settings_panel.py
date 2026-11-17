@@ -6,9 +6,9 @@ import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
-from PyQt6.QtCore import QCoreApplication, QEvent
+from PyQt6.QtCore import QCoreApplication, QEvent, Qt
 from PyQt6.QtWidgets import QApplication, QLabel, QPushButton, QWidget, QComboBox
-from gui.settings_panel import SettingsDialog, CATEGORIES
+from gui.settings_panel import SettingsDialog, CATEGORIES, NAV_GROUPS
 from gui.settings_themes import SETTINGS_THEMES, settings_theme_id
 from gui.theme import current_palette
 from memory import config_manager as config
@@ -75,6 +75,12 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(len(self.dialog._theme_buttons), 5)
         self.assertTrue(self.dialog.findChildren(QWidget, 'SettingsHeader'))
         self.assertTrue(self.dialog.findChildren(QWidget, 'SettingsCard'))
+        from gui.app_icon_picker import AppIconPicker
+        icon_picker = self.dialog.findChild(AppIconPicker)
+        self.assertIsNotNone(icon_picker)
+        self.assertTrue(icon_picker.isHidden())
+        self.button('Alterar ícone').click()
+        self.assertTrue(icon_picker.isVisible())
         styles = []
         for key in SETTINGS_THEMES:
             self.dialog.select_theme(key)
@@ -115,6 +121,66 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(self.dialog.theme_id, 'cyber_hud')
         for value in (None, {}, [], 'missing'):
             self.assertEqual(settings_theme_id(value), 'cyber_hud')
+
+    def test_settings_window_fits_screen_and_navigation_is_grouped(self):
+        screen = self.dialog.screen()
+        if screen is not None:
+            available = screen.availableGeometry()
+            self.assertLessEqual(self.dialog.width(), available.width())
+            self.assertLessEqual(self.dialog.height(), available.height())
+        all_pages = {'home', *(key for key, *_ in CATEGORIES)}
+        self.assertFalse(hasattr(self.dialog, 'header_tabs'))
+        for group, pages in NAV_GROUPS:
+            self.dialog._show_group(group)
+            self.assertIn(self.dialog._current, pages)
+            self.assertEqual(set(self.dialog._nav_items), all_pages)
+            self.assertTrue(all(not item.isHidden()
+                                for item in self.dialog._nav_items.values()))
+            self.assertIn(group, self.dialog._nav_headers)
+
+    def test_settings_home_and_functional_tiles(self):
+        from PyQt6.QtWidgets import QListWidget
+        self.dialog._show_group('home')
+        self.assertEqual(self.dialog._current, 'home')
+        self.assertFalse(self.dialog.navigation.isHidden())
+        tiles = {tile.accessibleName(): tile for tile in
+                 self.dialog.findChildren(QPushButton, 'SettingsHomeTile')}
+        self.assertEqual(len(tiles), 9)
+        self.app.processEvents()
+        self.assertIs(self.dialog.stack.currentWidget(), self.dialog._home_page)
+        self.assertTrue(all(tile.isVisible() and tile.width() > 0 and tile.height() > 0
+                            for tile in tiles.values()),
+                        {name: (tile.isVisible(), tile.width(), tile.height())
+                         for name, tile in tiles.items()})
+        self.assertTrue(all(tile.height() >= 90 for tile in tiles.values()),
+                        {name: tile.height() for name, tile in tiles.items()})
+        self.dialog.resize(1100, self.dialog.height())
+        self.app.processEvents()
+        self.assertEqual(len({tile.x() for tile in tiles.values()}), 3)
+        self.dialog.resize(760, self.dialog.height())
+        self.app.processEvents()
+        self.assertEqual(len({tile.x() for tile in tiles.values()}), 2)
+        tiles['Aparência'].click()
+        self.assertEqual(self.dialog._current, 'appearance')
+        self.assertFalse(self.dialog.navigation.isHidden())
+        self.dialog.show_category('integrations')
+        self.assertIsInstance(self.dialog.plugin_list, QListWidget)
+        self.assertEqual(self.dialog.plugin_list.count(), 1)
+        self.dialog.plugin_search.setText('sem resultado')
+        self.assertTrue(self.dialog.plugin_list.item(0).isHidden())
+        self.dialog.plugin_search.clear()
+        self.assertFalse(self.dialog.plugin_list.item(0).isHidden())
+
+    def test_remote_https_setting_is_saved_without_reconfiguring_live_process(self):
+        self.dialog.show_category('security')
+        from PyQt6.QtWidgets import QCheckBox
+        toggle = self.dialog.findChild(QCheckBox, 'RemoteHttpsToggle')
+        self.assertIsNotNone(toggle)
+        toggle.setChecked(False)
+        self.assertFalse(config.load_api_keys()['dashboard_https'])
+        self.assertIn('Reinicie', self.dialog.status.text())
+        toggle.setChecked(True)
+        self.assertTrue(config.load_api_keys()['dashboard_https'])
 
     def test_every_theme_click_updates_palette_without_changing_saved_color_or_credentials(self):
         from gui.theme import C
@@ -167,6 +233,8 @@ class SettingsTests(unittest.TestCase):
         self.assertIn('Não foi possível', self.dialog.status.text())
 
     def test_search_accents_plugin_names_empty_and_recovery(self):
+        self.dialog.search.setText('inicio')
+        self.assertEqual(self.dialog._current, 'home')
         for query, category in (('aparencia', 'appearance'), ('microfone', 'audio'),
                                 ('conexao de teste', 'integrations')):
             self.dialog.search.setText(query)
@@ -175,9 +243,12 @@ class SettingsTests(unittest.TestCase):
         self.assertIs(self.dialog.stack.currentWidget(), self.dialog.empty)
         self.dialog.search.clear()
         self.assertIsNot(self.dialog.stack.currentWidget(), self.dialog.empty)
-        self.assertFalse(any(self.dialog.navigation.item(i).isHidden() for i in range(len(CATEGORIES))))
+        visible = {key for key, item in self.dialog._nav_items.items()
+                   if not item.isHidden()}
+        self.assertEqual(visible, {'home', *(key for key, *_ in CATEGORIES)})
 
     def test_drafts_survive_navigation_and_identity_save_uses_runtime_callback(self):
+        self.dialog.show_category('general')
         self.dialog.assistant_name.setText('JINX Nova')
         self.dialog.user_name.setText('Thomas')
         self.dialog.show_category('appearance')
@@ -240,6 +311,13 @@ class SettingsTests(unittest.TestCase):
                 labels = self.dialog.stack.currentWidget().findChildren(QLabel)
                 self.assertFalse(any('Não foi possível abrir' in label.text() for label in labels), key)
                 self.assertEqual(self.dialog.stack.currentWidget().horizontalScrollBar().maximum(), 0, key)
+                if key == 'ai':
+                    from gui.providers_panel import ProvidersOverlay
+                    panel = self.dialog.findChild(ProvidersOverlay)
+                    self.assertIsNone(panel._scroll)
+                    self.assertTrue(all(panel._body_lay.itemAt(index).widget().isVisible()
+                                        for index in range(panel._body_lay.count() - 1)),
+                                    'Os blocos de IA devem aparecer na página.')
             self.dialog.show_category('ai')
             for theme in SETTINGS_THEMES:
                 self.dialog.select_theme(theme)

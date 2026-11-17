@@ -9,6 +9,18 @@ import runtime_manager as runtime
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_gui_launcher_prefers_matching_windowless_interpreter(self):
+        with tempfile.TemporaryDirectory() as folder:
+            scripts = Path(folder) / 'Scripts'
+            scripts.mkdir()
+            python = scripts / 'python.exe'
+            pythonw = scripts / 'pythonw.exe'
+            python.touch()
+            pythonw.touch()
+            self.assertEqual(runtime.gui_interpreter(python), pythonw)
+            pythonw.unlink()
+            self.assertEqual(runtime.gui_interpreter(python), python)
+
     def test_migration_keeps_existing_extras_without_enabling_gesture_models(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

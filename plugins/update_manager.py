@@ -1,4 +1,4 @@
-"""Opt-in release checks and user-confirmed staged updates."""
+"""Opt-in release checks and verified staged updates."""
 from core import updater, outcome
 
 
@@ -8,7 +8,7 @@ def _install(_values):
 
 
 PLUGIN = {"name": "update_manager",
-    "description": "Manage opt-in updates. Actions: status, enable, disable, check a stable GitHub release, stage its SHA-256 verified ZIP, or apply a staged version after explicit HUD confirmation. No background polling or unattended install.",
+    "description": "Manage opt-in updates. Actions: status, enable, disable, check a stable GitHub release, stage its SHA-256 verified ZIP, or apply a staged version. No background polling or unattended install.",
     "parameters": {"type": "OBJECT", "properties": {
         "action": {"type": "STRING", "enum": ["status", "enable", "disable", "check", "stage", "apply"]},
         "stage_directory": {"type": "STRING"}}, "required": ["action"]}}
@@ -31,11 +31,11 @@ def run(parameters, player=None, session_memory=None):
             return outcome.unverified("updater_stage", "Release asset was hash-checked and staged; no files replaced", **result)
         if action == "apply":
             if player is None or not callable(getattr(player, "request_close", None)):
-                return outcome.failed("updater", "Open the desktop HUD to confirm application")
+                return outcome.failed("updater", "Open the desktop HUD to restart and apply the staged update")
             from core import confirm as confirmation
             if confirmation.pending_title(): return outcome.failed("updater", "Another confirmation is pending")
             folder = p.get("stage_directory", "")
-            # Validate the path before showing a confirmation dialog.
+            # Validate the staged path before applying an update.
             candidate = __import__("pathlib").Path(folder).resolve(strict=True)
             if updater.STATE.resolve() not in candidate.parents or not (candidate / "update-manifest.json").is_file():
                 return outcome.failed("updater", "Choose a valid staged release")

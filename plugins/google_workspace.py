@@ -9,7 +9,7 @@ from core import confirm, outcome
 from core import google_workspace as api
 
 PLUGIN = {"name": "google_workspace",
-    "description": "Your configured Google account: gmail_list/read/send (exact email, subject, body; sending requires local HUD confirmation), calendar_list/sync with local agenda, drive_list/create_text. Runs asynchronously; results arrive in panel/voice, status gives last job. Never infer email addresses. OAuth only in settings. Drive is limited to app-created/selected files. Sync is manual, preserves conflicts, omits all-day/recurring events and never automatically deletes remote events.",
+    "description": "Your configured Google account: gmail_list/read/send (send uses the exact email, subject and body supplied), calendar_list/sync with local agenda, drive_list/create_text. Runs asynchronously; results arrive in panel/voice, status gives last job. Never infer email addresses. OAuth only in settings. Drive is limited to app-created/selected files. Sync is manual, preserves conflicts, omits all-day/recurring events and never automatically deletes remote events.",
     "parameters": {"type": "OBJECT", "properties": {
         "action": {"type": "STRING", "enum": ["status", "gmail_list", "gmail_read", "gmail_send", "calendar_list", "calendar_sync", "drive_list", "drive_create_text"]},
         **{k: {"type": "STRING"} for k in ("id", "query", "to", "subject", "body", "name", "text")},
@@ -73,8 +73,6 @@ def _work(job_id, parameters, player):
             result = api.gmail_read(client, parameters.get("id"))
         elif action == "gmail_send":
             draft, preview = api.mail_draft(parameters)
-            if player is None or not callable(getattr(player, "show_confirm", None)):
-                raise api.GoogleError("Envio exige HUD aberto para revisão / Sending requires open HUD for review")
             if confirm.pending_title():
                 raise api.GoogleError("Há outra confirmação pendente / Another confirmation is pending")
             _notify(player, "show_content", "Revisar e-mail / Review email", preview)
@@ -88,13 +86,11 @@ def _work(job_id, parameters, player):
                 except Exception as exc:
                     _error(job_id, exc, player)
                     return outcome.unverified("gmail_send", "Confira Enviados antes de repetir / Check Sent before retry")
-            _set(job_id, state="preparing_confirmation", confirmation_title=title, confirmation_at=time.monotonic())
+            _set(job_id, state="starting_send", confirmation_title=title, confirmation_at=time.monotonic())
             response = confirm.request("google-mail-" + job_id, title, preview[:300], send)
-            if not response.startswith("[CONFIRMATION_PENDING]"):
-                raise api.GoogleError("Confirmação local indisponível; nada enviado / Local confirmation unavailable; nothing sent")
             with _lock:
-                if _job and _job["id"] == job_id and _job["state"] == "preparing_confirmation":
-                    _job["state"] = "awaiting_confirmation"
+                if _job and _job["id"] == job_id and _job["state"] == "starting_send":
+                    _job["state"] = "running"
             _notify(player, "request_say", response)
             return
         elif action == "calendar_list":
@@ -129,10 +125,6 @@ def run(parameters, player=None, session_memory=None):
         parameters = copy.deepcopy(parameters or {})
         action = parameters.get("action", "status")
         with _lock:
-            if _job and _job["state"] == "awaiting_confirmation":
-                if (time.monotonic() - _job["confirmation_at"] > confirm.TIMEOUT_SECONDS or
-                        confirm.pending_title() != _job["confirmation_title"]):
-                    _job.update(state="confirmation_closed", result={"note": "Confirmação fechada/expirada; envio não confirmado / Confirmation closed/expired; send not confirmed"})
             if action == "status":
                 if not _job:
                     return outcome.done("google_status", state="idle")
@@ -140,7 +132,7 @@ def run(parameters, player=None, session_memory=None):
                 return outcome.done("google_status", data=outcome.untrusted("google-status", json.dumps(data, ensure_ascii=False)[:3500]))
             if action not in PLUGIN["parameters"]["properties"]["action"]["enum"]:
                 raise ValueError()
-            if _job and _job["state"] in ("running", "preparing_confirmation", "awaiting_confirmation"):
+            if _job and _job["state"] in ("running", "starting_send"):
                 return outcome.unverified("google_workspace", "Operação em andamento; consulte status / Operation in progress; check status", job_id=_job["id"])
             job_id = uuid.uuid4().hex[:10]
             _job = {"id": job_id, "action": action, "state": "running"}

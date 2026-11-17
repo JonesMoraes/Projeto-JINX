@@ -23,6 +23,7 @@ def guide(board_voltage: str, sensor_form: str, board_variant: str):
     code = '''// Install the Adafruit DHT sensor library through Arduino Library Manager.
 // Confirm the exact board voltage and sensor pin order before powering.
 // Never connect an FTDI 5 V TX signal to a 3.3 V Pro Mini RX pin.
+#include <math.h>
 #include <DHT.h>
 #define DHTPIN 4
 #define DHTTYPE DHT11

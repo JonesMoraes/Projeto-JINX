@@ -1987,16 +1987,16 @@ class MainWindow(QMainWindow):
         self._close_setup()
         self._open_settings()
 
-    def _open_settings(self, category="general"):
-        from gui.settings_panel import SettingsDialog, CATEGORIES
+    def _open_settings(self, category="home"):
+        from gui.settings_panel import SettingsDialog
         dialog = getattr(self, "_settings_dialog", None)
         if dialog is None:
             dialog = SettingsDialog(self)
             self._settings_dialog = dialog
-        for index, (key, *_rest) in enumerate(CATEGORIES):
-            if key == category:
-                dialog.navigation.setCurrentRow(index)
-                break
+        if category == 'home':
+            dialog._show_group('home')
+        elif category in dialog._nav_items:
+            dialog.navigation.setCurrentItem(dialog._nav_items[category])
         dialog._apply_theme()  # Resync Cyber HUD with the live app palette.
         dialog.show()
         dialog.raise_()

@@ -82,7 +82,7 @@ def settings_stylesheet(theme_id, theme, font_css):
         QWidget#SettingsHeader {{
             background: {_gradient(s.header, s.background_end, diagonal=True)};
             border: 1px solid {s.border};
-            border-radius: {s.radius}px;
+            border-radius: {min(s.radius, 7)}px;
         }}
         QLabel#SettingsBrand {{
             color: {s.text};
@@ -92,14 +92,43 @@ def settings_stylesheet(theme_id, theme, font_css):
             color: {s.muted};
         }}
         QLabel#SettingsHeading {{ color: {s.text}; font-weight: 700; }}
+        QPushButton#SettingsWindowClose {{
+            background: transparent;
+            color: {s.muted};
+            border: 1px solid transparent;
+            border-radius: 3px;
+            padding: 0;
+            font-weight: 700;
+        }}
+        QPushButton#SettingsWindowClose:hover {{
+            color: {s.text};
+            background: #7c2430;
+            border-color: #d24a5b;
+        }}
         QWidget#SettingsPage, QScrollArea, QScrollArea > QWidget,
         QStackedWidget {{ background: transparent; border: none; }}
+        QWidget#SettingsHome {{ background: transparent; }}
+        QPushButton#SettingsHomeTile {{
+            background: {card};
+            color: {s.text};
+            border: 1px solid {s.border};
+            border-radius: {min(s.radius, 12)}px;
+            text-align: left;
+            padding: 8px 12px;
+            min-height: 86px;
+        }}
+        QPushButton#SettingsHomeTile:hover {{
+            background: {selected};
+            border: 1px solid {s.accent};
+        }}
+        QLabel#SettingsHomeTileTitle {{ color: {s.text}; font-weight: 700; }}
+        QLabel#SettingsHomeTileDescription {{ color: {s.muted}; }}
         QListWidget#SettingsNavigation {{
             background: {_gradient(s.rail, s.background_end)};
             color: {s.text};
             border: 1px solid {s.border};
             border-radius: {s.radius}px;
-            padding: 10px 7px;
+            padding: 6px 5px;
             outline: none;
         }}
         QListWidget#SettingsNavigation::item {{
@@ -115,6 +144,24 @@ def settings_stylesheet(theme_id, theme, font_css):
             background: {selected};
             border: 1px solid {s.strong_border};
             color: {s.accent if is_light else s.text};
+        }}
+        QListWidget#SettingsPluginList {{
+            background: {s.rail};
+            color: {s.text};
+            border: 1px solid {s.border};
+            border-radius: {min(s.radius, 10)}px;
+            padding: 5px;
+            outline: none;
+        }}
+        QListWidget#SettingsPluginList::item {{
+            padding: 8px 9px;
+            margin-bottom: 2px;
+            border-radius: {min(s.radius, 8)}px;
+        }}
+        QListWidget#SettingsPluginList::item:hover {{ background: {s.surface}; }}
+        QListWidget#SettingsPluginList::item:selected {{
+            background: {selected};
+            border: 1px solid {s.strong_border};
         }}
         QWidget#SettingsCard {{
             background: {card};

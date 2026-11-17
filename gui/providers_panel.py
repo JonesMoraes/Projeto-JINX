@@ -97,9 +97,9 @@ class ProvidersOverlay(_HudOverlay):
     # Which provider fills each slot, and what the slot is FOR — in the words
     # somebody configuring it would use, not the words the code uses.
     _SLOTS = (
-        ("stt", "①", "ESCUTA",  "Transforma sua fala em texto." ),
-        ("llm", "②", "RACIOCÍNIO", "Interpreta, decide e usa suas ferramentas."),
-        ("tts", "③", "FALA", "Lê a resposta em voz alta."),
+        ("stt", "1", "Reconhecer sua voz", "Transforma o que você diz em texto."),
+        ("llm", "2", "Gerar respostas", "Escolhe o modelo que responde e executa comandos."),
+        ("tts", "3", "Falar as respostas", "Escolhe a voz que você ouve."),
     )
 
     def __init__(self, parent=None):
@@ -156,19 +156,19 @@ class ProvidersOverlay(_HudOverlay):
                 border-radius: 8px;
             }}
         """)
-        self.setFixedWidth(self._OW)
+        self.setMinimumWidth(self._OW)
 
         outer = QVBoxLayout(self)
+        self._outer_layout = outer
         outer.setContentsMargins(22, 18, 22, 18)
         outer.setSpacing(10)
 
-        title = QLabel("🔌  MOTOR DE IA  E  PROVEDORES")
+        title = QLabel("Como a JINX conversa")
         title.setFont(hud_font(13, QFont.Weight.Bold))
         title.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         outer.addWidget(title)
 
-        sub = QLabel("Escolha o que alimenta a conversa. "
-                     "Gemini é o padrão e não precisa de configuração.")
+        sub = QLabel("Escolha o modo de conversa. Você pode trocar depois.")
         sub.setWordWrap(True)
         sub.setFont(hud_font(8))
         sub.setStyleSheet(f"color: {C.TEXT_DIM}; background: transparent;")
@@ -181,15 +181,12 @@ class ProvidersOverlay(_HudOverlay):
         self._mode = get_provider_mode()
         cards = QHBoxLayout(); cards.setSpacing(10)
         self._card_gemini = self._mode_card(
-            "☁  GEMINI AO VIVO",
-            "Uma conexão reúne sua voz, a voz do JINX, a transcrição e as "
-            "ferramentas. É a opção mais rápida — cerca de meio segundo até "
-            "a primeira resposta.",
+            "Gemini ao vivo · recomendado",
+            "Mais simples para começar. Voz, respostas e comandos usam a conexão Gemini.",
             "gemini")
         self._card_local = self._mode_card(
-            "🖥  MINHA CONFIGURAÇÃO",
-            "Escolha como o JINX ouve, pensa e fala. Pode funcionar totalmente "
-            "neste computador, sem enviar dados para fora. É mais lento: de 1,5 a 4 segundos.",
+            "Configuração própria",
+            "Escolha serviços locais ou de outras empresas para voz, respostas e fala.",
             "pipeline")
         cards.addWidget(self._card_gemini)
         cards.addWidget(self._card_local)
@@ -263,6 +260,28 @@ class ProvidersOverlay(_HudOverlay):
         row.addWidget(close, 1)
         outer.addLayout(row)
         self._refresh_cards()
+
+    def set_settings_embedded(self) -> None:
+        """Use the settings page's scroll area instead of nesting another one."""
+        if getattr(self, '_settings_embedded', False):
+            return
+        self._settings_embedded = True
+        self.setMinimumWidth(0)
+        self.setMaximumWidth(16777215)
+        if self._scroll is None:
+            return
+        index = self._outer_layout.indexOf(self._scroll)
+        self._scroll.takeWidget()
+        self._outer_layout.removeWidget(self._scroll)
+        self._scroll.hide()
+        self._scroll.setParent(None)
+        self._scroll.deleteLater()
+        self._scroll = None
+        self._body.setParent(self)
+        if index >= 0:
+            self._outer_layout.insertWidget(index, self._body, 1)
+        else:
+            self._outer_layout.insertWidget(3, self._body, 1)
 
     # ── pieces ───────────────────────────────────────────────────────────────
     def _mode_card(self, title: str, body: str, value: str) -> QPushButton:
@@ -622,23 +641,22 @@ class ProvidersOverlay(_HudOverlay):
         else:
             w, lay = self._box([])
             lay.addWidget(self._label(
-                "Não há nada para configurar. Sua voz vai para o Gemini e volta "
-                "como fala pela mesma conexão, junto com a transcrição e as "
-                "chamadas de ferramentas.", 8, C.TEXT_DIM))
-            lay.addWidget(self._label(
-                "Escolha MINHA CONFIGURAÇÃO acima para executar tudo no seu "
-                "computador ou usar o modelo de outra empresa.", 7, C.TEXT_DIM))
+                "O Gemini cuida da conversa, da transcrição e dos comandos. "
+                "Para escolher outros serviços, selecione Configuração própria acima.",
+                8, C.TEXT_DIM))
             self._body_lay.addWidget(w)
 
         self._body_lay.addWidget(self._sidecar_box_widget())
         self._body_lay.addWidget(self._coding_box_widget())
         self._body_lay.addStretch(1)
+        for index in range(self._body_lay.count()):
+            widget = self._body_lay.itemAt(index).widget()
+            if widget is not None:
+                widget.show()
         self._update_footer()
 
     def _slot_box(self, slot: str, num: str, name: str, what: str) -> QWidget:
-        name = {"HEARING": "ÁUDIO DE ENTRADA", "THINKING": "RACIOCÍNIO",
-                "SPEAKING": "ÁUDIO DE SAÍDA"}.get(name, name)
-        head = self._label(f"{num}  {name}", 9, C.PRI, bold=True)
+        head = self._label(f"Etapa {num} · {name}", 9, C.PRI, bold=True)
         w, lay = self._box([head, self._label(what, 7, C.TEXT_DIM)])
 
         def fmt(entry, decl):
@@ -853,13 +871,11 @@ class ProvidersOverlay(_HudOverlay):
         QTimer.singleShot(0, self._rebuild_body)
 
     def _sidecar_box_widget(self) -> QWidget:
-        head = self._label("⚡  SOLICITAÇÕES EM SEGUNDO PLANO", 9, C.PRI, bold=True)
+        head = self._label("Tarefas de texto", 9, C.PRI, bold=True)
         w, lay = self._box([head])
         lay.addWidget(self._label(
-            "Ler um documento, analisar a tela ou escrever código — são tarefas "
-            "do assistente, separadas da conversa. Elas usam a cota de texto do "
-            "Gemini, que pode acabar antes da cota de voz. Usar outro serviço "
-            "nessas tarefas não muda o que você ouve.",
+            "Usado para resumir documentos, analisar imagens ou pesquisar. "
+            "Essa escolha não muda a voz nem o modelo da conversa.",
             7, C.TEXT_DIM))
 
         # Read the stored choice BEFORE the box exists. The first version asked
@@ -873,15 +889,14 @@ class ProvidersOverlay(_HudOverlay):
             return f"{mark}  Usar {entry['label']} como alternativa"
 
         self._sidecar_combo = self._service_combo(
-            "llm", ("Somente Gemini  —  como sempre", ""), fmt)
+            "llm", ("Usar apenas o Gemini", ""), fmt)
         self._select(self._sidecar_combo, sid)
         self._sidecar_combo.currentIndexChanged.connect(self._sidecar_changed)
         lay.addWidget(self._sidecar_combo)
 
         self._first_combo = self._combo()
-        self._first_combo.addItem("Tentar o Gemini primeiro  —  mais rápido", "after")
-        self._first_combo.addItem(
-            "Tentar o outro primeiro  —  mantém mais dados no seu computador", "before")
+        self._first_combo.addItem("Tentar o Gemini primeiro (mais rápido)", "after")
+        self._first_combo.addItem("Tentar outro serviço primeiro (mais privacidade)", "before")
         self._first_combo.setCurrentIndex(1 if self._sidecar_first else 0)
         lay.addWidget(self._first_combo)
 
@@ -908,11 +923,10 @@ class ProvidersOverlay(_HudOverlay):
         whole source file at a time. Whatever is picked is tried FIRST for code,
         with Gemini behind it, so a service having a bad day still produces a
         project instead of nothing."""
-        head = self._label("🛠  PROGRAMAÇÃO", 9, C.PRI, bold=True)
+        head = self._label("Assistente de programação", 9, C.PRI, bold=True)
         w, lay = self._box([head])
         lay.addWidget(self._label(
-            "O modelo que planeja, escreve e corrige projetos quando você pede "
-            "uma criação. Os projetos são salvos em Desktop/JinxProjects.",
+            "Escolha o serviço usado quando você pedir para criar ou corrigir um projeto.",
             7, C.TEXT_DIM))
 
         sid = self._coding
@@ -924,7 +938,7 @@ class ProvidersOverlay(_HudOverlay):
             return f"{mark}  Programar com {entry['label']}{star}"
 
         self._coding_combo = self._service_combo(
-            "llm", ("Mesmo das solicitações em segundo plano", ""), fmt)
+            "llm", ("Usar o mesmo serviço das tarefas de texto", ""), fmt)
         # The sponsor's model sits directly under the default, where it is the
         # first real choice anybody sees — not buried twelfth in the list.
         for i in range(self._coding_combo.count()):
@@ -940,14 +954,14 @@ class ProvidersOverlay(_HudOverlay):
 
         if not sid:
             lay.addWidget(self._label(
-                "O código será escrito pelo modelo das solicitações em segundo plano.",
+                "O código será escrito pelo serviço selecionado em Tarefas de texto.",
                 7, C.TEXT_DIM))
         elif sid == self._sidecar:
             lay.addWidget(self._label(
-                "Usa as configurações de SOLICITAÇÕES EM SEGUNDO PLANO.", 7, C.TEXT_DIM))
+                "Usa o serviço selecionado em Tarefas de texto.", 7, C.TEXT_DIM))
         elif self._mode == "pipeline" and sid == self._pipe.get("llm"):
             lay.addWidget(self._label(
-                "Usa o modelo escolhido em ② RACIOCÍNIO.", 7, C.TEXT_DIM))
+                "Usa o mesmo modelo escolhido em Gerar respostas.", 7, C.TEXT_DIM))
         else:
             self._fields_into(lay, "llm", sid)
         return w
@@ -977,10 +991,9 @@ class ProvidersOverlay(_HudOverlay):
             return
         missing = [name for slot, _n, name, _w in self._SLOTS
                    if not self._pipe.get(slot)]
-        if "THINKING" in missing:
+        if "Gerar respostas" in missing:
             self._footer.setText(
-                "⚠  ② RACIOCÍNIO não está configurado — sem ele, o assistente "
-                "usará o Gemini Live e informará isso no registro.")
+                "Escolha um serviço em Gerar respostas. Sem ele, a conversa usará o Gemini Live.")
         elif missing:
             words = " e ".join(f"{m.lower()}" for m in missing)
             self._footer.setText(

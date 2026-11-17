@@ -223,8 +223,8 @@
 
   <script>
     // ── Auth — bearer token ───────────────────────────────────────────────────
-    const _authToken  = sessionStorage.getItem('jinx_token');
-    const _sessionKey = sessionStorage.getItem('jinx_key');
+    let _authToken  = sessionStorage.getItem('jinx_token');
+    let _sessionKey = sessionStorage.getItem('jinx_key');
 
     if (!_authToken) {
       location.replace('/login');
@@ -341,21 +341,98 @@
     const stTxt = document.getElementById('st');
     const wake  = document.getElementById('wake');
 
-    const _wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
-    const _wsUrl   = `${_wsProto}://${location.host}/ws?token=${encodeURIComponent(_authToken)}`;
-    const ws       = new WebSocket(_wsUrl);
+    let ws = null;
+    let _recoveringSession = false;
+    let _reconnectDelay = 1000;
 
-    ws.onopen    = () => { sys('Sessão remota ativa.'); toast('Conectado ao JINX'); };
-    ws.onclose   = () => sys('Conexão perdida — atualize a página para reconectar.');
-    ws.onerror   = () => sys('Erro de conexão.');
-    ws.onmessage = (e) => {
+    function _setEncryptionState(enabled) {
+      const badge = document.getElementById('enc');
+      badge.className = enabled ? 'enc-badge on' : 'enc-badge off';
+      badge.textContent = enabled ? 'AES-GCM' : 'SEM CRIPTOGRAFIA';
+    }
+
+    async function _waitForLoginPage() {
+      while (true) {
+        try {
+          const response = await fetch('/login', { cache: 'no-store' });
+          if (response.ok) { location.replace('/login'); return; }
+        } catch (_) { /* JINX may still be restarting. */ }
+        await new Promise(resolve => setTimeout(resolve, 2500));
+      }
+    }
+
+    async function _restorePairedSession() {
+      if (_recoveringSession) return;
+      _recoveringSession = true;
+      const deviceToken = localStorage.getItem('jinx_device_token');
+      if (!deviceToken) {
+        sys('A sessão terminou. Aguardando o JINX para entrar novamente…');
+        _recoveringSession = false;
+        await _waitForLoginPage();
+        return;
+      }
+      sys('Reconectando e restaurando o pareamento salvo…');
+      while (true) {
+        try {
+          const response = await fetch('/api/device-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            cache: 'no-store',
+            body: JSON.stringify({ device_token: deviceToken }),
+          });
+          const data = await response.json().catch(() => ({}));
+          if (response.ok && data.ok && data.token && data.key) {
+            _authToken = data.token;
+            _sessionKey = data.key;
+            sessionStorage.setItem('jinx_token', _authToken);
+            sessionStorage.setItem('jinx_key', _sessionKey);
+            _setEncryptionState(await _initCrypto(_sessionKey));
+            _recoveringSession = false;
+            _reconnectDelay = 1000;
+            _connectSocket();
+            return;
+          }
+          if (response.status === 401) {
+            localStorage.removeItem('jinx_device_token');
+            _recoveringSession = false;
+            sys('Este pareamento foi revogado. Entre novamente com uma nova chave.');
+            await _waitForLoginPage();
+            return;
+          }
+        } catch (_) { /* Keep the device token and retry after a network failure. */ }
+        await new Promise(resolve => setTimeout(resolve, _reconnectDelay));
+        _reconnectDelay = Math.min(10000, Math.round(_reconnectDelay * 1.7));
+      }
+    }
+
+    function _connectSocket() {
+      if (!_authToken) { _restorePairedSession(); return; }
+      const _wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
+      const socket = new WebSocket(`${_wsProto}://${location.host}/ws?token=${encodeURIComponent(_authToken)}`);
+      ws = socket;
+      socket.onopen = () => {
+        if (socket !== ws) return;
+        _reconnectDelay = 1000;
+        sys('Sessão remota ativa.');
+        toast('Conectado ao JINX');
+      };
+      socket.onclose = () => {
+        if (socket !== ws) return;
+        _stopVoice();
+        _restorePairedSession();
+      };
+      socket.onerror = () => { if (socket === ws) sys('Conexão interrompida; tentando restaurar…'); };
+      socket.onmessage = (e) => {
       const m = JSON.parse(e.data);
       if (m.type === 'log')           append(m.speaker, m.text);
       if (m.type === 'status')        setStatus(m.state);
       if (m.type === 'wake')          sys('Palavra de ativação detectada — conectando…');
       if (m.type === 'sys')           sys(m.text);
       if (m.type === 'file_received') _onFileReceived(m);
-    };
+      };
+    }
+
+    _connectSocket();
 
     function setStatus(s) {
       if (s === 'active') {

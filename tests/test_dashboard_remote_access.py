@@ -2,8 +2,10 @@ import json
 import os
 import re
 import tempfile
+import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -212,6 +214,84 @@ class DashboardDeviceAuthorizationTests(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertEqual(path.read_text(encoding="utf-8"), "{truncated")
 
+    def test_remote_dashboard_defaults_to_https_and_allows_explicit_compatibility_opt_out(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            config = root / "config"
+            config.mkdir()
+            with patch("dashboard.server.BASE_DIR", root):
+                self.assertTrue(DashboardServer._https_requested())
+                (config / "api_keys.json").write_text(
+                    '{"dashboard_https": false}', encoding="utf-8"
+                )
+                self.assertFalse(DashboardServer._https_requested())
+                (config / "api_keys.json").write_text(
+                    '{"dashboard_https": true}', encoding="utf-8"
+                )
+                self.assertTrue(DashboardServer._https_requested())
+
+    def test_https_certificate_is_generated_validated_and_repaired(self):
+        from dashboard.server import _ensure_certs
+
+        with tempfile.TemporaryDirectory() as folder, \
+                patch("dashboard.server.BASE_DIR", Path(folder)), \
+                patch("dashboard.server._local_ip", return_value="192.0.2.10"):
+            self.assertTrue(_ensure_certs())
+            cert = Path(folder) / "config" / "certs" / "jinx.crt"
+            key = Path(folder) / "config" / "certs" / "jinx.key"
+            original = cert.read_bytes()
+            self.assertTrue(DashboardServer._ssl_enabled())
+            self.assertTrue(_ensure_certs())
+            self.assertEqual(cert.read_bytes(), original)
+            with patch("dashboard.server._local_ip", return_value="192.0.2.11"):
+                self.assertTrue(_ensure_certs())
+            self.assertNotEqual(cert.read_bytes(), original)
+            cert.write_text("corrupt", encoding="utf-8")
+            self.assertTrue(_ensure_certs())
+            self.assertNotEqual(cert.read_bytes(), b"corrupt")
+            self.assertTrue(key.is_file())
+
+    def test_http_responses_include_security_and_no_cache_headers(self):
+        server = self._server()
+        with TestClient(server.app) as client:
+            response = client.get("/login")
+        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(response.headers["X-Frame-Options"], "DENY")
+        self.assertEqual(response.headers["Referrer-Policy"], "no-referrer")
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+
+    def test_authenticated_websocket_closes_when_bearer_ttl_expires(self):
+        from starlette.websockets import WebSocketDisconnect
+
+        server = self._server()
+        token = "temporary-websocket-token"
+        server._tokens[token] = time.time()
+        server._token_keys[token] = "A7K9M2Q5"
+        # Keep enough time for the local ASGI handshake on slower CI machines;
+        # the socket should close after the TTL, not race expiration during connect.
+        with patch("dashboard.server._TOKEN_TTL_SECONDS", 1.0):
+            with TestClient(server.app) as client:
+                with client.websocket_connect(f"/ws?token={token}") as websocket:
+                    with self.assertRaises(WebSocketDisconnect):
+                        websocket.receive_json()
+
+    def test_logout_closes_existing_websocket_immediately(self):
+        from starlette.websockets import WebSocketDisconnect
+
+        server = self._server()
+        token = "logout-websocket-token"
+        server._tokens[token] = time.time()
+        server._token_keys[token] = "A7K9M2Q5"
+        with TestClient(server.app) as client:
+            with client.websocket_connect(f"/ws?token={token}") as websocket:
+                response = client.post(
+                    "/api/logout",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
+                self.assertTrue(response.json()["logged_out"])
+                with self.assertRaises(WebSocketDisconnect):
+                    websocket.receive_json()
+
 
 class MobileRemoteShellTests(unittest.TestCase):
     def test_login_accepts_eight_characters_and_offers_explicit_remember(self):
@@ -229,6 +309,7 @@ class MobileRemoteShellTests(unittest.TestCase):
             "revokeRemoteDevices", "logoutRemote", "device-unpair",
             "100dvh", "safe-area-inset-bottom", "prefers-reduced-motion",
             "doMic", "doSend", "doWake", "file-inp",
+            "_restorePairedSession", "jinx_device_token",
         ):
             self.assertIn(contract, html)
 

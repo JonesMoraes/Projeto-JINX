@@ -1,10 +1,9 @@
 """
-dashboard/server.py — JINX Local HTTP Dashboard
+dashboard/server.py — JINX Local Remote Dashboard
 
-HTTPS on port 8000 with a self-signed certificate generated on first run, plus
-a second layer inside it: commands are encrypted with AES-256-GCM under a key
-derived from the pairing code with PBKDF2. Both layers are required — the
-server refuses to start without TLS rather than quietly serving in clear.
+HTTPS is enabled by default with a per-install self-signed certificate. The
+user may explicitly opt into HTTP for browsers that cannot trust that local
+certificate; the UI makes this weaker mode visible.
 
 Install deps:  pip install fastapi "uvicorn[standard]" cryptography
 """
@@ -594,14 +593,34 @@ def _ensure_certs() -> bool:
     present a certificate that matches it. Generating locally gives each install
     its own key, costs about a second, and happens exactly once.
 
-    Returns True when a usable pair exists afterwards; False leaves the caller on
-    plain HTTP, which still works — the QR code simply encodes http:// instead.
+    Returns True when a usable pair exists afterwards; False lets the caller
+    fail closed instead of exposing credentials and commands over plain HTTP.
     """
     certs = BASE_DIR / "config" / "certs"
     key_p = certs / "jinx.key"
     crt_p = certs / "jinx.crt"
     if key_p.exists() and crt_p.exists():
-        return True
+        try:
+            from cryptography import x509
+            from cryptography.hazmat.primitives import serialization
+            import datetime
+            import ipaddress
+            cert = x509.load_pem_x509_certificate(crt_p.read_bytes())
+            private_key = serialization.load_pem_private_key(
+                key_p.read_bytes(), password=None
+            )
+            if cert.public_key().public_numbers() == private_key.public_key().public_numbers():
+                now = datetime.datetime.now(datetime.timezone.utc)
+                current_ip = ipaddress.ip_address(_local_ip())
+                san = cert.extensions.get_extension_for_class(
+                    x509.SubjectAlternativeName
+                ).value
+                names_current_ip = current_ip in san.get_values_for_type(x509.IPAddress)
+                if (cert.not_valid_before_utc <= now < cert.not_valid_after_utc
+                        and names_current_ip):
+                    return True
+        except Exception:
+            pass  # Replace an incomplete, expired, or mismatched local pair.
 
     try:
         import datetime
@@ -733,7 +752,8 @@ class DashboardServer:
         self._tokens: dict[str, float]    = {}
         self._token_keys: dict[str, str]  = {}   # auth_token → session_key
         self._aes_cache:  dict[str, bytes]= {}   # session_key → AES bytes
-        self._clients: set[WebSocket]     = set()
+        self._clients: dict[WebSocket, str] = {}  # socket → bearer token
+        self._socket_tokens: dict[WebSocket, str] = {}
         self._history: list[dict]         = []
         self._command_queue               = asyncio.Queue()
         self._wake_callback               = None
@@ -762,39 +782,20 @@ class DashboardServer:
         return key
 
     @staticmethod
-    def _ssl_enabled() -> bool:
-        """Is HTTPS switched on? Off unless the user asked for it.
-
-        WHY THE DEFAULT IS PLAIN HTTP, AFTER A RELEASE THAT MADE TLS MANDATORY
-            The certificate has to be self-signed — there is no certificate
-            authority on earth that will vouch for 192.168.1.108 — and a phone
-            treats a self-signed certificate as an attack. Chrome shows a
-            full-page interstitial; a QR scanner that opens links in its own
-            in-app browser often shows nothing at all and offers no way to
-            proceed, because those views deliberately have no "Advanced" button.
-
-            So the practical result of requiring TLS was a dashboard nobody
-            could reach, which is not a more secure product than one they can.
-            The pairing key, the rate limit, the token expiry and the
-            revoke-all-devices fix are all unaffected and all still apply.
-
-            What IS lost over plain HTTP is the AES-GCM layer, because
-            `crypto.subtle` does not exist outside a secure context. The page
-            says so on its own badge rather than pretending, and commands then
-            travel the local network in clear — which is what this dashboard
-            did for every release before this one.
-
-            Turn it on with "dashboard_https": true in config/api_keys.json if
-            the network is one where that matters; the certificate is generated
-            automatically and you will have to accept it once per device.
-        """
+    def _https_requested() -> bool:
+        """HTTPS is the secure default; HTTP requires an explicit opt-out."""
         try:
             import json as _json
             with open(BASE_DIR / "config" / "api_keys.json", "r",
                       encoding="utf-8") as f:
-                if not _json.load(f).get("dashboard_https"):
-                    return False
+                setting = _json.load(f).get("dashboard_https", True)
         except Exception:
+            setting = True
+        return setting is not False
+
+    @staticmethod
+    def _ssl_enabled() -> bool:
+        if not DashboardServer._https_requested():
             return False
         certs = BASE_DIR / "config" / "certs"
         return (certs / "jinx.key").exists() and (certs / "jinx.crt").exists()
@@ -802,7 +803,7 @@ class DashboardServer:
     def get_url(self) -> str:
         """The full URL the QR code carries — always with its scheme, so a
         scanner never has to guess."""
-        if self._ssl_enabled():
+        if self._https_requested():
             return f"https://{self._ip}:{SECURE_PORT}"
         return f"http://{self._ip}:{PORT}"
 
@@ -845,17 +846,41 @@ class DashboardServer:
         if len(self._history) > 300:
             self._history = self._history[-300:]
         dead: set[WebSocket] = set()
-        for ws in list(self._clients):
+        now = time.time()
+        for ws, token in list(self._clients.items()):
+            issued = self._tokens.get(token)
+            if issued is None or now - issued > _TOKEN_TTL_SECONDS:
+                self._tokens.pop(token, None)
+                self._token_keys.pop(token, None)
+                try:
+                    await ws.close(code=4001, reason="Session expired or revoked")
+                except Exception:
+                    pass
+                dead.add(ws)
+                continue
             try:
                 await ws.send_json(msg)
             except Exception:
                 dead.add(ws)
-        self._clients -= dead
+        for ws in dead:
+            self._clients.pop(ws, None)
+            self._socket_tokens.pop(ws, None)
 
     # ── FastAPI app ───────────────────────────────────────────────────────
 
     def _build_app(self) -> "FastAPI":
         app = FastAPI(docs_url=None, redoc_url=None)
+
+        @app.middleware("http")
+        async def security_headers(req: Request, call_next):
+            response = await call_next(req)
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            response.headers["X-Frame-Options"] = "DENY"
+            response.headers["Referrer-Policy"] = "no-referrer"
+            response.headers["Permissions-Policy"] = "camera=(self), microphone=(self)"
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+            return response
 
         def _valid(tok: str) -> bool:
             """Is this token live? Expired ones are dropped as they are found,
@@ -878,6 +903,35 @@ class DashboardServer:
         def _who(req: Request) -> str:
             """The client address a throttle counts against."""
             return (getattr(getattr(req, "client", None), "host", "") or "unknown")
+
+        async def _receive_live_socket(websocket: WebSocket, token: str, method: str):
+            """Read socket traffic only while its bearer token remains live."""
+            while _valid(token):
+                issued = self._tokens.get(token, time.time())
+                remaining = max(0.001, _TOKEN_TTL_SECONDS - (time.time() - issued))
+                try:
+                    data = await asyncio.wait_for(
+                        getattr(websocket, method)(), timeout=min(30.0, remaining)
+                    )
+                    if _valid(token):
+                        return data
+                except asyncio.TimeoutError:
+                    continue
+            try:
+                await websocket.close(code=4001, reason="Session expired")
+            except Exception:
+                pass
+            return None
+
+        async def _close_token_sockets(tokens: set[str]):
+            for ws, socket_token in list(self._socket_tokens.items()):
+                if socket_token in tokens:
+                    try:
+                        await ws.close(code=4001, reason="Session revoked")
+                    except Exception:
+                        pass
+                    self._clients.pop(ws, None)
+                    self._socket_tokens.pop(ws, None)
 
         @app.get("/login", response_class=HTMLResponse)
         async def login_page():
@@ -1075,6 +1129,7 @@ class DashboardServer:
                 return JSONResponse({"error": "Acesso não autorizado"}, status_code=401)
             existed = self._tokens.pop(token, None) is not None
             self._token_keys.pop(token, None)
+            await _close_token_sockets({token})
             return JSONResponse({"ok": True, "logged_out": existed})
 
         @app.post("/api/revoke-devices")
@@ -1099,12 +1154,14 @@ class DashboardServer:
                     {"error": "Não foi possível limpar as autorizações salvas."},
                     status_code=503,
                 )
-            live  = len(self._tokens) - (1 if mine in self._tokens else 0)
+            revoked_tokens = set(self._tokens) - {mine}
+            live = len(revoked_tokens)
             keep = self._tokens.get(mine)
             self._tokens.clear()
             self._token_keys = {k: v for k, v in self._token_keys.items() if k == mine}
             if keep is not None:
                 self._tokens[mine] = keep
+            await _close_token_sockets(revoked_tokens)
             return JSONResponse({"ok": True, "revoked": count, "sessions_ended": live})
 
         @app.post("/api/command")
@@ -1143,12 +1200,15 @@ class DashboardServer:
                 await websocket.close(code=4001)
                 return
             await websocket.accept()
+            self._socket_tokens[websocket] = tok
             asyncio.create_task(self.broadcast(
                 {"type": "sys", "text": "Microfone do celular ativo."}
             ))
             try:
                 while True:
-                    data = await websocket.receive_bytes()
+                    data = await _receive_live_socket(websocket, tok, "receive_bytes")
+                    if data is None:
+                        break
                     try:
                         self._phone_audio_queue.put_nowait(
                             {"data": data, "mime_type": "audio/pcm"}
@@ -1158,6 +1218,7 @@ class DashboardServer:
             except WebSocketDisconnect:
                 pass
             finally:
+                self._socket_tokens.pop(websocket, None)
                 asyncio.create_task(self.broadcast(
                     {"type": "sys", "text": "Microfone do celular desligado."}
                 ))
@@ -1257,7 +1318,8 @@ class DashboardServer:
                 await websocket.close(code=4001)
                 return
             await websocket.accept()
-            self._clients.add(websocket)
+            self._clients[websocket] = tok
+            self._socket_tokens[websocket] = tok
             for entry in self._history[-50:]:
                 try:
                     await websocket.send_json(entry)
@@ -1265,7 +1327,9 @@ class DashboardServer:
                     break
             try:
                 while True:
-                    data = await websocket.receive_json()
+                    data = await _receive_live_socket(websocket, tok, "receive_json")
+                    if data is None:
+                        break
                     if data.get("type") == "command":
                         enc = data.get("enc", "")
                         t   = self._decrypt(tok, enc) if enc else (data.get("text") or "").strip()
@@ -1276,7 +1340,8 @@ class DashboardServer:
             except WebSocketDisconnect:
                 pass
             finally:
-                self._clients.discard(websocket)
+                self._clients.pop(websocket, None)
+                self._socket_tokens.pop(websocket, None)
 
         return app
 
@@ -1330,42 +1395,24 @@ class DashboardServer:
         asyncio.get_running_loop().run_in_executor(
             None, report_network_access, PORT, SECURE_PORT)
 
-        # Only make a certificate if HTTPS was actually asked for. Generating
-        # one nobody uses just leaves a private key on disk.
-        try:
-            import json as _json
-            with open(BASE_DIR / "config" / "api_keys.json", "r",
-                      encoding="utf-8") as f:
-                if _json.load(f).get("dashboard_https"):
-                    _ensure_certs()
-        except Exception:
-            pass
+        https_requested = self._https_requested()
+        if https_requested and not _ensure_certs():
+            self._bind_error = (
+                "HTTPS certificate could not be created; remote access was "
+                "stopped to protect the connection. Check logs and cryptography."
+            )
+            print(f"[Dashboard] {self._bind_error}")
+            return
 
-        use_ssl  = self._ssl_enabled()
+        use_ssl  = https_requested and self._ssl_enabled()
         ssl_key  = BASE_DIR / "config" / "certs" / "jinx.key"
         ssl_cert = BASE_DIR / "config" / "certs" / "jinx.crt"
 
-        # TLS IS WANTED, BUT NOT AT THE COST OF NOT STARTING.
-        #
-        # An earlier version returned here when certificates could not be made,
-        # on the argument that serving a remote-control channel in clear is a
-        # different product. The argument is right and the behaviour was wrong:
-        # a dashboard that does not start is not more secure, it is absent, and
-        # the user is left with "refused to connect" and nothing to act on.
-        #
-        # So: HTTPS whenever it can be had — which is almost always, since the
-        # certificate is generated locally on first run — and plain HTTP with a
-        # loud, repeated warning when it cannot. The page keeps working either
-        # way; without a secure context it simply cannot encrypt, and it says
-        # so on screen rather than pretending.
         if use_ssl:
             asyncio.create_task(self._serve_redirector())
         else:
-            print("[Dashboard] Plain HTTP on your local network. Commands are "
-                  "not encrypted; the pairing key still gates access.")
-            print('[Dashboard] For HTTPS set "dashboard_https": true in '
-                  'config/api_keys.json (your phone will ask you to trust the '
-                  'certificate once).')
+            print("[Dashboard] WARNING: HTTP is enabled by explicit user choice. "
+                  "Tokens and commands are not encrypted on the local network.")
 
         cfg = uvicorn.Config(
             self.app, host="0.0.0.0",

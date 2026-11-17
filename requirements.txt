@@ -26,6 +26,9 @@ google-genai>=2.8.0,<3
 # directly, and a package you import is a package you depend on — relying on
 # somebody else's transitive dependency works right up until they drop it.
 httpx>=0.27,<1
+PyYAML>=6,<7                # skills/SKILL.md YAML front matter
+watchdog>=4,<7              # skills hot reload
+mcp>=2.3,<3                 # official Model Context Protocol client SDK
 
 # ── Web search & browser control ──────────────────────────────────────────────
 requests>=2.31,<3
@@ -52,6 +55,7 @@ pyperclip
 
 # ── Vision & media ────────────────────────────────────────────────────────────
 pillow>=10,<13
+imageio-ffmpeg>=0.5,<1           # media_convert — bundled FFmpeg when no system FFmpeg exists
 opencv-python>=4.8,<5
 mss>=9,<11
 
@@ -100,6 +104,9 @@ ddgs>=9,<10                  # web_search — the maintained successor to
                              # falls back to the old name automatically
 pdfplumber                   # file_processor — PDF text and tables
 PyPDF2                       # file_processor — PDF fallback reader
+pypdf>=6,<7                 # pdf_forge — merge, split, extract and verify PDFs
+reportlab>=4,<5             # pdf_forge — create text PDFs and covers
+paramiko>=3.4,<5             # ssh_ops — optional SSH/SFTP client
 python-docx                  # file_processor — .docx reading
 pynvml                       # system_monitor + the HUD's GPU meter (NVIDIA)
 

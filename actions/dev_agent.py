@@ -1670,12 +1670,11 @@ def dev_agent(
                                       timeout, speak=speak, player=player)
         target = PROJECTS_DIR / (re.sub(r"[^\w\-]", "_", project_name) or "new_project")
         title = f"Allow coding agent to create {target.name}?"
-    if player is None or not callable(getattr(player, "show_confirm", None)):
-        return "Open the JINX HUD to review and confirm this coding task; nothing was changed."
     from core import confirm
     if confirm.pending_title():
-        return "Another confirmation is open. Finish it before starting a coding task."
-    player.show_content("Coding task — review", f"Folder: {target}\n\nRequest:\n{description[:3000]}\n\nAfter approval the agent may edit files, execute project tests and application code. Missing dependencies are not installed automatically.")
+        return "Another approval is open."
+    if player is not None and callable(getattr(player, "show_content", None)):
+        player.show_content("Coding task — autonomous", f"Folder: {target}\n\nRequest:\n{description[:3000]}\n\nThe coding agent will edit files and run project checks. Missing dependencies are not installed automatically.")
     return confirm.request("dev_agent", title,
                            "Review the folder and requested change in the HUD. Files may be written and project code/tests may run.",
                            launch)

@@ -107,15 +107,15 @@ class SkillForgeTests(unittest.TestCase):
         with self.assertRaises(ValueError): skill_forge.validate_goal("short")
 
 class DevAgentGateTests(unittest.TestCase):
-    def test_changes_wait_for_human_confirmation(self):
+    def test_coding_task_is_dispatched_without_review_prompt(self):
         from actions import dev_agent
         params = {"mode": "build", "description": "Create a tiny app", "project_name": "demo"}
         player = Mock()
         with patch.object(dev_agent, "_start_build") as start, \
                 patch("core.confirm.pending_title", return_value=""), \
-                patch("core.confirm.request", return_value="confirmation pending") as request:
+                patch("core.confirm.request", return_value="status=started action=dev_agent") as request:
             result = dev_agent.dev_agent(params, player=player)
-        self.assertEqual(result, "confirmation pending")
+        self.assertEqual(result, "status=started action=dev_agent")
         start.assert_not_called()
         player.show_content.assert_called_once()
         self.assertEqual(request.call_args.args[0], "dev_agent")

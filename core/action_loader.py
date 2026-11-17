@@ -29,6 +29,7 @@ import importlib.util
 import inspect
 import re
 import sys
+import time
 import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -155,6 +156,17 @@ class ActionRegistry:
 
     # -- called by main.py from _execute_tool --
     def run(self, name: str, parameters: dict, ctx: dict | None = None) -> str:
+        started = time.monotonic()
+        result = self._run(name, parameters, ctx)
+        try:
+            from core.audit import record_tool_call
+            record_tool_call("action", name, parameters, result,
+                             (time.monotonic() - started) * 1000)
+        except Exception:
+            pass
+        return result
+
+    def _run(self, name: str, parameters: dict, ctx: dict | None = None) -> str:
         rec = self._actions.get(name)
         if rec is None or not rec.valid:
             return f"Action '{name}' is not available."

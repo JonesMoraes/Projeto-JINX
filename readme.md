@@ -25,6 +25,39 @@ fechar o pop-up apenas recolhe a prévia, e o indicador continua ativo.
 O botão não grava nem envia imagens automaticamente. Fechar o aplicativo
 também encerra a captura; a webcam começa desligada a cada inicialização.
 
+### Edição local, mapas e telefonia SIP
+
+Os plugins `video_editor`, `maps_navigation` e `telephony_sip` são descobertos
+automaticamente ao iniciar o JINX. A configuração fica em ⚙ → Configurações dos
+plugins. O editor precisa de `ffmpeg` e `ffprobe` no PATH; legendas usam
+`faster-whisper` e baixam o modelo escolhido na primeira execução. Não requerem
+MoviePy ou `ffmpeg-python` adicionais. Exemplos: “Remova os silêncios deste
+vídeo C:\\Vídeos\\aula.mp4”, “Gere legendas em português para C:\\Vídeos\\aula.mp4”
+e “Redimensione C:\\Vídeos\\aula.mp4 para Reels”. Use também “Faça em formato
+quadrado para o feed”. Saídas ficam ao lado do original. A aceleração AMD
+`h264_amf` é usada quando disponível; caso contrário, o FFmpeg usa `libx264` na
+CPU. Para vídeo 4K, prefira converter uma cópia para 1080p antes de editar:
+filtros e renderização podem consumir vários gigabytes de RAM.
+
+Mapas priorizam Nominatim/OpenStreetMap e OSRM. Configure um endereço ou CEP base
+opcional para rotas e locais próximos; não é feita leitura automática da
+localização do dispositivo. Exemplos: “Qual a rota mais rápida do trabalho para
+o aeroporto?”, “Onde fica a farmácia mais próxima?” e “Abra o Street View da
+Praça da Sé, São Paulo”. Uma chave Google Maps é opcional e serve como fallback.
+Os serviços públicos podem ter limites e atrasos; a rota de OSRM é estimada e
+não substitui trânsito em tempo real.
+
+Telefonia: “Verifique minha configuração SIP”, “Atenda a chamada SIP” ou
+“Rejeite a chamada SIP”. Informe servidor, ramal e credenciais do seu provedor
+ou PBX local no painel. O JINX é apenas um cliente: não fornece número nem
+provedor. Este pacote ainda não inclui um adapter SIP com áudio bidirecional
+validado, então atender automaticamente, transferir ligações e conversar por
+Whisper/TTS permanecem indisponíveis até a integração de um runtime PJSUA2
+compatível. O plugin reporta essa limitação sem afirmar que a chamada foi
+atendida. Não há SMS; rejeitar chamada é apenas encerrar a chamada quando o
+adapter estiver disponível. In English: “Check my SIP setup”, “Answer the SIP
+call”, and “Reject the SIP call”.
+
 Atualização de integração em 14/11/2026: a expansão posterior à Fase 3 está
 incorporada com correções de rollback, autorreparo, testes do HUD e exemplo
 Arduino. O escopo entregue e as pendências estão em
@@ -659,18 +692,19 @@ There is also an **output volume slider**, and it belongs to the device chosen t
 
 ### 📱 The phone dashboard
 
-**It is plain HTTP on your local network, and that is a decision rather than an
-oversight.** This release tried making TLS mandatory and it was a mistake worth
-writing down: the certificate has to be self-signed, because no certificate
-authority will vouch for `192.168.1.108`, and a phone treats a self-signed
-certificate as an attack. Chrome shows a full-page interstitial. A QR scanner
-that opens links in its own in-app browser often shows a blank page and offers
-no way through at all, because those views have no "Advanced" button by design.
+**HTTPS is enabled by default.** JINX creates a per-install self-signed
+certificate and stops remote access if it cannot establish TLS. The phone may
+show a certificate warning: the connection is encrypted, but the browser cannot
+verify the server's identity through a public certificate authority. Trust only
+the certificate for your own JINX. ⚙ → **Segurança** can explicitly disable
+HTTPS for browser compatibility; that sends bearer tokens and commands in clear
+over the local network and disables browser-side AES-GCM.
 
-A dashboard nobody can reach is not a more secure product than one they can. So
-HTTPS is opt-in — `"dashboard_https": true` in `config/api_keys.json`, and the
-certificate is generated for you — and everything else that actually guards the
-door stayed:
+The remote login now has durable, revocable device pairing. The browser keeps a
+random device credential locally; JINX stores only its hash and protects the
+session key at rest (DPAPI on Windows, AES-GCM on macOS/Linux). On a JINX restart
+an open phone page requests a fresh 12-hour session automatically. The pairing
+lasts until that phone logs out or the owner revokes all devices. The server also:
 
 * The pairing key is **eight characters through PBKDF2 at 200,000 rounds**,
   not six through a single round of SHA-256. That was an offline search
@@ -679,15 +713,14 @@ door stayed:
   paid once at pairing time.
 * `/login` is **rate limited** — six wrong keys and the address waits five
   minutes. There was no limit at all before.
-* **Tokens expire.** One issued once used to work until the process ended.
+* **Bearer sessions expire after 12 hours**, including already-open WebSockets;
+  logout and revocation close those sockets immediately.
 * **"Revoke all devices" now ends the live sessions** it always claimed to. It
   cleared the remembered devices and left every session those devices had
   already opened working, which is the one case anybody presses it for.
-* When HTTPS *is* switched on, commands are **AES-256-GCM**, not AES-CBC. CBC
-  concealed a message and did nothing to stop one being changed; an attacker on
-  the same network could flip bits and the assistant would act on whatever fell
-  out. Over plain HTTP there is no `crypto.subtle` and so no encryption at all —
-  the page says `NO ENC` on its own badge rather than pretending otherwise.
+* Commands use **AES-256-GCM** in secure browser contexts; responses are marked
+  `SEM CRIPTOGRAFIA` when the browser cannot provide it. HTTP responses also
+  disable caching and add anti-framing, MIME-sniffing, and referrer protections.
 
 **And Windows was blocking it, per executable, invisibly.** This produced the
 strangest report of the release: the dashboard worked when JINX was started
@@ -1097,7 +1130,7 @@ JINX/
 │   ├── routines.json         # Your routines and quiet hours (git-ignored)
 │   └── tasks/                # Background tasks and their step-by-step checkpoints (git-ignored)
 ├── dashboard/                # Phone control — paired by QR code, one-time key
-│   ├── server.py             # FastAPI + uvicorn; HTTP by default, HTTPS opt-in
+│   ├── server.py             # FastAPI + uvicorn; HTTPS by default, HTTP opt-out
 │   └── static/               # The phone page and its login screen
 ├── core/
 │   ├── tasks/                # The background task engine

@@ -5,6 +5,13 @@ def feed(frame):
     control.feed(frame)
     presence.feed(frame)
     pose_monitor.feed(frame)
+    try:
+        from vision.faces.service import get_service
+        identity = get_service()
+        if identity.active:
+            identity.feed(frame)
+    except Exception:
+        pass
 
 
 def stop():
@@ -13,3 +20,8 @@ def stop():
     control.stop()
     presence.stop()
     pose_monitor.stop()
+    try:
+        from vision.faces.service import get_service
+        get_service().stop()
+    except Exception:
+        pass

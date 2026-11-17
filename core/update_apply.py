@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path, PurePosixPath
+import re
 import subprocess
 import sys
 import time
@@ -18,6 +19,21 @@ def _alive(pid):
         except OSError: return False
 
 
+def _backup_tag(value) -> str:
+    """Return a bounded, single-directory backup name.
+
+    Release metadata is remote input. It must never be able to turn the
+    backup path into a sibling of ``.jinx_update`` or an arbitrary nested
+    tree, even though staged files are separately validated.
+    """
+    tag = str(value or "").strip()
+    if not tag or len(tag) > 80 or tag in {".", ".."}:
+        raise ValueError("invalid update tag")
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", tag):
+        raise ValueError("invalid update tag")
+    return tag
+
+
 def apply(root: Path, stage: Path, pid: int):
     root, stage = root.resolve(strict=True), stage.resolve(strict=True)
     state = (root / ".jinx_update").resolve()
@@ -28,7 +44,7 @@ def apply(root: Path, stage: Path, pid: int):
     deadline = time.monotonic() + 90
     while _alive(pid) and time.monotonic() < deadline: time.sleep(.25)
     if _alive(pid): raise TimeoutError("JINX process did not close")
-    backup = state / "backups" / str(manifest.get("tag", "update"))
+    backup = state / "backups" / _backup_tag(manifest.get("tag", "update"))
     backup.mkdir(parents=True, exist_ok=True)
     changed = []; marker_files = []; total_bytes = 0; planned = []
     try:

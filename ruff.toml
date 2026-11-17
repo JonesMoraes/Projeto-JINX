@@ -7,8 +7,8 @@
 #
 #     ruff check .
 #
-# Run it with `uvx ruff` or any dev interpreter; ruff is a dev tool and is not in
-# requirements.txt, because the app does not import it.
+# Install developer tools with `python -m pip install -r requirements-dev.txt`.
+# Ruff is kept out of requirements.txt because the app does not import it.
 
 target-version = "py314"
 line-length = 120

@@ -115,6 +115,16 @@ def version_of(executable):
     return result.stdout.strip()
 
 
+def gui_interpreter(executable):
+    """Return the matching Windows interpreter that does not create a console."""
+    executable = Path(executable)
+    if executable.name.lower() == 'python.exe':
+        windowless = executable.with_name('pythonw.exe')
+        if windowless.is_file():
+            return windowless
+    return executable
+
+
 def installed_extras():
     source = ROOT / '.venv' / 'Scripts' / 'python.exe'
     if CURRENT.is_file():
@@ -219,8 +229,12 @@ def main():
         if not args.launch: return 1
     if args.launch:
         with (ROOT / 'logs' / 'desktop-start.log').open('ab') as log:
-            return subprocess.call([str(selected), '-u', str(ROOT / 'main.py')], cwd=ROOT,
-                                   stdout=log, stderr=subprocess.STDOUT)
+            interpreter = gui_interpreter(selected)
+            flags = (0 if interpreter.name.lower() == 'pythonw.exe'
+                     else getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+            return subprocess.call([str(interpreter), '-u', str(ROOT / 'main.py')], cwd=ROOT,
+                                   stdout=log, stderr=subprocess.STDOUT,
+                                   creationflags=flags)
     return 0
 
 

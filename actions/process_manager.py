@@ -1,4 +1,4 @@
-"""Process inspection and confirmed shutdown; original JINX implementation."""
+"""Process inspection and asynchronous shutdown with identity verification."""
 from dataclasses import dataclass
 import json
 import os
@@ -67,7 +67,7 @@ def inspect_processes(metric="ram", limit=10, pid=None, name=""):
 
 
 def _guard(target):
-    # Re-check at request time AND when the UI confirmation is resolved.
+    # Re-check identity immediately before acting; process IDs can be reused.
     if target.pid <= 4 or target.name.casefold() in _CRITICAL:
         raise ValueError("Processo crítico protegido / Critical process protected")
     if target.pid == os.getpid() or target.pid in appidentity.own_pids():
@@ -128,7 +128,7 @@ def _close(target):
         # Do not use Process.terminate on Windows: it is not graceful there.
         requested = appidentity._post_close_windows(target.pid) > 0
     else:
-        process.terminate()  # POSIX SIGTERM, after UI confirmation.
+        process.terminate()  # POSIX SIGTERM; completion is checked below.
         requested = True
     with _lock:
         _attempts.add((target.pid, target.created))
@@ -147,6 +147,76 @@ def _force(target):
     if _wait(target):
         return outcome.done("process_force", pid=target.pid)
     return outcome.unverified("process_force", "Processo ainda não confirmou saída / Process exit not confirmed", pid=target.pid)
+
+
+def _set_priority(target, requested):
+    """Set a portable priority and register a guarded restore in the undo journal."""
+    process = _guard(target)
+    old = process.nice()
+    name = str(requested or "").strip().lower().replace(" ", "_")
+    if platform.system() == "Windows":
+        priorities = {"idle": psutil.IDLE_PRIORITY_CLASS,
+                      "below_normal": psutil.BELOW_NORMAL_PRIORITY_CLASS,
+                      "normal": psutil.NORMAL_PRIORITY_CLASS,
+                      "above_normal": psutil.ABOVE_NORMAL_PRIORITY_CLASS,
+                      "high": psutil.HIGH_PRIORITY_CLASS}
+        if name not in priorities:
+            return outcome.failed("process_priority", "Use idle, below_normal, normal, above_normal, or high.")
+        value = priorities[name]
+    else:
+        try:
+            value = int(requested)
+        except (TypeError, ValueError):
+            return outcome.failed("process_priority", "On POSIX, nice must be an integer from 0 to 19.")
+        if not 0 <= value <= 19:
+            return outcome.failed("process_priority", "Only nice values 0–19 are accepted.")
+    try:
+        process.nice(value)
+        actual = process.nice()
+        if actual != value:
+            process.nice(old)
+            return outcome.unverified("process_priority", "The requested priority did not verify.", pid=target.pid)
+        from core.undo import push_undo
+        def restore():
+            current = _guard(target)
+            if current.nice() != actual:
+                return outcome.failed("process_priority_undo", "Priority changed since; left untouched.", pid=target.pid)
+            current.nice(old)
+            return outcome.done("process_priority_undo", pid=target.pid)
+        push_undo(f"Process priority: {target.name}", restore)
+        return outcome.done("process_priority", pid=target.pid, priority=name or value, verified=True)
+    except (psutil.Error, OSError, ValueError) as exc:
+        return outcome.failed("process_priority", str(exc), pid=target.pid)
+
+
+def _set_affinity(target, requested):
+    """Set logical CPU affinity and register a guarded restore."""
+    if not isinstance(requested, list) or not requested:
+        return outcome.failed("process_affinity", "cpus must be a non-empty list of indexes.")
+    if any(isinstance(cpu, bool) or not isinstance(cpu, int) for cpu in requested):
+        return outcome.failed("process_affinity", "CPU indexes must be integers.")
+    cpus = sorted(set(requested))
+    if len(cpus) != len(requested) or any(cpu < 0 for cpu in cpus):
+        return outcome.failed("process_affinity", "Indexes must be unique and non-negative.")
+    try:
+        process = _guard(target)
+        old = sorted(process.cpu_affinity())
+        process.cpu_affinity(cpus)
+        actual = sorted(process.cpu_affinity())
+        if actual != cpus:
+            process.cpu_affinity(old)
+            return outcome.unverified("process_affinity", "Requested affinity did not verify.", pid=target.pid)
+        from core.undo import push_undo
+        def restore():
+            current = _guard(target)
+            if sorted(current.cpu_affinity()) != actual:
+                return outcome.failed("process_affinity_undo", "Affinity changed since; left untouched.", pid=target.pid)
+            current.cpu_affinity(old)
+            return outcome.done("process_affinity_undo", pid=target.pid)
+        push_undo(f"Process affinity: {target.name}", restore)
+        return outcome.done("process_affinity", pid=target.pid, cpus=cpus, verified=True)
+    except (psutil.Error, OSError, ValueError) as exc:
+        return outcome.failed("process_affinity", str(exc), pid=target.pid)
 
 
 def _perform(targets, force=False):
@@ -182,13 +252,19 @@ def process_manager(parameters, player=None, **_context):
                 player.show_content("Processos / Processes", text)
             return outcome.done("process_manager", data=outcome.untrusted("process-table", json.dumps(rows, ensure_ascii=False)),
                 note="CPU: parcela da capacidade total; RAM: RSS por processo, não some memória compartilhada / CPU normalized to total capacity; RSS may include shared memory")
+        if action in ("priority", "affinity"):
+            targets = _targets(pid, name)
+            if len(targets) != 1:
+                raise ValueError("Choose one process by PID or exact name")
+            return (_set_priority(targets[0], p.get("priority")) if action == "priority"
+                    else _set_affinity(targets[0], p.get("cpus")))
         if action not in ("close", "force"):
             raise ValueError("Ação inválida / Invalid action")
         targets = _targets(pid, name)
         if action == "force":
             with _lock:
                 if any((t.pid, t.created) not in _attempts for t in targets):
-                    return outcome.failed("process_force", "Tente close primeiro e confirme na interface / Try close first and confirm in the UI")
+                    return outcome.failed("process_force", "Tente close primeiro / Try close first")
         summary = ", ".join(f"{t.name} (PID {t.pid})" for t in targets)
         return confirm.request("process_manager", "Forçar encerramento / Force quit" if action == "force" else "Fechar processo / Close process",
             summary + " — trabalho não salvo pode ser perdido / unsaved work may be lost",
@@ -199,10 +275,12 @@ def process_manager(parameters, player=None, **_context):
         return outcome.failed("process_manager", "Consulta/operação não confirmada / Query or operation unverified")
 
 
-TOOL = {"name": "process_manager", "description": "List top CPU/RAM processes or details. Close requires UI confirmation. Force requires previous graceful attempt plus a NEW confirmation. Never targets JINX. No undo for termination.",
+TOOL = {"name": "process_manager", "description": "List top CPU/RAM processes or details. Close and force run asynchronously. Force requires a previous graceful attempt. Protects JINX and critical OS processes. No undo for termination.",
     "parameters": {"type": "OBJECT", "properties": {
-        "action": {"type": "STRING", "enum": ["top", "details", "close", "force"]},
+        "action": {"type": "STRING", "enum": ["top", "details", "close", "force", "priority", "affinity"]},
         "metric": {"type": "STRING", "enum": ["ram", "cpu"]},
         "name": {"type": "STRING", "description": "Exact application/process name"},
-        "pid": {"type": "INTEGER"}, "limit": {"type": "INTEGER", "description": "1–20; default 10"}},
-        "required": ["action"]}, "handler": process_manager, "tier": "extra", "brief": "Inspect CPU/RAM; confirmed close/force; JINX protected."}
+        "pid": {"type": "INTEGER"}, "limit": {"type": "INTEGER", "description": "1–20; default 10"},
+        "priority": {"type": "STRING", "description": "Windows: idle/below_normal/normal/above_normal/high; POSIX: nice 0–19"},
+        "cpus": {"type": "ARRAY", "items": {"type": "INTEGER"}, "description": "Logical CPU indexes"}},
+        "required": ["action"]}, "handler": process_manager, "tier": "extra", "brief": "Inspect CPU/RAM; asynchronous close/force; JINX protected."}
