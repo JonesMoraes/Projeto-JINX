@@ -590,7 +590,7 @@ def _process_video(path: Path, action: str, params: dict, speak=None) -> str:
 
     def _ffmpeg_available() -> bool:
         try:
-            subprocess.run(["ffmpeg", "-version"], capture_output=True, timeout=3)
+            subprocess.run(["ffmpeg", "-version"], capture_output=True, timeout=3, shell=False)
             return True
         except Exception:
             return False
@@ -640,7 +640,7 @@ def _process_video(path: Path, action: str, params: dict, speak=None) -> str:
             if end:
                 cmd += ["-to", str(end)]
             cmd += ["-c", "copy", str(out), "-y"]
-            subprocess.run(cmd, capture_output=True, timeout=600)
+            subprocess.run(cmd, capture_output=True, timeout=600, shell=False)
             return f"Trimmed video saved: {out.name}"
         except Exception as e:
             return f"Trim failed: {e}"

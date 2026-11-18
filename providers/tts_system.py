@@ -93,7 +93,7 @@ def _run(args: list[str], timeout: float = 60.0,
         stderr=subprocess.PIPE,
         timeout=timeout,
         creationflags=_NO_WINDOW,
-    )
+    , shell=False)
 
 
 def _powershell() -> Optional[str]:

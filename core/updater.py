@@ -136,7 +136,7 @@ def apply_after_restart(stage_dir, player):
     command = [sys.executable, "-m", "core.update_apply", str(ROOT), str(folder), str(os.getpid())]
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
     try:
-        subprocess.Popen(command, cwd=str(ROOT), stdin=subprocess.DEVNULL,
+        subprocess.Popen(command, cwd=str(ROOT, shell=False), stdin=subprocess.DEVNULL,
                          stdout=log, stderr=subprocess.STDOUT, creationflags=flags, shell=False)
     finally:
         log.close()

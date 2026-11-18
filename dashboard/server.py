@@ -180,7 +180,7 @@ def blocking_firewall_rules() -> list:
             ["netsh", "advfirewall", "firewall", "show", "rule",
              "name=all", "dir=in", "verbose"],
             capture_output=True, text=True, encoding="utf-8",
-            errors="replace", timeout=20,
+            errors="replace", timeout=20, shell=False
         )
         name = program = None
         for line in r.stdout.splitlines():
@@ -287,7 +287,7 @@ def _ensure_network_access(*ports: int) -> None:
             try:
                 r = subprocess.run(
                     ["netsh", "advfirewall", "firewall", "show", "rule", f"name={name}"],
-                    capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5,
+                    capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5, shell=False
                 )
                 return r.returncode == 0 and "No rules match" not in r.stdout
             except Exception:
@@ -301,6 +301,7 @@ def _ensure_network_access(*ports: int) -> None:
                      "Where-Object {$_.NetworkCategory -eq 'Public'} | "
                      "Measure-Object).Count"],
                     capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=6,
+                    shell=False,
                 )
                 return r.stdout.strip() not in ("", "0")
             except Exception:
@@ -467,14 +468,14 @@ def _ensure_network_access(*ports: int) -> None:
         fw_ctl = "/usr/libexec/ApplicationFirewall/socketfilterfw"
         try:
             r = subprocess.run(
-                [fw_ctl, "--getglobalstate"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5,
+                [fw_ctl, "--getglobalstate"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5, shell=False
             )
             if "disabled" in r.stdout.lower():
                 return  # firewall off — nothing to do
 
             py = sys.executable
             listed = subprocess.run(
-                [fw_ctl, "--listapps"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5,
+                [fw_ctl, "--listapps"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5, shell=False
             )
             if py in listed.stdout:
                 return  # already allowed
@@ -484,7 +485,7 @@ def _ensure_network_access(*ports: int) -> None:
                 ["osascript", "-e",
                  f'do shell script "{fw_ctl} --add {py} && {fw_ctl} --unblockapp {py}"'
                  f' with administrator privileges'],
-                timeout=60,
+                timeout=60, shell=False
             )
         except Exception:
             pass  # macOS firewall is off by default — silent failure is fine
@@ -494,7 +495,7 @@ def _ensure_network_access(*ports: int) -> None:
     def _privileged(cmd: list[str]) -> bool:
         for prefix in (["pkexec"], ["sudo", "-n"]):
             try:
-                r = subprocess.run(prefix + cmd, capture_output=True, timeout=30)
+                r = subprocess.run(prefix + cmd, capture_output=True, timeout=30, shell=False)
                 if r.returncode == 0:
                     return True
             except Exception:
@@ -505,7 +506,7 @@ def _ensure_network_access(*ports: int) -> None:
     # plain port and the HTTPS one, and opening only the first left the QR code
     # working while the secure link stayed blocked.
     try:  # ufw
-        r = subprocess.run(["ufw", "status"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5)
+        r = subprocess.run(["ufw", "status"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5, shell=False)
         if "active" in r.stdout.lower():
             for port in ports:
                 if _privileged(["ufw", "allow", f"{port}/tcp"]):
@@ -518,7 +519,7 @@ def _ensure_network_access(*ports: int) -> None:
 
     try:  # firewalld
         r = subprocess.run(
-            ["firewall-cmd", "--state"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5,
+            ["firewall-cmd", "--state"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5, shell=False
         )
         if "running" in r.stdout.lower():
             _privileged(["firewall-cmd", "--reload"])
@@ -534,7 +535,7 @@ def _ensure_network_access(*ports: int) -> None:
         pass
 
     try:  # iptables (not persistent but works until reboot)
-        r = subprocess.run(["iptables", "-L", "INPUT", "-n"], capture_output=True, timeout=5)
+        r = subprocess.run(["iptables", "-L", "INPUT", "-n"], capture_output=True, timeout=5, shell=False)
         if r.returncode == 0:
             for port in ports:
                 if _privileged(["iptables", "-A", "INPUT", "-p", "tcp", "--dport", str(port), "-j", "ACCEPT"]):
@@ -1184,7 +1185,7 @@ class DashboardServer:
             if not _auth(req):
                 return JSONResponse({"error": "Acesso não autorizado"}, status_code=401)
             existed = self._tokens.pop(token, None) is not None
-                self._remove_session(token)
+            self._remove_session(token)
             self._token_keys.pop(token, None)
             await _close_token_sockets({token})
             return JSONResponse({"ok": True, "logged_out": existed})

@@ -15,7 +15,7 @@ def install():
         with tempfile.TemporaryDirectory(prefix="jinx-edge-plan-") as tmp:
             report = Path(tmp) / "report.json"
             plan = subprocess.run([sys.executable, "-m", "pip", "install", "--dry-run", "--only-binary=:all:",
-                "--report", str(report), *PACKAGES], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
+                "--report", str(report, shell=False), *PACKAGES], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
             if plan.returncode:
                 return False, "Não foi possível resolver dependências / Could not resolve dependencies"
             rows = json.loads(report.read_text(encoding="utf-8"))["install"]
@@ -41,7 +41,7 @@ def install():
                 return False, "Plano acima de 20 MB; peça aprovação antes de instalar / Plan above 20 MB; request approval before installing"
             if artifacts:
                 result = subprocess.run([sys.executable, "-m", "pip", "install", "--no-deps", *artifacts],
-                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=300)
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=300, shell=False)
                 if result.returncode:
                     return False, "Instalação falhou / Installation failed"
             from importlib import invalidate_caches

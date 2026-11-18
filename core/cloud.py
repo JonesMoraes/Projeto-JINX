@@ -215,7 +215,7 @@ def generate_cert(cert_path: Path, key_path: Path, host: str) -> None:
         subprocess.run(
             ["openssl", "req", "-x509", "-newkey", "ec", "-pkeyopt",
              "ec_paramgen_curve:prime256v1", "-nodes", "-days", "3650",
-             "-keyout", str(key_path), "-out", str(cert_path), "-subj", "/CN=JINX Cloud",
+             "-keyout", str(key_path, shell=False), "-out", str(cert_path), "-subj", "/CN=JINX Cloud",
              "-addext", f"subjectAltName=DNS:localhost,{san}",
              "-addext", "basicConstraints=critical,CA:TRUE,pathlen:0",
              "-addext", "keyUsage=critical,digitalSignature,keyCertSign"],
@@ -2731,7 +2731,7 @@ WantedBy=multi-user.target
 
 
 def _sh(*cmd, check: bool = True, **kw):
-    return subprocess.run(list(cmd), check=check, shell=False, **kw)
+    return subprocess.run(list(cmd, shell=False), check=check, shell=False, **kw)
 
 
 def _as_service(dest: Path, *args: str, capture: bool = False):
@@ -2888,7 +2888,7 @@ def deploy(target: str, port: int, host: str, ssh_port: int, key: str = "") -> N
               f"if [ \"$(id -u)\" -eq 0 ]; then python3 -m core.cloud {args}; "
               f"else sudo python3 -m core.cloud {args}; fi")
     _say("▶ Installing on the server")
-    sys.exit(subprocess.run(["ssh", "-t", "-p", str(ssh_port), *opts, target, remote], shell=False).returncode)
+    sys.exit(subprocess.run(["ssh", "-t", "-p", str(ssh_port, shell=False), *opts, target, remote], shell=False).returncode)
 
 
 def main() -> None:

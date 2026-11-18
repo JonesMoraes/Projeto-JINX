@@ -971,7 +971,7 @@ def focus(match: "Match") -> bool:
     # window title — looser, and only used when xdotool is absent.
     try:
         r = subprocess.run(
-            ["xdotool", "search", "--pid", str(match.pid, shell=False), "windowactivate"],
+            ["xdotool", "search", "--pid", str(match.pid), "windowactivate"],
             capture_output=True, timeout=5)
         if r.returncode == 0:
             return True

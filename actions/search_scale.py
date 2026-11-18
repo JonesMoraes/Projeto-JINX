@@ -90,7 +90,7 @@ def _rg(root: Path, query: str, filename_pattern: str, ignore_case: bool,
         command = common + ["--files", "--glob", filename_pattern, str(root)]
         try:
             done = subprocess.run(command, capture_output=True, text=True,
-                                  encoding="utf-8", errors="replace", timeout=30)
+                                  encoding="utf-8", errors="replace", timeout=30, shell=False)
         except (OSError, subprocess.TimeoutExpired):
             return _fallback(root, query, filename_pattern, ignore_case, include_hidden, cap)
         if done.returncode not in (0, 1):
@@ -107,7 +107,7 @@ def _rg(root: Path, query: str, filename_pattern: str, ignore_case: bool,
     results = []
     try:
         with subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                              text=True, encoding="utf-8", errors="replace") as process:
+                              text=True, encoding="utf-8", errors="replace", shell=False) as process:
             for raw in process.stdout:
                 try:
                     item = json.loads(raw)

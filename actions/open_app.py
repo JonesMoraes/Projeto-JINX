@@ -110,7 +110,7 @@ def _launch_windows(app_name: str) -> bool:
                 [resolved],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-            )
+            , shell=False)
             return True
         except Exception as exc:
             print(f"[open_app] Popen failed for {resolved!r}: {exc}")
@@ -134,7 +134,7 @@ def _launch_macos(app_name: str) -> bool:
         try:
             result = subprocess.run(
                 ["open", "-a", candidate], capture_output=True, timeout=8
-            )
+            , shell=False)
             if result.returncode == 0:
                 return True
         except Exception:
@@ -145,7 +145,7 @@ def _launch_macos(app_name: str) -> bool:
         try:
             subprocess.Popen(
                 [binary], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-            )
+            , shell=False)
             return True
         except Exception:
             pass
@@ -169,7 +169,7 @@ def _launch_linux(app_name: str) -> bool:
             try:
                 subprocess.Popen(
                     [path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-                )
+                , shell=False)
                 return True
             except Exception:
                 continue
@@ -184,7 +184,7 @@ def _launch_linux(app_name: str) -> bool:
         try:
             subprocess.Popen(
                 [binary], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-            )
+            , shell=False)
             return True
         except Exception:
             pass
@@ -197,7 +197,7 @@ def _launch_linux(app_name: str) -> bool:
         try:
             result = subprocess.run(
                 ["gtk-launch", name], capture_output=True, timeout=5
-            )
+            , shell=False)
             if result.returncode == 0:
                 return True
         except FileNotFoundError:
@@ -208,7 +208,7 @@ def _launch_linux(app_name: str) -> bool:
     try:
         result = subprocess.run(
             ["xdg-open", app_name], capture_output=True, timeout=5
-        )
+        , shell=False)
         if result.returncode == 0:
             return True
     except Exception:

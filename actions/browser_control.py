@@ -318,7 +318,7 @@ def _detect_default_browser() -> str:
                  "com.apple.LaunchServices/com.apple.launchservices.secure",
                  "LSHandlers"],
                 capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5,
-            ).stdout.lower()
+            , shell=False).stdout.lower()
             for kw in ("firefox", "opera", "brave", "vivaldi", "safari", "chrome", "edge"):
                 if kw in out:
                     return kw
@@ -326,7 +326,7 @@ def _detect_default_browser() -> str:
             out = subprocess.run(
                 ["xdg-settings", "get", "default-web-browser"],
                 capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5,
-            ).stdout.lower()
+            , shell=False).stdout.lower()
             for kw in ("firefox", "opera", "brave", "vivaldi", "chrome", "edge"):
                 if kw in out:
                     return kw
@@ -450,7 +450,7 @@ def _open_native(url: str, browser_name: Optional[str]) -> str:
             if app:
                 cmd = ["open", "-a", app] + ([url] if url else [])
                 try:
-                    subprocess.run(cmd, check=True, timeout=10)
+                    subprocess.run(cmd, check=True, timeout=10, shell=False)
                     return _native_outcome(name, url)
                 except Exception as e:
                     print(f"[Browser] 'open -a {app}' failed ({e}), trying binary…")
@@ -480,7 +480,7 @@ def _open_native(url: str, browser_name: Optional[str]) -> str:
         if _OS == "Windows":
             os.startfile(url)                       # ShellExecute → default browser
         elif _OS == "Darwin":
-            subprocess.run(["open", url], check=True, timeout=10)
+            subprocess.run(["open", url], check=True, timeout=10, shell=False)
         else:
             _spawn_logged(["xdg-open", url])
         # HANDED TO THE OPERATING SYSTEM, NOT CONFIRMED.
@@ -516,7 +516,7 @@ def _spawn_logged(command):
     folder = Path(get_base_dir()) / 'logs'
     folder.mkdir(parents=True, exist_ok=True)
     with (folder / 'browser-native.log').open('ab') as output:
-        return subprocess.Popen(command, stdout=output, stderr=subprocess.STDOUT)
+        return subprocess.Popen(command, stdout=output, stderr=subprocess.STDOUT, shell=False)
 
 
 class _BrowserSession:

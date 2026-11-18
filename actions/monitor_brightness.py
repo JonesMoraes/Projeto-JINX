@@ -18,7 +18,7 @@ def connection():
             exe = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
             encoded = base64.b64encode(("$ErrorActionPreference='Stop';" + script).encode("utf-16le")).decode("ascii")
             r = subprocess.run([exe, "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded],
-                capture_output=True, text=True, timeout=5, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                capture_output=True, text=True, timeout=5, check=True, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0, shell=False))
             return json.loads(r.stdout or "null")
         def WmiMonitorBrightness(self):
             rows = self.query("@(Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorBrightness | Select-Object InstanceName,Active,CurrentBrightness) | ConvertTo-Json -Compress")

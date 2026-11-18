@@ -130,7 +130,7 @@ class GestureControl:
             logs.mkdir(exist_ok=True)
             with (logs / 'hand-tracker.log').open('ab') as log:
                 proc = subprocess.Popen(
-                    [str(PYTHON), '-I', '-u', str(ROOT / 'core' / '_hand_tracker.py'), str(MODEL)],
+                    [str(PYTHON, shell=False), '-I', '-u', str(ROOT / 'core' / '_hand_tracker.py'), str(MODEL)],
                     cwd=ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=log,
                     creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0), shell=False)
                 with self.lock:

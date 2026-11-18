@@ -60,9 +60,9 @@ def _get_api_key() -> str:
 def _open_url(url: str) -> None:
     try:
         if is_mac():
-            subprocess.Popen(["open", url])
+            subprocess.Popen(["open", url], shell=False)
         elif is_linux():
-            subprocess.Popen(["xdg-open", url])
+            subprocess.Popen(["xdg-open", url], shell=False)
         else:
             subprocess.Popen(["cmd", "/c", "start", "", url], shell=False)
     except Exception as e:

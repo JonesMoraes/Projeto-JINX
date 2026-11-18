@@ -28,7 +28,7 @@ MAX_PY = (3, 14)        # future stable versions are verified by runtime_manager
 
 def _run(label: str, args: list[str]) -> None:
     print(f"\n▶ {label}")
-    subprocess.run(args, check=True, env=dict(os.environ, PYYAML_FORCE_LIBYAML='0', shell=False))
+    subprocess.run(args, check=True, env=dict(os.environ, PYYAML_FORCE_LIBYAML='0'), shell=False)
 
 
 def _check_python() -> None:

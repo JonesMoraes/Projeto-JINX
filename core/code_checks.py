@@ -394,7 +394,7 @@ def syntax_problems(folder: Path, written: dict[str, str]) -> dict[str, str]:
                     continue
                 list(yaml.safe_load_all(text))
             elif ext in (".js", ".mjs", ".cjs") and node:
-                r = subprocess.run([node, "--check", str(folder / rel)],
+                r = subprocess.run([node, "--check", str(folder / rel, shell=False)],
                                    capture_output=True, text=True, timeout=30, shell=False,
                                    encoding="utf-8", errors="replace")
                 if r.returncode != 0:
@@ -484,7 +484,7 @@ def runtime_problems(folder: Path, written: dict[str, str], originals: dict[str,
     limit = min(timeout, 30 + 10 * len(plugin_runs))
     try:
         r = subprocess.run(
-            [stack["python"], str(_HARNESS), str(folder),
+            [stack["python"], str(_HARNESS, shell=False), str(folder),
              json.dumps({"imports": imports, "plugins": plugin_runs,
                          "profile": "jinx" if "jinx" in stack["profiles"] else ""})],
             cwd=str(folder), env=env, capture_output=True, text=True, shell=False,
@@ -566,7 +566,7 @@ def run_tests(folder: Path, stack: dict) -> dict | None:
     env = dict(os.environ, CI="1", PYTHONDONTWRITEBYTECODE="1", QT_QPA_PLATFORM="offscreen",
                PYTHONIOENCODING="utf-8")
     try:
-        r = subprocess.run(cmd, cwd=str(folder), env=env, capture_output=True, text=True, shell=False,
+        r = subprocess.run(cmd, cwd=str(folder, shell=False), env=env, capture_output=True, text=True, shell=False,
                            encoding="utf-8", errors="replace", timeout=_TEST_TIMEOUT)
     except subprocess.TimeoutExpired:
         return {"ok": False, "failed": ["(the test run timed out)"],

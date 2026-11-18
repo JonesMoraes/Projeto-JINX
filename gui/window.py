@@ -1142,7 +1142,7 @@ class MainWindow(QMainWindow):
             proc = subprocess.Popen(
                 ["wscript.exe", "/nologo", tmp],
                 creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
-            )
+            , shell=False)
             proc.wait(timeout=10)
         finally:
             try:
@@ -1209,7 +1209,7 @@ class MainWindow(QMainWindow):
             # ── xdg-user-dir honours localized names (~/Masaüstü, …) ──────
             try:
                 out = subprocess.run(["xdg-user-dir", "DESKTOP"],
-                                     capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5)
+                                     capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5, shell=False)
                 p = Path(out.stdout.strip())
                 if out.stdout.strip() and p != home and p.is_dir():
                     return p

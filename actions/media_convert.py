@@ -71,7 +71,7 @@ def _save_ffmpeg(source: Path, target: Path, extension: str, ffmpeg: str,
         command.extend(("-vf", f"scale={width}:{height}:force_original_aspect_ratio=decrease"))
     command.extend(("-f", _FFMPEG_FORMATS[extension], str(target)))
     completed = subprocess.run(command, capture_output=True, text=True,
-                               encoding="utf-8", errors="replace", timeout=timeout)
+                               encoding="utf-8", errors="replace", timeout=timeout, shell=False)
     if completed.returncode != 0 or not target.is_file() or target.stat().st_size == 0:
         target.unlink(missing_ok=True)
         raise RuntimeError((completed.stderr or "FFmpeg conversion failed")[-2000:])

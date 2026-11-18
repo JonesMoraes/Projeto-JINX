@@ -91,7 +91,7 @@ def apply(root: Path, stage: Path, pid: int):
         log = (root / "logs" / "update-helper.log").open("ab")
         try:
             env = dict(os.environ, JINX_UPDATE_ATTEMPT="1")
-            subprocess.Popen([sys.executable, "-u", "main.py"], cwd=str(root), env=env,
+            subprocess.Popen([sys.executable, "-u", "main.py"], cwd=str(root, shell=False), env=env,
                              stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
                              creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), shell=False)
         finally: log.close()

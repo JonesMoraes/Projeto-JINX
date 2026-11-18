@@ -542,7 +542,7 @@ def test_costs_nothing_when_unused():
     )
     r = subprocess.run([sys.executable, "-c", code],
                        capture_output=True, text=True,
-                       cwd=str(Path(__file__).resolve().parent.parent))
+                       cwd=str(Path(__file__, shell=False).resolve().parent.parent))
     try:
         data = json.loads(r.stdout.strip().splitlines()[-1])
     except Exception:

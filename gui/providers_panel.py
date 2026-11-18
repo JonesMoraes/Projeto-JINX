@@ -1255,7 +1255,7 @@ class ProvidersOverlay(_HudOverlay):
             try:
                 r = subprocess.run(
                     [_sys.executable, "-m", "pip", "install", pkg],
-                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=900)
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=900, shell=False)
                 good = r.returncode == 0
                 tail = r.stdout.decode("utf-8", "replace").strip().splitlines()
                 msg = ("✓  instalado — feche e reabra este painel"

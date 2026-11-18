@@ -203,7 +203,7 @@ def _read_current() -> str:
                  'tell application "System Events" to get picture of desktop 1'],
                 capture_output=True, text=True, encoding="utf-8",
                 errors="replace", timeout=10,
-            )
+            , shell=False)
             return result.stdout.strip() if result.returncode == 0 else ""
 
         env = os.environ.get("XDG_CURRENT_DESKTOP", "").lower()
@@ -214,7 +214,7 @@ def _read_current() -> str:
                 ["gsettings", "get", schema, "picture-uri"],
                 capture_output=True, text=True, encoding="utf-8",
                 errors="replace", timeout=10,
-            )
+            , shell=False)
             if result.returncode != 0:
                 return ""
             raw = result.stdout.strip().strip("'\"")
@@ -225,7 +225,7 @@ def _read_current() -> str:
                  "/backdrop/screen0/monitor0/workspace0/last-image"],
                 capture_output=True, text=True, encoding="utf-8",
                 errors="replace", timeout=10,
-            )
+            , shell=False)
             return result.stdout.strip() if result.returncode == 0 else ""
         return ""
     except Exception:                                       # noqa: BLE001
@@ -261,7 +261,7 @@ def _apply(path: Path) -> str:
             result = subprocess.run(["osascript", "-e", script],
                                     capture_output=True, text=True,
                                     encoding="utf-8", errors="replace",
-                                    timeout=20)
+                                    timeout=20, shell=False)
             if result.returncode != 0:
                 detail = (result.stderr or "").strip().splitlines()
                 hint = detail[-1] if detail else "osascript refused the request"
@@ -277,7 +277,7 @@ def _apply(path: Path) -> str:
 
         def _run(cmd: list[str]) -> str:
             done = subprocess.run(cmd, capture_output=True, text=True,
-                                  encoding="utf-8", errors="replace", timeout=20)
+                                  encoding="utf-8", errors="replace", timeout=20, shell=False)
             if done.returncode != 0:
                 return ((done.stderr or done.stdout or "").strip()
                         or f"{cmd[0]} exited {done.returncode}")

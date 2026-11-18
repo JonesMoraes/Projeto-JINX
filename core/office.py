@@ -172,7 +172,7 @@ def convert(p):
     if source.suffix.lower() not in (".docx", ".pptx", ".xlsx") or not source.is_file(): raise ValueError("Office file required")
     with tempfile.TemporaryDirectory(prefix="jinx-pdf-") as temp:
         profile = (Path(temp) / "profile").as_uri()
-        result = subprocess.run([exe, "-env:UserInstallation=" + profile, "--headless", "--convert-to", "pdf", "--outdir", temp, str(source)],
+        result = subprocess.run([exe, "-env:UserInstallation=" + profile, "--headless", "--convert-to", "pdf", "--outdir", temp, str(source, shell=False)],
             capture_output=True, timeout=60, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), shell=False)
         target = Path(temp) / (source.stem + ".pdf")
         if result.returncode or not target.is_file() or not target.read_bytes().startswith(b"%PDF-"):

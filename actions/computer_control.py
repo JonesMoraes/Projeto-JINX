@@ -287,7 +287,7 @@ def _focus_window(title: str) -> str:
             subprocess.run(
                 ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
                 capture_output=True, timeout=5, **_WIN_HIDE,
-            )
+            , shell=False)
             time.sleep(0.3)
             return f"Focused window: {title}"
         except Exception as e:
@@ -302,7 +302,7 @@ def _focus_window(title: str) -> str:
             subprocess.run(
                 ["osascript", "-e", script],
                 capture_output=True, timeout=5,
-            )
+            , shell=False)
             time.sleep(0.3)
             return f"Focused window: {title}"
         except Exception as e:
@@ -313,7 +313,7 @@ def _focus_window(title: str) -> str:
             result = subprocess.run(
                 ["wmctrl", "-a", title],
                 capture_output=True, timeout=5,
-            )
+            , shell=False)
             if result.returncode == 0:
                 time.sleep(0.3)
                 return f"Focused window: {title}"
@@ -323,7 +323,7 @@ def _focus_window(title: str) -> str:
             result = subprocess.run(
                 ["xdotool", "search", "--name", title, "windowactivate"],
                 capture_output=True, timeout=5,
-            )
+            , shell=False)
             time.sleep(0.3)
             return f"Focused window: {title}"
         except FileNotFoundError:

@@ -103,7 +103,7 @@ def target():
 
 def run(args, log, timeout=1200, **kwargs):
     result = subprocess.run([str(a) for a in args], stdout=log, stderr=subprocess.STDOUT,
-                            timeout=timeout, **kwargs)
+                            timeout=timeout, shell=False, **kwargs)
     if result.returncode not in (0, 3010):
         raise RuntimeError(f'Command failed ({result.returncode}); see logs/python-runtime.log')
 
@@ -111,7 +111,7 @@ def run(args, log, timeout=1200, **kwargs):
 def version_of(executable):
     result = subprocess.run([str(executable), '-I', '-c',
         'import sys; print(".".join(map(str,sys.version_info[:3])))'],
-        capture_output=True, text=True, timeout=15, check=True)
+        capture_output=True, text=True, timeout=15, shell=False, check=True)
     return result.stdout.strip()
 
 
@@ -137,7 +137,7 @@ def installed_extras():
     program = ('import importlib.metadata as m,json; '
                'print(json.dumps([d.metadata["Name"].lower() for d in m.distributions()]))')
     result = subprocess.run([str(source), '-I', '-c', program], capture_output=True,
-                            text=True, check=True, timeout=30)
+                            text=True, shell=False, check=True, timeout=30)
     names = set(json.loads(result.stdout))
     return [spec for name, spec in specs.items() if name.lower() in names]
 
@@ -234,7 +234,7 @@ def main():
                      else getattr(subprocess, 'CREATE_NO_WINDOW', 0))
             return subprocess.call([str(interpreter), '-u', str(ROOT / 'main.py')], cwd=ROOT,
                                    stdout=log, stderr=subprocess.STDOUT,
-                                   creationflags=flags)
+                                   shell=False, creationflags=flags)
     return 0
 
 

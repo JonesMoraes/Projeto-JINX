@@ -47,7 +47,7 @@ def _input_path(value):
 
 def _run(command, timeout=7200):
     result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8",
-                            errors="replace", timeout=timeout, check=False)
+                            errors="replace", timeout=timeout, check=False, shell=False)
     if result.returncode:
         detail = (result.stderr or "FFmpeg falhou").strip().splitlines()
         raise RuntimeError(detail[-1][:240] if detail else "FFmpeg falhou")

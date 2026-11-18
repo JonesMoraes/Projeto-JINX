@@ -65,7 +65,7 @@ def install(plan, *, approved=False):
         logs = ROOT / 'logs'
         logs.mkdir(exist_ok=True)
         with (logs / 'gesture-install.log').open('ab') as log:
-            subprocess.run([str(base_python()), '-m', 'venv', str(RUNTIME / 'env')],
+            subprocess.run([str(base_python(, shell=False)), '-m', 'venv', str(RUNTIME / 'env')],
                            stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True, shell=False)
             artifacts = []
             for item in plan['packages']:
@@ -74,9 +74,9 @@ def install(plan, *, approved=False):
                         or not re.fullmatch('[a-fA-F0-9]{64}', item['sha256'])):
                     raise ValueError('Invalid install plan')
                 artifacts.append(item['url'] + '#sha256=' + item['sha256'])
-            subprocess.run([str(PYTHON), '-m', 'pip', 'install', '--no-deps', *artifacts],
+            subprocess.run([str(PYTHON, shell=False), '-m', 'pip', 'install', '--no-deps', *artifacts],
                            stdout=log, stderr=subprocess.STDOUT, timeout=300, check=True, shell=False)
-            subprocess.run([str(PYTHON), '-m', 'pip', 'check'], stdout=log,
+            subprocess.run([str(PYTHON, shell=False), '-m', 'pip', 'check'], stdout=log,
                            stderr=subprocess.STDOUT, timeout=30, check=True, shell=False)
             with urllib.request.urlopen(MODEL_URL, timeout=30) as reply:
                 data = reply.read(20 * 1048576 + 1)
@@ -92,7 +92,7 @@ def install(plan, *, approved=False):
                 'd=v.HandLandmarker.create_from_options(v.HandLandmarkerOptions('
                 'base_options=mp.tasks.BaseOptions(model_asset_path=sys.argv[1]),num_hands=1)); '
                 'd.close(); print("Hand model OK")')
-            subprocess.run([str(PYTHON), '-I', '-c', program, str(MODEL)], stdout=log,
+            subprocess.run([str(PYTHON, shell=False), '-I', '-c', program, str(MODEL)], stdout=log,
                            stderr=subprocess.STDOUT, timeout=45, check=True, shell=False)
         (RUNTIME / 'ready.json').write_text(json.dumps({'sha256': hashlib.sha256(data).hexdigest(),
                                                      'bytes': plan['bytes']}), encoding='utf-8')
