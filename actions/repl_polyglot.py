@@ -34,16 +34,16 @@ _SAFE_BUILTINS = {
     'str': str,
 }
 
-# Blocked AST node types
-_BLOCKED_NODES = {
+# Blocked AST node types - operations that can be used for code injection or escaping sandbox
+_BLOCKED_NODES = (
     ast.Import, ast.ImportFrom, ast.Global, ast.Nonlocal,
     ast.AsyncFunctionDef, ast.ClassDef, ast.FunctionDef,
     ast.Lambda, ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp,
     ast.Await, ast.Yield, ast.YieldFrom,
     ast.Raise, ast.Try, ast.With, ast.AsyncWith,
     ast.Assert, ast.Break, ast.Continue,
-    ast.Delete, ast.Assign, ast.AugAssign, ast.AnnAssign,
-}
+    ast.Delete,
+)
 
 # Blocked attribute names
 _BLOCKED_ATTRS = {
