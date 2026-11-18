@@ -318,7 +318,7 @@ def _detect_default_browser() -> str:
                  "com.apple.LaunchServices/com.apple.launchservices.secure",
                  "LSHandlers"],
                 capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5,
-            , shell=False).stdout.lower()
+                shell=False).stdout.lower()
             for kw in ("firefox", "opera", "brave", "vivaldi", "safari", "chrome", "edge"):
                 if kw in out:
                     return kw
@@ -326,7 +326,7 @@ def _detect_default_browser() -> str:
             out = subprocess.run(
                 ["xdg-settings", "get", "default-web-browser"],
                 capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5,
-            , shell=False).stdout.lower()
+                shell=False).stdout.lower()
             for kw in ("firefox", "opera", "brave", "vivaldi", "chrome", "edge"):
                 if kw in out:
                     return kw

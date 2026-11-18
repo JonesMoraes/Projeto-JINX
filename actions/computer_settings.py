@@ -684,13 +684,13 @@ def open_file_explorer():
     if _OS == "Windows":
         pyautogui.hotkey("win", "e")
     elif _OS == "Darwin":
-        subprocess.Popen(["open", str(Path.home(, shell=False))])
+        subprocess.Popen(["open", str(Path.home())], shell=False)
     else:
         for cmd in [["nautilus"], ["thunar"], ["dolphin"], ["nemo"]]:
             if subprocess.run(["which", cmd[0]], capture_output=True, shell=False).returncode == 0:
                 subprocess.Popen(cmd, shell=False)
                 return
-        subprocess.Popen(["xdg-open", str(Path.home(, shell=False))])
+        subprocess.Popen(["xdg-open", str(Path.home())], shell=False)
 
 def sleep_display():
     if _OS == "Windows":

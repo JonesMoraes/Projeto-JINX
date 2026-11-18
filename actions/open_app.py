@@ -110,7 +110,8 @@ def _launch_windows(app_name: str) -> bool:
                 [resolved],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-            , shell=False)
+                shell=False
+            )
             return True
         except Exception as exc:
             print(f"[open_app] Popen failed for {resolved!r}: {exc}")
@@ -144,8 +145,8 @@ def _launch_macos(app_name: str) -> bool:
     if binary:
         try:
             subprocess.Popen(
-                [binary], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-            , shell=False)
+                [binary], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                shell=False)
             return True
         except Exception:
             pass
@@ -183,8 +184,8 @@ def _launch_linux(app_name: str) -> bool:
     if binary:
         try:
             subprocess.Popen(
-                [binary], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-            , shell=False)
+                [binary], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                shell=False)
             return True
         except Exception:
             pass

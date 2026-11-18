@@ -103,15 +103,15 @@ _SAFE_BUILTINS = {
 _BLOCKED_NODES = ("Import", "ImportFrom", "Global", "Nonlocal", "FunctionDef",
                   "ClassDef", "Lambda", "ListComp", "SetComp", "DictComp",
                   "GeneratorExp", "Raise", "Try", "With", "Assert", "Break",
-                  "Continue", "Delete", "Assign", "AugAssign", "AnnAssign")
+                  "Continue", "Delete")
 
 def _validate_ast(node):
     if node.__class__.__name__ in _BLOCKED_NODES:
         return False
+    blocked = {"__builtins__", "__import__", "eval", "exec", "compile", "open",
+              "input", "breakpoint", "globals", "locals", "vars", "dir",
+              "getattr", "setattr", "delattr", "hasattr"}
     if isinstance(node, ast.Attribute):
-        blocked = {"__builtins__", "__import__", "eval", "exec", "compile", "open",
-                  "input", "breakpoint", "globals", "locals", "vars", "dir",
-                  "getattr", "setattr", "delattr", "hasattr"}
         if node.attr in blocked:
             return False
     if isinstance(node, ast.Name):
@@ -248,13 +248,14 @@ class ReplManager:
         if not code.strip() or len(code) > 100_000:
             return outcome.failed("repl_eval", "Code is empty or exceeds 100,000 characters.")
         
-        # Validate code before sending to worker
-        try:
-            tree = ast.parse(code, "<jinx-repl>", "exec")
-            if not _validate_ast(tree):
-                return outcome.failed("repl_eval", "Code contains blocked operations (import, exec, eval, etc.)")
-        except SyntaxError as e:
-            return outcome.failed("repl_eval", f"Syntax error: {e}")
+        # Validate code before sending to worker (only for Python)
+        if session.language == "python":
+            try:
+                tree = ast.parse(code, "<jinx-repl>", "exec")
+                if not _validate_ast(tree):
+                    return outcome.failed("repl_eval", "Code contains blocked operations (import, exec, eval, etc.)")
+            except SyntaxError as e:
+                return outcome.failed("repl_eval", f"Syntax error: {e}")
         
         try:
             response = session.evaluate(code, max(1.0, min(float(timeout), 60.0)))
