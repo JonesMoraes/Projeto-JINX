@@ -954,7 +954,7 @@ def focus(match: "Match") -> bool:
                 ["osascript", "-e",
                  f'tell application "System Events" to set frontmost of the '
                  f'first process whose unix id is {match.pid} to true'],
-                capture_output=True, timeout=5)
+                capture_output=True, timeout=5, shell=False)
             return r.returncode == 0
         except Exception:
             return False
@@ -971,7 +971,7 @@ def focus(match: "Match") -> bool:
     # window title — looser, and only used when xdotool is absent.
     try:
         r = subprocess.run(
-            ["xdotool", "search", "--pid", str(match.pid), "windowactivate"],
+            ["xdotool", "search", "--pid", str(match.pid, shell=False), "windowactivate"],
             capture_output=True, timeout=5)
         if r.returncode == 0:
             return True
@@ -985,7 +985,7 @@ def focus(match: "Match") -> bool:
             continue
         try:
             r = subprocess.run(["wmctrl", "-a", title],
-                               capture_output=True, timeout=5)
+                               capture_output=True, timeout=5, shell=False)
             if r.returncode == 0:
                 return True
         except FileNotFoundError:

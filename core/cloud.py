@@ -219,7 +219,7 @@ def generate_cert(cert_path: Path, key_path: Path, host: str) -> None:
              "-addext", f"subjectAltName=DNS:localhost,{san}",
              "-addext", "basicConstraints=critical,CA:TRUE,pathlen:0",
              "-addext", "keyUsage=critical,digitalSignature,keyCertSign"],
-            check=True, capture_output=True, timeout=60)
+            check=True, capture_output=True, timeout=60, shell=False)
     try:
         key_path.chmod(0o600)
     except OSError:
@@ -2731,7 +2731,7 @@ WantedBy=multi-user.target
 
 
 def _sh(*cmd, check: bool = True, **kw):
-    return subprocess.run(list(cmd), check=check, **kw)
+    return subprocess.run(list(cmd), check=check, shell=False, **kw)
 
 
 def _as_service(dest: Path, *args: str, capture: bool = False):
@@ -2888,7 +2888,7 @@ def deploy(target: str, port: int, host: str, ssh_port: int, key: str = "") -> N
               f"if [ \"$(id -u)\" -eq 0 ]; then python3 -m core.cloud {args}; "
               f"else sudo python3 -m core.cloud {args}; fi")
     _say("▶ Installing on the server")
-    sys.exit(subprocess.run(["ssh", "-t", "-p", str(ssh_port), *opts, target, remote]).returncode)
+    sys.exit(subprocess.run(["ssh", "-t", "-p", str(ssh_port), *opts, target, remote], shell=False).returncode)
 
 
 def main() -> None:

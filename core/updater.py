@@ -137,7 +137,7 @@ def apply_after_restart(stage_dir, player):
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
     try:
         subprocess.Popen(command, cwd=str(ROOT), stdin=subprocess.DEVNULL,
-                         stdout=log, stderr=subprocess.STDOUT, creationflags=flags)
+                         stdout=log, stderr=subprocess.STDOUT, creationflags=flags, shell=False)
     finally:
         log.close()
     player.request_close()

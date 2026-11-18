@@ -124,7 +124,7 @@ def running(root):
 
 def launch(row):
     if row["store"] == "riot":
-        subprocess.Popen([row["launch"], "--launch-product=" + row["product"], "--launch-patchline=live"])
+        subprocess.Popen([row["launch"], "--launch-product=" + row["product"], "--launch-patchline=live"], shell=False)
     else:
         from actions.open_app import _LAUNCHERS, _SYSTEM
         if not _LAUNCHERS[_SYSTEM](row["launch"]):

@@ -30,7 +30,7 @@ def _run(stage: Path, program: str, args: list[str], log: Path) -> None:
         # -I ignores PYTHONDONTWRITEBYTECODE, so -B is essential: same-sized
         # edits within one second must not reuse the baseline's cached bytecode.
         result = subprocess.run([sys.executable, '-I', '-B', '-X', 'utf8',
-                                 '-c', program, str(stage), *args],
+                                 '-c', program, str(stage, shell=False), *args],
                                 cwd=stage, env=env, capture_output=True,
                                 timeout=TIMEOUT)
     except subprocess.TimeoutExpired as exc:

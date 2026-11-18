@@ -24,7 +24,7 @@ def install(group):
         with tempfile.TemporaryDirectory(prefix="jinx-optional-") as temp:
             report = Path(temp) / "plan.json"
             result = subprocess.run([sys.executable, "-m", "pip", "install", "--dry-run", "--only-binary=:all:",
-                "--report", str(report), *GROUPS[group]], capture_output=True, timeout=120)
+                "--report", str(report, shell=False), *GROUPS[group]], capture_output=True, timeout=120)
             if result.returncode:
                 return False, "Plano de dependências indisponível / Dependency plan unavailable"
             total, artifacts = 0, []
@@ -44,7 +44,7 @@ def install(group):
                 return False, "Download acima de 20 MB: exige sua aprovação / Download above 20 MB: requires your approval"
             if artifacts:
                 result = subprocess.run([sys.executable, "-m", "pip", "install", "--no-deps", *artifacts],
-                                        capture_output=True, timeout=180)
+                                        capture_output=True, timeout=180, shell=False)
                 if result.returncode:
                     return False, "Instalação falhou; confira o ambiente / Installation failed; check environment"
             importlib.invalidate_caches()

@@ -93,7 +93,7 @@ def apply(root: Path, stage: Path, pid: int):
             env = dict(os.environ, JINX_UPDATE_ATTEMPT="1")
             subprocess.Popen([sys.executable, "-u", "main.py"], cwd=str(root), env=env,
                              stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
-                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), shell=False)
         finally: log.close()
     except Exception:
         try: (state / "pending-update.json").unlink(missing_ok=True)

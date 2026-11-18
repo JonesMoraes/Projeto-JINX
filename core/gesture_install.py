@@ -66,7 +66,7 @@ def install(plan, *, approved=False):
         logs.mkdir(exist_ok=True)
         with (logs / 'gesture-install.log').open('ab') as log:
             subprocess.run([str(base_python()), '-m', 'venv', str(RUNTIME / 'env')],
-                           stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True)
+                           stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True, shell=False)
             artifacts = []
             for item in plan['packages']:
                 if (urlsplit(item['url']).hostname != 'files.pythonhosted.org'
@@ -75,9 +75,9 @@ def install(plan, *, approved=False):
                     raise ValueError('Invalid install plan')
                 artifacts.append(item['url'] + '#sha256=' + item['sha256'])
             subprocess.run([str(PYTHON), '-m', 'pip', 'install', '--no-deps', *artifacts],
-                           stdout=log, stderr=subprocess.STDOUT, timeout=300, check=True)
+                           stdout=log, stderr=subprocess.STDOUT, timeout=300, check=True, shell=False)
             subprocess.run([str(PYTHON), '-m', 'pip', 'check'], stdout=log,
-                           stderr=subprocess.STDOUT, timeout=30, check=True)
+                           stderr=subprocess.STDOUT, timeout=30, check=True, shell=False)
             with urllib.request.urlopen(MODEL_URL, timeout=30) as reply:
                 data = reply.read(20 * 1048576 + 1)
             if (len(data) != plan['model_size'] or
@@ -93,7 +93,7 @@ def install(plan, *, approved=False):
                 'base_options=mp.tasks.BaseOptions(model_asset_path=sys.argv[1]),num_hands=1)); '
                 'd.close(); print("Hand model OK")')
             subprocess.run([str(PYTHON), '-I', '-c', program, str(MODEL)], stdout=log,
-                           stderr=subprocess.STDOUT, timeout=45, check=True)
+                           stderr=subprocess.STDOUT, timeout=45, check=True, shell=False)
         (RUNTIME / 'ready.json').write_text(json.dumps({'sha256': hashlib.sha256(data).hexdigest(),
                                                      'bytes': plan['bytes']}), encoding='utf-8')
         return True, 'Gestos instalados e modelo verificado. Controle continua desligado; ative explicitamente com F10.'

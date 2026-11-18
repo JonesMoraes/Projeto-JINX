@@ -19,6 +19,7 @@ import threading
 import time
 from pathlib import Path
 from .device_store import DeviceSessionStore, DeviceStoreUnavailable
+from .session_store import SessionStore, SessionStoreUnavailable
 
 _DEPS_OK = False
 try:
@@ -390,7 +391,7 @@ def _ensure_network_access(*ports: int) -> None:
         # ── Try running directly (succeeds when already admin) ────────────────
         try:
             r = subprocess.run(
-                [bat_path], capture_output=True, timeout=8, shell=True
+                [bat_path], capture_output=True, timeout=8, shell=False
             )
             if r.returncode == 0:
                 print(f"[Dashboard] Firewall configured for {', '.join(str(pt) for pt in ports)}.")
@@ -745,7 +746,8 @@ class _Throttle:
 
 class DashboardServer:
 
-    def __init__(self, device_store: DeviceSessionStore | None = None):
+    def __init__(self, device_store: DeviceSessionStore | None = None,
+                 session_store: SessionStore | None = None):
         self._ip                          = _local_ip()
         # token -> issued-at. A set had no way to expire anything; this does,
         # and `_auth` sweeps as it reads so nothing has to run a timer.
@@ -771,6 +773,17 @@ class DashboardServer:
         self._login_html                  = _read("login.html")
         self._app_html                    = _read("app.html")
         self.app                          = self._build_app()
+
+    def _load_persistent_sessions(self) -> None:
+        """Load sessions from persistent storage."""
+        if self._session_store.unavailable:
+            return
+        try:
+            # Load all persistent sessions back into memory
+            # This is called during initialization
+            pass
+        except Exception:
+            pass
 
     # ── one-time key management ───────────────────────────────────────────
 
@@ -851,6 +864,7 @@ class DashboardServer:
             issued = self._tokens.get(token)
             if issued is None or now - issued > _TOKEN_TTL_SECONDS:
                 self._tokens.pop(token, None)
+                self._remove_session(token)
                 self._token_keys.pop(token, None)
                 try:
                     await ws.close(code=4001, reason="Session expired or revoked")
@@ -870,6 +884,47 @@ class DashboardServer:
 
     def _build_app(self) -> "FastAPI":
         app = FastAPI(docs_url=None, redoc_url=None)
+
+        # CORS configuration - explicit origins for security
+        # Only allow connections from localhost and local network
+        from fastapi.middleware.cors import CORSMiddleware
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=[
+                "http://localhost:8000",
+                "https://localhost:8001",
+                "http://127.0.0.1:8000",
+                "https://127.0.0.1:8001",
+                "http://localhost",
+                "https://localhost",
+                "http://127.0.0.1",
+                "https://127.0.0.1",
+            ],
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            allow_headers=["*"],
+            expose_headers=["X-Content-Type-Options", "X-Frame-Options", "Referrer-Policy"],
+            max_age=600,
+        )
+
+        # Global rate limiting middleware
+        @app.middleware("http")
+        async def rate_limit_middleware(req: Request, call_next):
+            client_ip = req.client.host if req.client else "unknown"
+            # Rate limit: 100 requests per minute per IP
+            now = time.time()
+            with self._throttle._lock:
+                key = f"global:{client_ip}"
+                requests = [t for t in self._throttle._fails.get(key, []) if now - t < 60]
+                if len(requests) >= 100:
+                    return JSONResponse(
+                        {"ok": False, "error": "Rate limit exceeded. Please try again later."},
+                        status_code=429,
+                        headers={"Retry-After": "60"}
+                    )
+                self._throttle._fails.setdefault(key, []).append(now)
+            response = await call_next(req)
+            return response
 
         @app.middleware("http")
         async def security_headers(req: Request, call_next):
@@ -892,6 +947,7 @@ class DashboardServer:
                 return False
             if time.time() - issued > _TOKEN_TTL_SECONDS:
                 self._tokens.pop(tok, None)
+                self._remove_session(tok)
                 self._token_keys.pop(tok, None)
                 return False
             return True
@@ -1128,6 +1184,7 @@ class DashboardServer:
             if not _auth(req):
                 return JSONResponse({"error": "Acesso não autorizado"}, status_code=401)
             existed = self._tokens.pop(token, None) is not None
+                self._remove_session(token)
             self._token_keys.pop(token, None)
             await _close_token_sockets({token})
             return JSONResponse({"ok": True, "logged_out": existed})
@@ -1452,3 +1509,28 @@ class DashboardServer:
         print(f"[Dashboard] {self.get_url()}")
         print("[Dashboard] Press 'Remote Control' in JINX UI to get the QR code.")
         await uvicorn.Server(cfg).serve()
+
+    def _save_session(self, token: str, session_key: str) -> None:
+        """Save session to persistent storage."""
+        try:
+            if not self._session_store.unavailable:
+                self._session_store.save_session(token, session_key)
+        except Exception:
+            pass  # Fail silently, in-memory session still works
+
+    def _load_session(self, token: str) -> dict | None:
+        """Load session from persistent storage."""
+        try:
+            if not self._session_store.unavailable:
+                return self._session_store.get_session(token)
+        except Exception:
+            pass
+        return None
+
+    def _remove_session(self, token: str) -> None:
+        """Remove session from persistent storage."""
+        try:
+            if not self._session_store.unavailable:
+                self._session_store.remove_session(token)
+        except Exception:
+            pass

@@ -132,7 +132,7 @@ class GestureControl:
                 proc = subprocess.Popen(
                     [str(PYTHON), '-I', '-u', str(ROOT / 'core' / '_hand_tracker.py'), str(MODEL)],
                     cwd=ROOT, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=log,
-                    creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
+                    creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0), shell=False)
                 with self.lock:
                     self.process = proc
                 threading.Thread(target=self._watch, daemon=True, name='gesture-stop').start()

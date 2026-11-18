@@ -172,7 +172,7 @@ def _import_kokoro_pipeline():
             [sys.executable, "-m", "pip", "install", "kokoro>=0.9",
              "--upgrade", "--quiet", "--disable-pip-version-check"],
             capture_output=True,
-        )
+        , shell=False)
         if result.returncode != 0:
             stderr = result.stderr.decode(errors="replace").strip()
             raise RuntimeError(

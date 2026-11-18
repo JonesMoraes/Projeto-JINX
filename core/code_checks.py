@@ -207,7 +207,7 @@ def _project_python(folder: Path) -> str:
 def _has_module(python: str, module: str) -> bool:
     try:
         r = subprocess.run([python, "-c", f"import {module}"], capture_output=True,
-                           timeout=30)
+                           timeout=30, shell=False)
         return r.returncode == 0
     except Exception:
         return False
@@ -395,7 +395,7 @@ def syntax_problems(folder: Path, written: dict[str, str]) -> dict[str, str]:
                 list(yaml.safe_load_all(text))
             elif ext in (".js", ".mjs", ".cjs") and node:
                 r = subprocess.run([node, "--check", str(folder / rel)],
-                                   capture_output=True, text=True, timeout=30,
+                                   capture_output=True, text=True, timeout=30, shell=False,
                                    encoding="utf-8", errors="replace")
                 if r.returncode != 0:
                     out[rel] = "JavaScript syntax error: " + (r.stderr or r.stdout).strip()[-600:]
@@ -487,7 +487,7 @@ def runtime_problems(folder: Path, written: dict[str, str], originals: dict[str,
             [stack["python"], str(_HARNESS), str(folder),
              json.dumps({"imports": imports, "plugins": plugin_runs,
                          "profile": "jinx" if "jinx" in stack["profiles"] else ""})],
-            cwd=str(folder), env=env, capture_output=True, text=True,
+            cwd=str(folder), env=env, capture_output=True, text=True, shell=False,
             encoding="utf-8", errors="replace", timeout=limit)
     except subprocess.TimeoutExpired as e:
         return _froze(e, plugin_runs or py[:1], limit)
@@ -566,7 +566,7 @@ def run_tests(folder: Path, stack: dict) -> dict | None:
     env = dict(os.environ, CI="1", PYTHONDONTWRITEBYTECODE="1", QT_QPA_PLATFORM="offscreen",
                PYTHONIOENCODING="utf-8")
     try:
-        r = subprocess.run(cmd, cwd=str(folder), env=env, capture_output=True, text=True,
+        r = subprocess.run(cmd, cwd=str(folder), env=env, capture_output=True, text=True, shell=False,
                            encoding="utf-8", errors="replace", timeout=_TEST_TIMEOUT)
     except subprocess.TimeoutExpired:
         return {"ok": False, "failed": ["(the test run timed out)"],

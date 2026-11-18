@@ -897,7 +897,7 @@ def _type_linux(text: str) -> Optional[str]:
         return "xdotool is not installed"
     result = subprocess.run(
         [tool, "type", "--clearmodifiers", "--delay", "8", "--", text],
-        capture_output=True, timeout=max(10.0, len(text) * 0.05))
+        capture_output=True, timeout=max(10.0, len(text, shell=False) * 0.05))
     if result.returncode != 0:
         return (result.stderr or b"").decode("utf-8", "replace").strip() \
             or f"xdotool exited with {result.returncode}"

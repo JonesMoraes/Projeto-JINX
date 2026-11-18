@@ -117,7 +117,7 @@ class PersistentShell:
             session_id = uuid.uuid4().hex[:12]
             creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if os.name == "nt" else 0
             process = subprocess.Popen(
-                argv, cwd=directory, env={**os.environ, **(env or {})},
+                argv, cwd=directory, env={**os.environ, **(env or {}, shell=False)},
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 text=True, encoding="utf-8", errors="replace", bufsize=1,
                 creationflags=creationflags)

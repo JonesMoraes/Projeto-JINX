@@ -85,7 +85,7 @@ def health():
         executable = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"),
                                   "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
         result = subprocess.run([executable, "-NoProfile", "-NonInteractive", "-EncodedCommand", command],
-                                capture_output=True, text=True, timeout=4,
+                                capture_output=True, text=True, timeout=4, shell=False,
                                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0), check=True)
         rows = json.loads(result.stdout)
         rows = [rows] if isinstance(rows, dict) else rows
