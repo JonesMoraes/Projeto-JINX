@@ -766,6 +766,9 @@ class DashboardServer:
         self._device_store                = (
             device_store if device_store is not None else DeviceSessionStore()
         )
+        self._session_store               = (
+            session_store if session_store is not None else SessionStore()
+        )
         self._phone_audio_queue: asyncio.Queue    = asyncio.Queue(maxsize=200)
         self._uploads_dir                 = UPLOADS_DIR
         # Set by serve() when the port could not be taken, so the UI can say
