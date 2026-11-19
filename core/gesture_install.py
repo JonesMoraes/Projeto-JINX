@@ -65,7 +65,7 @@ def install(plan, *, approved=False):
         logs = ROOT / 'logs'
         logs.mkdir(exist_ok=True)
         with (logs / 'gesture-install.log').open('ab') as log:
-            subprocess.run([str(base_python(, shell=False)), '-m', 'venv', str(RUNTIME / 'env')],
+            subprocess.run([str(base_python), '-m', 'venv', str(RUNTIME / 'env')],
                            stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True, shell=False)
             artifacts = []
             for item in plan['packages']:

@@ -15,7 +15,7 @@ def install():
         with tempfile.TemporaryDirectory(prefix="jinx-edge-plan-") as tmp:
             report = Path(tmp) / "report.json"
             plan = subprocess.run([sys.executable, "-m", "pip", "install", "--dry-run", "--only-binary=:all:",
-                "--report", str(report, shell=False), *PACKAGES], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180)
+                "--report", str(report), *PACKAGES], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=180, shell=False)
             if plan.returncode:
                 return False, "Não foi possível resolver dependências / Could not resolve dependencies"
             rows = json.loads(report.read_text(encoding="utf-8"))["install"]

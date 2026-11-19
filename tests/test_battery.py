@@ -59,7 +59,7 @@ class BatteryTest(unittest.TestCase):
         self.assertEqual(result["packs"][1]["capacity_percent_estimate"], 105)
         self.assertEqual(result["packs"][1]["wear_percent_estimate"], 0)
         self.assertEqual(run.call_args.kwargs["timeout"], 4)
-        self.assertNotIn("shell", run.call_args.kwargs)
+        self.assertEqual(run.call_args.kwargs.get("shell"), False)
 
     def test_health_invalid_zero_sentinel_and_missing(self):
         for data in ([], {"design": 0, "full": 100}, {"design": 100, "full": 4294967295}, {"wrong": 100}):

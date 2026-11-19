@@ -61,7 +61,7 @@ mss>=9,<11
 
 # ── System, files & documents ─────────────────────────────────────────────────
 psutil>=5.9,<8
-send2trash>=0.8,<1                   # file_controller — recoverable deletes
+send2trash>=1.8,<2                   # file_controller — recoverable deletes
 python-pptx>=0.6,<1                  # file_processor — presentation reading
 
 # ── Remote dashboard (control from your phone) ────────────────────────────────
