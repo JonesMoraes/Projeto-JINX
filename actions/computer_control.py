@@ -286,8 +286,7 @@ def _focus_window(title: str) -> str:
             script = f'(New-Object -ComObject WScript.Shell).AppActivate("{title}")'
             subprocess.run(
                 ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
-                capture_output=True, timeout=5, **_WIN_HIDE,
-            , shell=False)
+                capture_output=True, timeout=5, **_WIN_HIDE, shell=False)
             time.sleep(0.3)
             return f"Focused window: {title}"
         except Exception as e:
@@ -301,8 +300,7 @@ def _focus_window(title: str) -> str:
         try:
             subprocess.run(
                 ["osascript", "-e", script],
-                capture_output=True, timeout=5,
-            , shell=False)
+                capture_output=True, timeout=5, shell=False)
             time.sleep(0.3)
             return f"Focused window: {title}"
         except Exception as e:
@@ -312,8 +310,7 @@ def _focus_window(title: str) -> str:
         try:
             result = subprocess.run(
                 ["wmctrl", "-a", title],
-                capture_output=True, timeout=5,
-            , shell=False)
+                capture_output=True, timeout=5, shell=False)
             if result.returncode == 0:
                 time.sleep(0.3)
                 return f"Focused window: {title}"
@@ -322,8 +319,7 @@ def _focus_window(title: str) -> str:
         try:
             result = subprocess.run(
                 ["xdotool", "search", "--name", title, "windowactivate"],
-                capture_output=True, timeout=5,
-            , shell=False)
+                capture_output=True, timeout=5, shell=False)
             time.sleep(0.3)
             return f"Focused window: {title}"
         except FileNotFoundError:

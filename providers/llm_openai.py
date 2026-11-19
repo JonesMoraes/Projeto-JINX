@@ -52,6 +52,7 @@ _GEMINI_SPARES = ("gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-3-flash-p
 _gemini_rest: dict[str, float] = {}     # model -> monotonic time it may be tried again
 
 PRESETS: dict[str, str] = {
+    "OmniRoute":            "http://127.0.0.1:20128/v1",
     "Ollama":               "http://127.0.0.1:11434/v1",
     "LM Studio":            "http://127.0.0.1:1234/v1",
     "llama.cpp server":     "http://127.0.0.1:8080/v1",
@@ -206,6 +207,10 @@ def _cloud_entry(provider_id: str, preset: str, label: str,
             "values": {"base_url": PRESETS[preset], **_CLOUD}}
 
 CATALOG = (
+    {"id": "omniroute",  "label": "OmniRoute (gateway local)",
+     "note": "gateway local · roteia entre seus provedores com fallback e custo mínimo · informe a chave gerada pelo OmniRoute",
+     "local": False,
+     "values": {"base_url": PRESETS["OmniRoute"], **_CLOUD, "model": "auto"}},
     {"id": "ollama",     "label": "Ollama",
      "note": "on this computer · free", "local": True,
      "values": {"base_url": PRESETS["Ollama"], **_LOCAL}},

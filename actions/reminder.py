@@ -123,8 +123,7 @@ if not notified:
         subprocess.run(
             ["notify-send", "--urgency=normal", "--expire-time=15000",
              "JINX Reminder", message],
-            check=False
-        , shell=False)
+            check=False shell=False)
     except Exception:
         pass
 """
@@ -273,8 +272,7 @@ def _schedule_linux(target_dt: datetime, task_name: str,
         cmd_str = f"{sys.executable} {script_path}\n"
         result  = subprocess.run(
             ["at", at_time],
-            input=cmd_str, capture_output=True, text=True, encoding="utf-8", errors="replace",
-        , shell=False)
+            input=cmd_str, capture_output=True, text=True, encoding="utf-8", errors="replace", shell=False)
         if result.returncode == 0:
             return task_name
         print(f"[Reminder] ❌ at: {result.stderr.strip()}")

@@ -3187,7 +3187,12 @@ class JinxLive:
                     continue
 
                 # Invalid API key — stop hammering the API, prompt re-configuration
-                if "API key not valid" in err_str or "1007" in err_str:
+                # Only the message that actually says so counts. A close with the
+                # 1007 websocket code ALSO carries rejected setups — a tool
+                # declaration the server cannot parse, for example — and asking
+                # for the key again over those left the user re-entering a valid
+                # key forever ("não aceita minha chave" at first startup).
+                if "API key not valid" in err_str:
                     self.ui.write_log("ERRO: Chave da API inválida — insira sua chave novamente.")
                     self.ui.set_state("SLEEPING")
                     self.ui.prompt_reconfig()
@@ -3195,6 +3200,14 @@ class JinxLive:
                         await asyncio.sleep(1)
                     print("[JINX] New API key saved — reconnecting...")
                     self._conn_backoff = 3
+                    continue
+                if "1007" in err_str:
+                    self.ui.write_log(
+                        f"ERRO: Conexão recusada pelo modelo (1007): {err_str[:300]}"
+                    )
+                    self.set_speaking(False)
+                    self.ui.set_state("SLEEPING")
+                    await asyncio.sleep(max(getattr(self, "_conn_backoff", 3), 10))
                     continue
 
                 # Network / timeout errors — log clearly and back off

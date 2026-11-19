@@ -202,8 +202,7 @@ def _read_current() -> str:
                 ["osascript", "-e",
                  'tell application "System Events" to get picture of desktop 1'],
                 capture_output=True, text=True, encoding="utf-8",
-                errors="replace", timeout=10,
-            , shell=False)
+                errors="replace", timeout=10, shell=False)
             return result.stdout.strip() if result.returncode == 0 else ""
 
         env = os.environ.get("XDG_CURRENT_DESKTOP", "").lower()
@@ -213,8 +212,7 @@ def _read_current() -> str:
             result = subprocess.run(
                 ["gsettings", "get", schema, "picture-uri"],
                 capture_output=True, text=True, encoding="utf-8",
-                errors="replace", timeout=10,
-            , shell=False)
+                errors="replace", timeout=10, shell=False)
             if result.returncode != 0:
                 return ""
             raw = result.stdout.strip().strip("'\"")
@@ -224,8 +222,7 @@ def _read_current() -> str:
                 ["xfconf-query", "-c", "xfce4-desktop", "-p",
                  "/backdrop/screen0/monitor0/workspace0/last-image"],
                 capture_output=True, text=True, encoding="utf-8",
-                errors="replace", timeout=10,
-            , shell=False)
+                errors="replace", timeout=10, shell=False)
             return result.stdout.strip() if result.returncode == 0 else ""
         return ""
     except Exception:                                       # noqa: BLE001
