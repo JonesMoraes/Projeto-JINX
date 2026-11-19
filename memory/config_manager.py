@@ -422,20 +422,40 @@ def update_config(**fields) -> None:
 
 
 def get_input_device() -> str:
-    """Microphone device name, or '' for the system default."""
+    """Microphone device name, or '' for the system default.
+    
+    When empty string is returned, the system will automatically use the
+    operating system's default microphone (sd.default.device[0] for sounddevice,
+    sc.default_microphone for soundcard). This is the recommended setting for
+    most users - just plug in your microphone and it will be used automatically.
+    
+    To use a specific microphone, store its name in config as 'input_device'.
+    To reset to system default, save an empty string.
+    """
     return (load_api_keys().get("input_device", "") or "").strip()
 
 
 def save_input_device(name: str) -> None:
+    """Save microphone device name. Pass empty string to use system default."""
     _patch_config(input_device=(name or "").strip())
 
 
 def get_output_device() -> str:
-    """Speaker device name, or '' for the system default."""
+    """Speaker device name, or '' for the system default.
+    
+    When empty string is returned, the system will automatically use the
+    operating system's default speaker (sd.default.device[1] for sounddevice,
+    sc.default_speaker for soundcard). This is the recommended setting for
+    most users.
+    
+    To use a specific speaker, store its name in config as 'output_device'.
+    To reset to system default, save an empty string.
+    """
     return (load_api_keys().get("output_device", "") or "").strip()
 
 
 def save_output_device(name: str) -> None:
+    """Save speaker device name. Pass empty string to use system default."""
     _patch_config(output_device=(name or "").strip())
 
 

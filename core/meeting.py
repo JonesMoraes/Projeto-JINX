@@ -48,7 +48,15 @@ def devices():
         return matches[0] if name else default()
     mic = choose([r for r in sc.all_microphones(include_loopback=False)], mic_name, sc.default_microphone)
     speaker = choose(sc.all_speakers(), output_name, sc.default_speaker)
-    if mic is None or speaker is None: raise RuntimeError("Microfone/saída não detectado / Microphone/output not detected")
+    if mic is None or speaker is None: 
+        # Improved error message with troubleshooting tips
+        mic_list = [m.name for m in sc.all_microphones(include_loopback=False)]
+        speaker_list = [s.name for s in sc.all_speakers()]
+        error_msg = "Microfone/saída não detectado / Microphone/output not detected\n"
+        error_msg += f"Microfones disponíveis: {mic_list if mic_list else 'Nenhum'}\n"
+        error_msg += f"Saídas disponíveis: {speaker_list if speaker_list else 'Nenhuma'}\n"
+        error_msg += "Dica: Conecte um microfone e reinicie o JINX / Tip: Connect a microphone and restart JINX"
+        raise RuntimeError(error_msg)
     loopback = sc.get_microphone(id=speaker.id, include_loopback=True)
     if not loopback.isloopback: raise RuntimeError("Loopback não suportado / Loopback unsupported")
     return [("microfone / microphone", mic), ("sistema / system", loopback)]
