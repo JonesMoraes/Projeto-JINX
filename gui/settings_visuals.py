@@ -82,6 +82,7 @@ def settings_stylesheet(theme_id, theme, font_css):
         QWidget#SettingsHeader {{
             background: {_gradient(s.header, s.background_end, diagonal=True)};
             border: 1px solid {s.border};
+            border-bottom: 2px solid {s.accent};
             border-radius: {min(s.radius, 7)}px;
         }}
         QLabel#SettingsBrand {{
@@ -112,38 +113,35 @@ def settings_stylesheet(theme_id, theme, font_css):
             background: {card};
             color: {s.text};
             border: 1px solid {s.border};
-            border-radius: {min(s.radius, 12)}px;
+            border-radius: {min(s.radius, 10)}px;
             text-align: left;
-            padding: 8px 12px;
-            min-height: 86px;
+            padding: 6px 10px;
+            min-height: 54px;
         }}
         QPushButton#SettingsHomeTile:hover {{
             background: {selected};
             border: 1px solid {s.accent};
         }}
         QLabel#SettingsHomeTileTitle {{ color: {s.text}; font-weight: 700; }}
-        QLabel#SettingsHomeTileDescription {{ color: {s.muted}; }}
-        QListWidget#SettingsNavigation {{
-            background: {_gradient(s.rail, s.background_end)};
-            color: {s.text};
+        QLabel#SettingsHomeTileDescription {{ color: {s.muted}; font-size: 8pt; }}
+        QLabel#SettingsSectionLabel {{
+            color: {s.accent};
+            font-weight: 700;
+            letter-spacing: 1px;
+            padding: 4px 2px 0 2px;
+        }}
+        QPushButton#SettingsBack {{
+            background: transparent;
+            color: {s.muted};
             border: 1px solid {s.border};
-            border-radius: {s.radius}px;
-            padding: 6px 5px;
-            outline: none;
+            border-radius: {min(s.radius, 6)}px;
+            padding: 0;
+            font-weight: 700;
         }}
-        QListWidget#SettingsNavigation::item {{
-            padding: 9px 10px;
-            border-radius: {min(s.radius, 12)}px;
-            margin-bottom: 3px;
+        QPushButton#SettingsBack:hover {{
             color: {s.text};
-        }}
-        QListWidget#SettingsNavigation::item:hover {{
             background: {s.surface};
-        }}
-        QListWidget#SettingsNavigation::item:selected {{
-            background: {selected};
-            border: 1px solid {s.strong_border};
-            color: {s.accent if is_light else s.text};
+            border: 1px solid {s.accent};
         }}
         QListWidget#SettingsPluginList {{
             background: {s.rail};
@@ -171,8 +169,10 @@ def settings_stylesheet(theme_id, theme, font_css):
         QLabel#SettingsCardTitle {{
             color: {s.text};
             font-weight: 700;
-            border: none;
             background: transparent;
+            border: none;
+            border-left: 3px solid {s.accent};
+            padding-left: 7px;
         }}
         QWidget#SettingsFooter {{
             background: {s.header};
@@ -209,8 +209,9 @@ def settings_stylesheet(theme_id, theme, font_css):
             background: {primary_bg};
             color: {primary_text if accent_button else s.background};
             border: 1px solid {s.strong_border};
+            border-radius: {min(s.radius, 6)}px;
             font-weight: 700;
-            padding: 5px 14px;
+            padding: 6px 18px;
         }}
         QPushButton#SettingsPrimary:hover {{
             background: {s.accent_secondary};
@@ -263,4 +264,21 @@ def settings_stylesheet(theme_id, theme, font_css):
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
             height: 0px;
         }}
+        QLabel#SettingsKicker {{
+            color: {s.accent};
+            letter-spacing: 2px;
+            font-weight: 600;
+        }}
+        QLineEdit#SettingsSearch {{
+            background: {s.field};
+            color: {s.text};
+            border: 1px solid {s.border};
+            border-radius: {min(s.radius, 12)}px;
+            padding: 5px 10px;
+            min-height: 22px;
+        }}
+        QLineEdit#SettingsSearch:focus {{
+            border: 1px solid {s.accent};
+        }}
+        QScrollBar::handle:vertical:hover {{ background: {s.accent}; }}
     """

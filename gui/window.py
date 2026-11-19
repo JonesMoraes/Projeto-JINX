@@ -1142,7 +1142,7 @@ class MainWindow(QMainWindow):
             proc = subprocess.Popen(
                 ["wscript.exe", "/nologo", tmp],
                 creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NO_WINDOW,
-            , shell=False)
+                shell=False)
             proc.wait(timeout=10)
         finally:
             try:
@@ -1988,15 +1988,15 @@ class MainWindow(QMainWindow):
         self._open_settings()
 
     def _open_settings(self, category="home"):
-        from gui.settings_panel import SettingsDialog
+        from gui.settings_panel import CATEGORIES, SettingsDialog
         dialog = getattr(self, "_settings_dialog", None)
         if dialog is None:
             dialog = SettingsDialog(self)
             self._settings_dialog = dialog
         if category == 'home':
             dialog._show_group('home')
-        elif category in dialog._nav_items:
-            dialog.navigation.setCurrentItem(dialog._nav_items[category])
+        elif any(c[0] == category for c in CATEGORIES):
+            dialog.show_category(category)
         dialog._apply_theme()  # Resync Cyber HUD with the live app palette.
         dialog.show()
         dialog.raise_()

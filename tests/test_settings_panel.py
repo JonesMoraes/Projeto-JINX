@@ -122,47 +122,45 @@ class SettingsTests(unittest.TestCase):
         for value in (None, {}, [], 'missing'):
             self.assertEqual(settings_theme_id(value), 'cyber_hud')
 
-    def test_settings_window_fits_screen_and_navigation_is_grouped(self):
+    def test_settings_window_is_compact_drawer_and_groups_reachable(self):
         screen = self.dialog.screen()
         if screen is not None:
             available = screen.availableGeometry()
             self.assertLessEqual(self.dialog.width(), available.width())
             self.assertLessEqual(self.dialog.height(), available.height())
-        all_pages = {'home', *(key for key, *_ in CATEGORIES)}
+            self.assertLessEqual(self.dialog.width(), max(520, available.width() // 3))
         self.assertFalse(hasattr(self.dialog, 'header_tabs'))
+        self.assertFalse(hasattr(self.dialog, 'navigation'))
         for group, pages in NAV_GROUPS:
             self.dialog._show_group(group)
             self.assertIn(self.dialog._current, pages)
-            self.assertEqual(set(self.dialog._nav_items), all_pages)
-            self.assertTrue(all(not item.isHidden()
-                                for item in self.dialog._nav_items.values()))
-            self.assertIn(group, self.dialog._nav_headers)
+
+    def test_back_button_and_show_home(self):
+        self.dialog.show_category('general')
+        self.assertFalse(self.dialog.back_btn.isHidden())
+        self.dialog.show_home()
+        self.assertEqual(self.dialog._current, 'home')
+        self.assertTrue(self.dialog.back_btn.isHidden())
 
     def test_settings_home_and_functional_tiles(self):
         from PyQt6.QtWidgets import QListWidget
         self.dialog._show_group('home')
         self.assertEqual(self.dialog._current, 'home')
-        self.assertFalse(self.dialog.navigation.isHidden())
         tiles = {tile.accessibleName(): tile for tile in
                  self.dialog.findChildren(QPushButton, 'SettingsHomeTile')}
-        self.assertEqual(len(tiles), 9)
+        self.assertEqual(len(tiles), 10)
         self.app.processEvents()
         self.assertIs(self.dialog.stack.currentWidget(), self.dialog._home_page)
         self.assertTrue(all(tile.isVisible() and tile.width() > 0 and tile.height() > 0
                             for tile in tiles.values()),
                         {name: (tile.isVisible(), tile.width(), tile.height())
                          for name, tile in tiles.items()})
-        self.assertTrue(all(tile.height() >= 90 for tile in tiles.values()),
+        self.assertTrue(all(tile.height() >= 54 for tile in tiles.values()),
                         {name: tile.height() for name, tile in tiles.items()})
-        self.dialog.resize(1100, self.dialog.height())
-        self.app.processEvents()
-        self.assertEqual(len({tile.x() for tile in tiles.values()}), 3)
-        self.dialog.resize(760, self.dialog.height())
-        self.app.processEvents()
         self.assertEqual(len({tile.x() for tile in tiles.values()}), 2)
         tiles['Aparência'].click()
         self.assertEqual(self.dialog._current, 'appearance')
-        self.assertFalse(self.dialog.navigation.isHidden())
+        self.assertFalse(self.dialog.back_btn.isHidden())
         self.dialog.show_category('integrations')
         self.assertIsInstance(self.dialog.plugin_list, QListWidget)
         self.assertEqual(self.dialog.plugin_list.count(), 1)
@@ -236,16 +234,22 @@ class SettingsTests(unittest.TestCase):
         self.dialog.search.setText('inicio')
         self.assertEqual(self.dialog._current, 'home')
         for query, category in (('aparencia', 'appearance'), ('microfone', 'audio'),
-                                ('conexao de teste', 'integrations')):
+                                ('conexão de teste', 'integrations')):
             self.dialog.search.setText(query)
-            self.assertEqual(self.dialog._current, category)
+            self.assertEqual(self.dialog._current, 'home')
+            visible = {key for key, tile in self.dialog._home_tiles.items()
+                       if tile.isVisible()}
+            self.assertEqual(visible, {category}, query)
         self.dialog.search.setText('zzzzunknown')
-        self.assertIs(self.dialog.stack.currentWidget(), self.dialog.empty)
+        self.assertEqual(self.dialog._current, 'home')
+        visible = {key for key, tile in self.dialog._home_tiles.items()
+                   if tile.isVisible()}
+        self.assertEqual(visible, set())
+        self.assertIn('Nenhum resultado', self.dialog.subtitle.text())
         self.dialog.search.clear()
-        self.assertIsNot(self.dialog.stack.currentWidget(), self.dialog.empty)
-        visible = {key for key, item in self.dialog._nav_items.items()
-                   if not item.isHidden()}
-        self.assertEqual(visible, {'home', *(key for key, *_ in CATEGORIES)})
+        visible = {key for key, tile in self.dialog._home_tiles.items()
+                   if tile.isVisible()}
+        self.assertEqual(visible, {key for key, *_ in CATEGORIES})
 
     def test_drafts_survive_navigation_and_identity_save_uses_runtime_callback(self):
         self.dialog.show_category('general')

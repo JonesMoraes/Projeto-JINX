@@ -154,18 +154,21 @@ class SettingsDialog(QDialog):
         self.setObjectName('SettingsCentral')
         self.setWindowTitle('JINX — Configurações')
         self.setFont(hud_font(9))
+        # Drawer lateral: um terço da largura da tela, quase a altura toda.
+        # Antes era 1080x740 — cobria metade da tela e duplicava a navegação
+        # com os tiles do Início, o que a tornava difícil de ler.
         screen = window.screen() or QApplication.primaryScreen()
         available = screen.availableGeometry() if screen is not None else None
         if available is not None:
-            width = max(1, min(1080, available.width() - 32))
-            height = max(1, min(740, available.height() - 40))
+            width = max(1, min(520, max(380, available.width() // 3)))
+            height = max(1, min(740, available.height() - 48))
         else:
-            width, height = 1080, 740
-        self.setMinimumSize(min(640, width), min(440, height))
+            width, height = 455, 640
+        self.setMinimumSize(min(380, width), min(420, height))
         self.resize(width, height)
         if available is not None:
-            self.move(available.center().x() - width // 2,
-                      available.center().y() - height // 2)
+            self.move(available.right() - width - 16,
+                      available.top() + 24)
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
         self.theme_id = settings_theme_id(config.load_api_keys().get('settings_theme'))
         self._pages = {}
@@ -190,23 +193,32 @@ class SettingsDialog(QDialog):
         header = QHBoxLayout(header_host)
         header.setContentsMargins(12, 7, 10, 7)
         header.setSpacing(8)
+        self.back_btn = QPushButton('‹')
+        self.back_btn.setObjectName('SettingsBack')
+        self.back_btn.setAccessibleName('Voltar ao início das configurações')
+        self.back_btn.setFixedSize(28, 27)
+        self.back_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.back_btn.setVisible(False)
+        self.back_btn.clicked.connect(self.show_home)
+        header.addWidget(self.back_btn)
         identity = QVBoxLayout()
-        identity.setSpacing(1)
+        identity.setSpacing(0)
         brand = QLabel('JINX IA')
         brand.setObjectName('SettingsBrand')
-        brand.setFont(hud_font(14, QFont.Weight.Bold))
+        brand.setFont(hud_font(12, QFont.Weight.Bold))
         identity.addWidget(brand)
-        kicker = QLabel('CENTRAL DE CONFIGURAÇÕES')
+        kicker = QLabel('CONFIGURAÇÕES')
         kicker.setObjectName('SettingsKicker')
-        kicker.setFont(hud_font(8))
+        kicker.setFont(hud_font(7))
         identity.addWidget(kicker)
         header.addLayout(identity)
         header.addStretch()
         self.search = QLineEdit()
-        self.search.setPlaceholderText('Buscar configurações…')
+        self.search.setObjectName('SettingsSearch')
+        self.search.setPlaceholderText('Buscar…')
         self.search.setAccessibleName('Buscar configurações')
         self.search.setClearButtonEnabled(True)
-        self.search.setMaximumWidth(230)
+        self.search.setMaximumWidth(190)
         header.addWidget(self.search)
         header_close = QPushButton('✕')
         header_close.setObjectName('SettingsWindowClose')
@@ -215,35 +227,6 @@ class SettingsDialog(QDialog):
         header_close.clicked.connect(self.close)
         header.addWidget(header_close)
         root.addWidget(header_host)
-        body = QHBoxLayout()
-        body.setSpacing(10)
-        self.navigation = QListWidget()
-        self.navigation.setObjectName('SettingsNavigation')
-        self.navigation.setFixedWidth(190)
-        self.navigation.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.navigation.setAccessibleName('Categorias de configuração')
-        self._nav_items = {}
-        self._nav_headers = {}
-        for group_title, keys in NAV_GROUPS:
-            heading = QListWidgetItem(group_title)
-            heading.setData(Qt.ItemDataRole.UserRole, None)
-            heading.setData(Qt.ItemDataRole.UserRole + 1, 'section')
-            heading.setFlags(Qt.ItemFlag.NoItemFlags)
-            heading.setFont(hud_font(7, QFont.Weight.Bold))
-            heading.setForeground(QColor(C.TEXT_DIM))
-            self.navigation.addItem(heading)
-            self._nav_headers[group_title] = heading
-            for key in keys:
-                title = NAV_TITLES[key]
-                item = QListWidgetItem(title)
-                item.setData(Qt.ItemDataRole.UserRole, key)
-                if key != 'home':
-                    item.setToolTip(next(c[2] for c in CATEGORIES if c[0] == key))
-                else:
-                    item.setToolTip('Atalhos para as áreas de configuração.')
-                self.navigation.addItem(item)
-                self._nav_items[key] = item
-        body.addWidget(self.navigation)
         right = QVBoxLayout()
         self.heading = QLabel()
         self.heading.setObjectName('SettingsHeading')
@@ -260,8 +243,7 @@ class SettingsDialog(QDialog):
         self.empty.setWordWrap(True)
         self.stack.addWidget(self.empty)
         self._home_page = None
-        body.addLayout(right, 1)
-        root.addLayout(body, 1)
+        root.addLayout(right, 1)
         footer_host = QWidget()
         footer_host.setObjectName('SettingsFooter')
         footer_host.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
@@ -278,9 +260,7 @@ class SettingsDialog(QDialog):
         close.clicked.connect(self.close)
         footer.addWidget(close)
         root.addWidget(footer_host)
-        self.navigation.currentItemChanged.connect(self._selected)
         self.search.textChanged.connect(self._search)
-        self.navigation.setCurrentRow(self.navigation.row(self._nav_items['home']))
         self._show_group('home')
         self._apply_theme()
         QApplication.instance().installEventFilter(self)
@@ -320,9 +300,14 @@ class SettingsDialog(QDialog):
             layout.addWidget(note)
         return button
 
-    def _selected(self, item, previous=None):
-        if item and item.data(Qt.ItemDataRole.UserRole) in NAV_TITLES:
-            self.show_category(item.data(Qt.ItemDataRole.UserRole))
+    def show_home(self):
+        """Botão ‹: limpa a busca e volta ao início da central."""
+        if self.search.text():
+            self.search.blockSignals(True)
+            self.search.clear()
+            self.search.blockSignals(False)
+            self._search_matches = None
+        self.show_category('home')
 
     def _show_group(self, group):
         aliases = {'home': ('home',), 'visual': ('appearance',), 'voice': ('audio',),
@@ -332,53 +317,55 @@ class SettingsDialog(QDialog):
         target = self._current if self._current in pages else (pages[0] if pages else 'home')
         self.show_category(target)
 
-    def _update_navigation_visibility(self, query=''):
-        for key, item in self._nav_items.items():
-            if not query:
-                visible = True
-            elif self._search_matches is not None:
-                visible = key in self._search_matches
-            elif key == 'home':
-                visible = all(word in normalized('Início atalhos áreas configurações')
-                              for word in query.split())
-            else:
-                _, title, description, terms = next(c for c in CATEGORIES if c[0] == key)
-                visible = all(word in normalized(f'{title} {description} {terms}')
-                              for word in query.split())
-            item.setHidden(not visible)
-        for group_title, keys in NAV_GROUPS:
-            self._nav_headers[group_title].setHidden(
-                not any(not self._nav_items[key].isHidden() for key in keys))
+    def _category_matches(self, key, query):
+        """Um tile do Início casa com a busca? Inclui termos dos plugins em Integrações."""
+        if not query:
+            return True
+        entry = next((c for c in CATEGORIES if c[0] == key), None)
+        if entry is not None:
+            hay = f'{entry[1]} {entry[2]} {entry[3]}'
+            if key == 'integrations':
+                sections = (self.window.get_plugin_settings()
+                            if self.window.get_plugin_settings else [])
+                for section in sections:
+                    hay += ' ' + str(section.get('title', '')) + ' ' \
+                        + str(section.get('namespace', '')) + ' ' \
+                        + ' '.join(str(f.get('label', ''))
+                                   for f in section.get('fields', []))
+        else:
+            hay = NAV_TITLES.get(key, '')
+        return all(word in normalized(hay) for word in query.split())
+
+    def _apply_search_filter(self, query=''):
+        """No Início, tiles e rótulos de grupo só aparecem se casarem com a busca."""
+        if hasattr(self, '_home_tiles') is False:
+            return
+        query = normalized(query.strip()) if query else ''
+        for key, tile in self._home_tiles.items():
+            tile.setVisible(self._category_matches(key, query))
+        labels = self._home_group_labels if hasattr(self, '_home_group_labels') else {}
+        for group_title, label in labels.items():
+            keys = CATEGORY_GROUPS.get(group_title, ())
+            label.setVisible(any(self._home_tiles[k].isVisible()
+                                 for k in keys if k in self._home_tiles))
 
     def show_category(self, key):
         if key != 'audio' and hasattr(self, 'preview'):
             self.preview.player.stop()
         self._current = key
+        self.back_btn.setVisible(key != 'home')
         if key == 'home':
-            self.navigation.show()
-            self.heading.setText('Início')
-            self.subtitle.setText('Escolha o que deseja configurar.')
-            item = self._nav_items['home']
-            if self.navigation.currentItem() is not item:
-                self.navigation.blockSignals(True)
-                self.navigation.setCurrentItem(item)
-                self.navigation.blockSignals(False)
-            self._update_navigation_visibility(self.search.text().strip())
+            self.heading.setText('Configurações')
+            self.subtitle.setText('Escolha uma área ou use a busca acima.')
             if self._home_page is None:
                 self._home_page = self._build_home()
                 self.stack.addWidget(self._home_page)
+            self._apply_search_filter(self.search.text().strip())
             self.stack.setCurrentWidget(self._home_page)
             return
-        self.navigation.show()
-        item = self._nav_items.get(key)
-        if item is not None and self.navigation.currentItem() is not item:
-            self.navigation.blockSignals(True)
-            self.navigation.setCurrentItem(item)
-            self.navigation.blockSignals(False)
         _, title, description, _ = next(c for c in CATEGORIES if c[0] == key)
         self.heading.setText(title)
         self.subtitle.setText(description)
-        self._update_navigation_visibility(self.search.text().strip())
         if key not in self._pages:
             page = QWidget()
             page.setObjectName('SettingsPage')
@@ -405,103 +392,73 @@ class SettingsDialog(QDialog):
     def _build_home(self):
         page = QWidget()
         page.setObjectName('SettingsHome')
-        grid = QGridLayout(page)
-        grid.setContentsMargins(2, 2, 8, 8)
-        grid.setHorizontalSpacing(10)
-        grid.setVerticalSpacing(10)
-        areas = (
-            ('Perfil', 'Nome e forma de tratamento.', 'general'),
-            ('Aparência', 'Tema, ícone e visual do HUD.', 'appearance'),
-            ('Voz e áudio', 'Voz, microfone e saída de som.', 'audio'),
-            ('Serviços de IA', 'Modelos, provedores e preferências.', 'ai'),
-            ('Memória', 'Revise o que a JINX lembra.', 'memory'),
-            ('Comandos e rotinas', 'Agenda e controles por voz.', 'automation'),
-            ('Integrações', 'Conecte seus serviços.', 'integrations'),
-            ('Acesso remoto', 'Conexão com seu celular.', 'security'),
-            ('Sistema', 'Inicialização e manutenção.', 'system'),
-        )
-        columns = 3 if self.width() >= 900 else 2
-        for index, (title, description, target) in enumerate(areas):
-            tile = QPushButton()
-            tile.setObjectName('SettingsHomeTile')
-            tile.setMinimumHeight(94)
-            tile.setCursor(Qt.CursorShape.PointingHandCursor)
-            tile.setAccessibleName(title)
-            content = QVBoxLayout(tile)
-            content.setContentsMargins(14, 11, 14, 10)
-            content.setSpacing(5)
-            name = QLabel(title)
-            name.setObjectName('SettingsHomeTileTitle')
-            name.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-            content.addWidget(name)
-            detail = QLabel(description)
-            detail.setObjectName('SettingsHomeTileDescription')
-            detail.setWordWrap(True)
-            detail.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-            content.addWidget(detail)
-            tile.clicked.connect(lambda checked=False, k=target: self.show_category(k))
-            grid.addWidget(tile, index // columns, index % columns)
-        for column in range(columns):
-            grid.setColumnStretch(column, 1)
-        self._home_grid = grid
-        self._home_tiles = [page for page in page.findChildren(QPushButton, 'SettingsHomeTile')]
-        self._arrange_home_tiles()
-        return page
-
-    def _arrange_home_tiles(self):
-        grid = getattr(self, '_home_grid', None)
-        tiles = getattr(self, '_home_tiles', ())
-        if grid is None:
-            return
-        columns = 3 if self.width() >= 1020 else 2
-        while grid.count():
-            grid.takeAt(0)
-        for index, tile in enumerate(tiles):
-            grid.addWidget(tile, index // columns, index % columns)
-        for column in range(3):
-            grid.setColumnStretch(column, 1 if column < columns else 0)
-
+        outer = QVBoxLayout(page)
+        outer.setContentsMargins(2, 2, 8, 8)
+        outer.setSpacing(6)
+        self._home_tiles = {}
+        self._home_group_labels = {}
+        for group_title, keys in NAV_GROUPS:
+            targets = [k for k in keys
+                       if k != 'home' and any(c[0] == k for c in CATEGORIES)]
+            if not targets:
+                continue
+            rotulo = QLabel(group_title)
+            rotulo.setObjectName('SettingsSectionLabel')
+            outer.addWidget(rotulo)
+            self._home_group_labels[group_title] = rotulo
+            grid = QGridLayout()
+            grid.setHorizontalSpacing(8)
+            grid.setVerticalSpacing(8)
+            for index, key in enumerate(targets):
+                _, title, description, _ = next(c for c in CATEGORIES if c[0] == key)
+                tile = QPushButton()
+                tile.setObjectName('SettingsHomeTile')
+                tile.setMinimumHeight(58)
+                tile.setCursor(Qt.CursorShape.PointingHandCursor)
+                tile.setAccessibleName(title)
+                content = QVBoxLayout(tile)
+                content.setContentsMargins(12, 8, 12, 7)
+                content.setSpacing(2)
+                name = QLabel(title)
+                name.setObjectName('SettingsHomeTileTitle')
+                name.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+                content.addWidget(name)
+                detail = QLabel(description)
+                detail.setObjectName('SettingsHomeTileDescription')
+                detail.setWordWrap(True)
+                detail.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+                content.addWidget(detail)
+                tile.clicked.connect(lambda checked=False, k=key: self.show_category(k))
+                grid.addWidget(tile, index // 2, index % 2)
+                self._home_tiles[key] = tile
+            for column in range(2):
+                grid.setColumnStretch(column, 1)
+            outer.addLayout(grid)
+        outer.addStretch(1)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setWidget(page)
+        return scroll
     def _search(self, text):
         query = normalized(text.strip())
-        if not query and self._current == 'home':
-            self._search_matches = None
-            self._update_navigation_visibility()
-            self.show_category('home')
-            return
-        if query and all(word in normalized('início atalhos áreas configurações')
-                         for word in query.split()):
-            self._search_matches = {'home'}
-            self._update_navigation_visibility(query)
-            self.show_category('home')
-            return
-        sections = self.window.get_plugin_settings() if self.window.get_plugin_settings else []
-        plugin_terms = ' '.join(str(s.get('title', '')) + ' ' + str(s.get('namespace', ''))
-                               + ' ' + ' '.join(str(f.get('label', '')) for f in s.get('fields', []))
-                               for s in sections)
-        matches = []
-        for index, (key, title, description, terms) in enumerate(CATEGORIES):
-            haystack = f'{title} {description} {terms}' + (plugin_terms if key == 'integrations' else '')
-            match = all(word in normalized(haystack) for word in query.split())
-            if match:
-                matches.append(index)
-        self._search_matches = {CATEGORIES[index][0] for index in matches}
-        if matches:
-            self._update_navigation_visibility(query)
-            current = self.navigation.currentItem()
-            current_key = current.data(Qt.ItemDataRole.UserRole) if current else None
-            match_keys = {CATEGORIES[index][0] for index in matches}
-            if current_key not in match_keys:
-                self.navigation.setCurrentItem(
-                    self._nav_items[CATEGORIES[matches[0]][0]])
+        self._search_matches = None
+        if not query:
+            if self._current != 'home':
+                self.show_category('home')
             else:
-                self.show_category(current_key)
-            if self._current == 'integrations' and hasattr(self, 'plugin_list'):
-                self._filter_plugins(query)
+                self._apply_search_filter('')
+            return
+        matches = {key for key, *_ in CATEGORIES if self._category_matches(key, query)}
+        self._search_matches = matches
+        if self._current != 'home':
+            self.show_category('home')
         else:
-            self._update_navigation_visibility('__no_match__')
+            self._apply_search_filter(query)
+        if not matches:
             self.heading.setText('Busca')
-            self.subtitle.setText('Nenhum resultado')
-            self.stack.setCurrentWidget(self.empty)
+            self.subtitle.setText('Nenhum resultado para a busca.')
+
 
     def _embed(self, layout, widget):
         widget.setProperty('settingsEmbedded', True)
@@ -656,6 +613,15 @@ class SettingsDialog(QDialog):
                      else QBoxLayout.Direction.TopToBottom)
         if columns is not None and columns.direction() != direction:
             columns.setDirection(direction)
+        voice_card = getattr(self, '_voice_card', None)
+        devices_card = getattr(self, '_devices_card', None)
+        if columns is not None and voice_card is not None and devices_card is not None:
+            if direction == QBoxLayout.Direction.LeftToRight:
+                voice_card.setMinimumWidth(300)
+                devices_card.setMinimumWidth(365)
+            else:
+                voice_card.setMinimumWidth(0)
+                devices_card.setMinimumWidth(0)
         if integration_columns is not None:
             integration_direction = (QBoxLayout.Direction.LeftToRight
                                      if self.width() >= 1000
@@ -678,7 +644,6 @@ class SettingsDialog(QDialog):
 
     def resizeEvent(self, event):
         self._update_audio_columns()
-        self._arrange_home_tiles()
         super().resizeEvent(event)
 
     def _build_audio(self, layout):
@@ -719,8 +684,9 @@ class SettingsDialog(QDialog):
         audio.picked.connect(self.window._on_audio_devices_applied)
         # Without explicit stretches, long device names can steal the width
         # of the voice card when both panels are side by side.
-        voice_body.parentWidget().setMinimumWidth(300)
-        devices_body.parentWidget().setMinimumWidth(365)
+        self._voice_card = voice_body.parentWidget()
+        self._devices_card = devices_body.parentWidget()
+        self._update_audio_columns()
         columns.setStretch(0, 1)
         columns.setStretch(1, 1)
 
