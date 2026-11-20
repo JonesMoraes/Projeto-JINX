@@ -229,7 +229,11 @@ class SkillRegistry:
             exec(compile(source, str(handler_path), "exec"), module.__dict__)
             skill_type = getattr(module, "Skill", None)
             if not inspect.isclass(skill_type) or not issubclass(skill_type, BaseSkill):
-                raise TypeError("handler.py must expose class Skill(BaseSkill)")
+                # The documented JINX format (skills/img-to-html and the skill
+                # adoption spec) names the class Handler; accept both spellings.
+                skill_type = getattr(module, "Handler", None)
+            if not inspect.isclass(skill_type) or not issubclass(skill_type, BaseSkill):
+                raise TypeError("handler.py must expose class Skill(BaseSkill) or Handler(BaseSkill)")
             skill = skill_type()
         except Exception:
             sys.modules.pop(module_name, None)
