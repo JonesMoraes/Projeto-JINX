@@ -2458,7 +2458,7 @@ class MainWindow(QMainWindow):
             field.setStyleSheet(f"""
                 QLineEdit {{
                     background: {C.PANEL2}; color: {C.WHITE};
-                    border: 1px solid {C.BORDER}; border-radius: 2px; padding: 4px 7px;
+                    border: 1px solid {C.BORDER}; border-radius: 10px; padding: 4px 7px;
                 }}
                 QLineEdit:focus {{ border-color: {C.PRI_DIM}; }}
             """)

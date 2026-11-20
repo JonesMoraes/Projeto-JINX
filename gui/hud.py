@@ -51,7 +51,7 @@ from gui.theme import (
     qcol,
 )
 
-from gui.style import blend, chamfer, px_font, with_alpha
+from gui.style import RADIUS_XL, blend, px_font, rounded_rect, with_alpha
 
 try:
     from gui.reactor import Reactor3D
@@ -502,17 +502,12 @@ class HudCanvas(QWidget):
             p.setBrush(QBrush(gg))
             p.drawEllipse(QPointF(x, yy), rr, rr)
 
-        # the screen's edge: a thin chamfered frame with lit corners
-        m, cut, arm = 6, 16, 46
+        # the screen's edge: one continuous hairline frame, softly rounded —
+        # no lit corner brackets any more. Quiet, like everything else now.
+        m = 6
         p.setBrush(Qt.BrushStyle.NoBrush)
-        p.setPen(QPen(blend(C.PRI, 0.20), 1))
-        p.drawPolygon(chamfer(QRectF(m, m, W - 2 * m, H - 2 * m), cut, ("tl", "tr", "br", "bl")))
-        p.setPen(QPen(blend(C.PRI, 0.9), 1.8))
-        for sx, sy in ((1, 1), (-1, 1), (1, -1), (-1, -1)):
-            x0 = m if sx > 0 else W - m
-            y0 = m if sy > 0 else H - m
-            p.drawLine(QLineF(x0, y0 + sy * (cut + arm), x0, y0 + sy * cut))
-            p.drawLine(QLineF(x0, y0 + sy * cut, x0 + sx * cut, y0))
+        p.setPen(QPen(with_alpha(C.PRI, 0.22), 1))
+        p.drawPath(rounded_rect(QRectF(m, m, W - 2 * m, H - 2 * m), RADIUS_XL))
         p.setFont(px_font(10, QFont.Weight.DemiBold, spacing=2.2))
         p.setPen(QPen(blend(C.PRI, 0.55)))
         p.drawText(QRectF(m + 24, m + 8, 260, 16), Qt.AlignmentFlag.AlignVCenter, "INTERFACE DE VOZ")

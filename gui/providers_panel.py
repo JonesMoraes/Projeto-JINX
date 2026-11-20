@@ -151,7 +151,7 @@ class ProvidersOverlay(_HudOverlay):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(f"""
             ProvidersOverlay {{
-                background: rgba(0, 6, 10, 249);
+                background: rgba(4, 7, 13, 249);
                 border: 1px solid {C.BORDER_B};
                 border-radius: 8px;
             }}
@@ -199,9 +199,9 @@ class ProvidersOverlay(_HudOverlay):
         self._scroll.setStyleSheet(
             "QScrollArea { background: transparent; }"
             f"QScrollBar:vertical {{ background: {C.DARK}; width: 9px; "
-            f"margin: 0; border-radius: 4px; }}"
+            f"margin: 0; border-radius: 8px; }}"
             f"QScrollBar::handle:vertical {{ background: {C.BORDER_B}; "
-            f"border-radius: 4px; min-height: 30px; }}"
+            f"border-radius: 8px; min-height: 30px; }}"
             "QScrollBar::add-line, QScrollBar::sub-line { height: 0; }"
             "QScrollBar::add-page, QScrollBar::sub-page { background: none; }")
         self._scroll.setMinimumHeight(230)
@@ -241,7 +241,7 @@ class ProvidersOverlay(_HudOverlay):
         apply_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         apply_btn.setStyleSheet(f"""
             QPushButton {{ background: {C.PRI_GHO}; color: {C.PRI};
-                border: 1px solid {C.PRI_DIM}; border-radius: 4px; }}
+                border: 1px solid {C.PRI_DIM}; border-radius: 8px; }}
             QPushButton:hover {{ background: {C.BORDER}; border-color: {C.PRI}; }}
         """)
         apply_btn.clicked.connect(self._apply)
@@ -253,7 +253,7 @@ class ProvidersOverlay(_HudOverlay):
         close.setCursor(Qt.CursorShape.PointingHandCursor)
         close.setStyleSheet(f"""
             QPushButton {{ background: transparent; color: {C.TEXT_MED};
-                border: 1px solid {C.BORDER}; border-radius: 4px; }}
+                border: 1px solid {C.BORDER}; border-radius: 8px; }}
             QPushButton:hover {{ color: {C.TEXT}; border-color: {C.BORDER_B}; }}
         """)
         close.clicked.connect(self.hide)
@@ -313,7 +313,7 @@ class ProvidersOverlay(_HudOverlay):
                     background: {C.PRI_GHO if on else 'transparent'};
                     color: {C.TEXT if on else C.TEXT_DIM};
                     border: 1px solid {C.PRI_DIM if on else C.BORDER};
-                    border-radius: 5px;
+                    border-radius: 8px;
                 }}
                 QPushButton:hover {{ border-color: {C.BORDER_B}; }}
             """)
@@ -435,7 +435,7 @@ class ProvidersOverlay(_HudOverlay):
         decisions and eleven controls."""
         w = QWidget()
         w.setStyleSheet(f"background: {C.PANEL}; border: 1px solid {C.BORDER}; "
-                        f"border-radius: 5px;")
+                        f"border-radius: 8px;")
         lay = QVBoxLayout(w)
         lay.setContentsMargins(12, 10, 12, 11)
         lay.setSpacing(5)
@@ -459,7 +459,7 @@ class ProvidersOverlay(_HudOverlay):
         box.setFixedHeight(29)
         box.setStyleSheet(
             f"QComboBox {{ background: {C.DARK}; color: {C.TEXT}; "
-            f"border: 1px solid {C.BORDER}; border-radius: 3px; padding: 3px 9px; }}"
+            f"border: 1px solid {C.BORDER}; border-radius: 8px; padding: 3px 9px; }}"
             f"QComboBox:hover {{ border-color: {C.BORDER_B}; }}"
             f"QComboBox::drop-down {{ border: none; width: 18px; }}"
             f"QComboBox QAbstractItemView {{ background: {C.DARK}; color: {C.TEXT}; "
@@ -473,7 +473,7 @@ class ProvidersOverlay(_HudOverlay):
         w.setFixedHeight(27)
         w.setStyleSheet(
             f"QLineEdit {{ background: {C.DARK}; color: {C.TEXT}; "
-            f"border: 1px solid {C.BORDER}; border-radius: 3px; padding: 2px 9px; }}"
+            f"border: 1px solid {C.BORDER}; border-radius: 8px; padding: 2px 9px; }}"
             f"QLineEdit:focus {{ border-color: {C.PRI_DIM}; }}")
         return w
 
@@ -485,7 +485,7 @@ class ProvidersOverlay(_HudOverlay):
         col = colour or C.TEXT_MED
         b.setStyleSheet(f"""
             QPushButton {{ background: transparent; color: {col};
-                border: 1px solid {C.BORDER}; border-radius: 3px; padding: 0 12px; }}
+                border: 1px solid {C.BORDER}; border-radius: 8px; padding: 0 12px; }}
             QPushButton:hover {{ border-color: {C.BORDER_B}; color: {C.TEXT}; }}
         """)
         b.clicked.connect(slot)

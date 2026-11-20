@@ -43,7 +43,8 @@ from collections import deque
 
 from PyQt6.QtGui import QPolygonF, QTextBlockFormat, QTextCharFormat
 
-from gui.style import (blend, chamfer, hud_font, px_font, scroll_css, with_alpha)
+from gui.style import (RADIUS_L, RADIUS_M, RADIUS_S, blend, hud_font, px_font,
+                       rounded_rect, scroll_css, with_alpha)
 
 
 class MetricBar(QWidget):
@@ -430,7 +431,7 @@ class _DropCanvas(QWidget):
         pen = QPen(edge, 1, Qt.PenStyle.SolidLine if z._current_file else Qt.PenStyle.DashLine)
         pen.setDashOffset(z._dash_offset)
         p.setPen(pen)
-        p.drawPolygon(chamfer(QRectF(0.5, 0.5, W - 1, H - 1), 7))
+        p.drawPath(rounded_rect(QRectF(0.5, 0.5, W - 1, H - 1), RADIUS_S))
 
         if z._current_file:
             self._paint_file(p, W, H)
@@ -508,9 +509,9 @@ class _CameraPreview(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(f"""
             _CameraPreview {{
-                background: rgba(0, 6, 10, 242);
+                background: rgba(4, 7, 13, 242);
                 border: 1px solid {C.PRI};
-                border-radius: 6px;
+                border-radius: 10px;
             }}
         """)
         self.setFixedWidth(self._W)
@@ -573,9 +574,10 @@ class _CameraPreview(QWidget):
 # re-themes live with the accent picker at no cost.
 
 class HoloPanel(QWidget):
-    """A glass "screen": a translucent panel with two cut corners, lit edges and
-    a header strip carrying a title and a short code. Children go in `body`;
-    small buttons can sit at the right of the header (add_header_widget)."""
+    """A glass "screen": a soft-rounded translucent card with a hairline
+    border and a quiet header strip carrying a title and a short code.
+    Children go in `body`; small buttons can sit at the right of the header
+    (add_header_widget)."""
 
     HEADER = 30
 
@@ -628,24 +630,17 @@ class HoloPanel(QWidget):
             return
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         W, H = self.width(), self.height()
-        cut = 11
+        # glass card: faint vertical tint inside one hairline border — no cut
+        # corners, no lit edges. The quiet Apple-style surface.
+        rect = QRectF(0.5, 0.5, W - 1, H - 1)
         g = QLinearGradient(0, 0, 0, H)
-        g.setColorAt(0.0, blend(C.PRI, 0.085))
-        g.setColorAt(0.18, blend(C.PRI, 0.045))
-        g.setColorAt(1.0, blend(C.PRI, 0.025))
+        g.setColorAt(0.0, blend(C.PRI, 0.05))
+        g.setColorAt(0.25, blend(C.PRI, 0.028))
+        g.setColorAt(1.0, blend(C.PRI, 0.014))
         p.setBrush(QBrush(g))
-        p.setPen(QPen(blend(C.PRI, 0.24), 1))
-        p.drawPolygon(chamfer(QRectF(0.5, 0.5, W - 1, H - 1), cut))
-        # lit edges: the two chamfers and a short run along from each
-        p.setPen(QPen(blend(C.PRI, 0.85), 1.6))
-        p.drawLine(QLineF(0.5, cut + 0.5, cut + 0.5, 0.5))
-        p.drawLine(QLineF(cut + 0.5, 0.5, cut + 44, 0.5))
-        p.drawLine(QLineF(W - 0.5, H - cut - 0.5, W - cut - 0.5, H - 0.5))
-        p.drawLine(QLineF(W - cut - 0.5, H - 0.5, W - cut - 34, H - 0.5))
+        p.setPen(QPen(with_alpha(C.BORDER, 0.9), 1))
+        p.drawPath(rounded_rect(rect, RADIUS_L))
         if self._title:
-            p.setPen(Qt.PenStyle.NoPen)
-            p.setBrush(QBrush(qcol(C.ACC)))
-            p.drawRect(QRectF(12, 11, 3, 10))
             right = self._header_right()
             code_w = 0.0
             if self._code:
@@ -654,17 +649,17 @@ class HoloPanel(QWidget):
                 p.setPen(QPen(blend(C.PRI, 0.5)))
                 p.drawText(QRectF(right - code_w, 6, code_w, 20),
                            Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignRight, self._code)
-            p.setFont(px_font(11, QFont.Weight.DemiBold, spacing=1.8))
-            p.setPen(QPen(qcol(C.PRI)))
-            room = max(10.0, right - code_w - 26)
-            p.drawText(QRectF(21, 6, room, 20), Qt.AlignmentFlag.AlignVCenter,
+            p.setFont(px_font(11, QFont.Weight.DemiBold, spacing=1.2))
+            p.setPen(QPen(qcol(C.WHITE)))
+            room = max(10.0, right - code_w - 22)
+            p.drawText(QRectF(14, 6, room, 20), Qt.AlignmentFlag.AlignVCenter,
                        p.fontMetrics().elidedText(self._title, Qt.TextElideMode.ElideRight, int(room)))
-            lg = QLinearGradient(12, 0, W - 12, 0)
-            lg.setColorAt(0.0, with_alpha(C.PRI, 0.55))
-            lg.setColorAt(0.6, with_alpha(C.PRI, 0.12))
+            lg = QLinearGradient(14, 0, W - 14, 0)
+            lg.setColorAt(0.0, with_alpha(C.PRI, 0.35))
+            lg.setColorAt(0.6, with_alpha(C.PRI, 0.08))
             lg.setColorAt(1.0, with_alpha(C.PRI, 0.0))
             p.setPen(QPen(QBrush(lg), 1))
-            p.drawLine(QLineF(12, self.HEADER, W - 12, self.HEADER))
+            p.drawLine(QLineF(14, self.HEADER, W - 14, self.HEADER))
         p.end()
 
 
@@ -910,7 +905,8 @@ def paint_icon(p: QPainter, kind: str, r: QRectF, col: QColor) -> None:
 
 
 class IconButton(QPushButton):
-    """A painted button: chamfered frame, a line icon, and optional words.
+    """A painted button: soft-rounded glass frame, a line icon, and optional
+    words.
 
     setText/text are kept so code that labels a button keeps working; the
     words are painted, never drawn by Qt's own button style."""
@@ -965,7 +961,7 @@ class IconButton(QPushButton):
         hot = self.underMouse() or self.isChecked() or self.isDown()
         p.setBrush(QBrush(blend(col, 0.20 if self.isDown() else 0.15 if hot else 0.06)))
         p.setPen(QPen(blend(col, 0.8 if hot else 0.42), 1))
-        p.drawPolygon(chamfer(QRectF(0.5, 0.5, W - 1, H - 1), 6))
+        p.drawPath(rounded_rect(QRectF(0.5, 0.5, W - 1, H - 1), RADIUS_S))
         if self._compact:
             paint_icon(p, self._kind, QRectF(W * 0.26, H * 0.26, W * 0.48, H * 0.48), col)
         else:
@@ -1037,7 +1033,7 @@ class StateChip(QWidget):
         col = qcol(getattr(C, self._COLOURS.get(self._state, "PRI")))
         p.setBrush(QBrush(blend(col, 0.10)))
         p.setPen(QPen(blend(col, 0.55), 1))
-        p.drawPolygon(chamfer(QRectF(0.5, 0.5, W - 1, H - 1), 9, ("tl", "tr", "br", "bl")))
+        p.drawPath(rounded_rect(QRectF(0.5, 0.5, W - 1, H - 1), (H - 1) / 2))
         g = QRadialGradient(22, H / 2, 10)
         g.setColorAt(0, with_alpha(col, 0.9))
         g.setColorAt(1, with_alpha(col, 0.0))
@@ -1165,7 +1161,7 @@ class CommandFrame(QWidget):
         focus = fw is not None and self.isAncestorOf(fw)
         p.setBrush(QBrush(blend(C.PRI, 0.10 if focus else 0.06)))
         p.setPen(QPen(blend(C.PRI, 0.95 if focus else 0.5), 1))
-        p.drawPolygon(chamfer(QRectF(0.5, 0.5, W - 1, H - 1), 8))
+        p.drawPath(rounded_rect(QRectF(0.5, 0.5, W - 1, H - 1), RADIUS_M))
         p.end()
 
 
