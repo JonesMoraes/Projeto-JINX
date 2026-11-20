@@ -970,6 +970,15 @@ def _signature(call) -> str:
 
 def _speakable(text: str) -> str:
     """What is left of a reply once the parts a voice cannot say are gone."""
+    # The humanizer comes first: markdown symbols and chat filler leave
+    # nothing for _UNSPEAKABLE to catch, and a fence dropped whole beats
+    # espeak reading Python aloud. Its own failure falls through to the old
+    # behaviour — this pass may never silence a reply that was fine before.
+    try:
+        from core import humanizer
+        text = humanizer.humanize(text)
+    except Exception:
+        pass
     cleaned = _UNSPEAKABLE.sub(" ", text or "")
     # Collapse the gaps the removal leaves, without touching line structure.
     return re.sub(r"[ 	]{2,}", " ", cleaned).strip()

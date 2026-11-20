@@ -212,6 +212,15 @@ def save_voice(voice_name: str) -> None:
     _write_config(data)
 
 
+def get_humanizer_enabled() -> bool:
+    """Whether the spoken-reply humanizer (core/humanizer.py) is active.
+
+    On unless explicitly turned off in config: stripping markdown and
+    chat-assistant filler on the way to the voice is what the reply should
+    have sounded like anyway. Set \"humanizer_enabled\": false to disable."""
+    return load_api_keys().get("humanizer_enabled", True) is not False
+
+
 def get_wake_word_enabled() -> bool:
     """Whether local gating is on (assistant sleeps until a JINX wake phrase)."""
     return load_api_keys().get("wake_word_enabled", False)
