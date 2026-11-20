@@ -102,7 +102,7 @@ def settings_stylesheet(theme_id, theme, font_css):
             background: transparent;
             color: {s.muted};
             border: 1px solid transparent;
-            border-radius: 3px;
+            border-radius: 8px;
             padding: 0;
             font-weight: 700;
         }}
@@ -217,10 +217,7 @@ def settings_stylesheet(theme_id, theme, font_css):
             font-weight: 700;
             background: transparent;
             border: none;
-            padding-left: 7px;
-            border-left: 3px solid {s.accent};
-            border-top-left-radius: 0;
-            border-bottom-left-radius: 0;
+            padding-left: 0;
         }}
         QWidget#SettingsFooter {{
             background: {s.header};
@@ -286,7 +283,7 @@ def settings_stylesheet(theme_id, theme, font_css):
         QCheckBox::indicator {{
             width: 18px; height: 18px;
             border: 1px solid {s.border};
-            border-radius: 6px;
+            border-radius: 10px;
             background: {s.field};
         }}
         QCheckBox::indicator:checked {{
@@ -296,9 +293,9 @@ def settings_stylesheet(theme_id, theme, font_css):
         QProgressBar {{
             background: {s.field};
             border: 1px solid {s.border};
-            border-radius: 5px;
+            border-radius: 8px;
         }}
-        QProgressBar::chunk {{ background: {s.accent}; border-radius: 5px; }}
+        QProgressBar::chunk {{ background: {s.accent}; border-radius: 8px; }}
         QScrollBar:vertical {{
             background: transparent;
             width: 7px; border: none;
@@ -307,7 +304,7 @@ def settings_stylesheet(theme_id, theme, font_css):
         QScrollBar::handle:vertical {{
             background: {s.border};
             min-height: 40px;
-            border-radius: 3px;
+            border-radius: 8px;
         }}
         QScrollBar::handle:vertical:hover {{ background: {s.accent}; }}
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
