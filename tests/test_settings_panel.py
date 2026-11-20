@@ -142,6 +142,32 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual(self.dialog._current, 'home')
         self.assertTrue(self.dialog.back_btn.isHidden())
 
+    def test_escape_undo_ladder_and_enter_opens_first_result(self):
+        # Enter na busca abre a primeira área visível.
+        self.dialog.search.setText('micro')
+        self.app.processEvents()
+        self.dialog.search.returnPressed.emit()
+        self.assertEqual(self.dialog._current, 'audio')
+        # Esc desescada: limpa a busca e volta ao Início.
+        self.dialog._escape()
+        self.assertEqual(self.dialog._current, 'home')
+        self.assertEqual(self.dialog.search.text(), '')
+        # No Início, sem busca, Esc fecha o diálogo.
+        self.dialog.show()
+        self.assertTrue(self.dialog.isVisible())
+        self.dialog._escape()
+        self.assertFalse(self.dialog.isVisible())
+
+    def test_search_reports_result_count(self):
+        self.dialog.search.setText('micro')
+        self.app.processEvents()
+        self.assertIn('área', self.dialog.subtitle.text())
+        self.dialog.search.setText('zzzznada')
+        self.app.processEvents()
+        self.assertIn('Nenhum resultado', self.dialog.subtitle.text())
+        self.dialog.show_home()
+        self.assertIn('Escolha uma área', self.dialog.subtitle.text())
+
     def test_settings_home_and_functional_tiles(self):
         from PyQt6.QtWidgets import QListWidget
         self.dialog._show_group('home')
@@ -157,7 +183,8 @@ class SettingsTests(unittest.TestCase):
                          for name, tile in tiles.items()})
         self.assertTrue(all(tile.height() >= 54 for tile in tiles.values()),
                         {name: tile.height() for name, tile in tiles.items()})
-        self.assertEqual(len({tile.x() for tile in tiles.values()}), 2)
+        # Home redesenhada: linhas em coluna única dentro de cartões de grupo.
+        self.assertEqual(len({tile.x() for tile in tiles.values()}), 1)
         tiles['Aparência'].click()
         self.assertEqual(self.dialog._current, 'appearance')
         self.assertFalse(self.dialog.back_btn.isHidden())
@@ -268,7 +295,9 @@ class SettingsTests(unittest.TestCase):
     def test_voice_preview_does_not_save_and_stops_on_navigation(self):
         self.dialog.show_category('audio')
         original = config.get_voice()
-        self.dialog.voice.setCurrentIndex(0)
+        first_voice = next(i for i in range(self.dialog.voice.count())
+                           if self.dialog.voice.itemData(i) is not None)
+        self.dialog.voice.setCurrentIndex(first_voice)
         with patch.object(self.dialog.preview.player, 'request') as request, \
                 patch.object(self.dialog.preview.player, 'stop') as stop:
             self.button('Ouvir prévia').click()

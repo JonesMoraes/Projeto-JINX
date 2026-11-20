@@ -341,14 +341,14 @@ class CustomizeOverlay(QWidget):
         # ── Assistant voice — Gemini Live prebuilt voices ───────────────────
         # Selecting one and applying rebuilds the Live session. The names and
         # styles come from the supported-voice catalog in config_manager.
-        from memory.config_manager import AVAILABLE_VOICES, DEFAULT_VOICE, VOICE_STYLES
+        from memory.config_manager import DEFAULT_VOICE, AVAILABLE_VOICES
         lay.addSpacing(4)
         lay.addWidget(_lbl("VOZ DO ASSISTENTE  —  PT-BR", 8, color=C.TEXT_DIM,
                             align=Qt.AlignmentFlag.AlignLeft))
         self._sel_voice   = (voice or DEFAULT_VOICE)
         if self._sel_voice not in AVAILABLE_VOICES:
             self._sel_voice = DEFAULT_VOICE
-        from gui.voice_preview import VoicePicker, VoicePreviewController
+        from gui.voice_preview import VoicePicker, VoicePreviewController, fill_voice_picker
         self.on_voice_preview_state = None
         self._voice_preview = VoicePreviewController(
             self, lambda active: self.on_voice_preview_state(active) if self.on_voice_preview_state else 0)
@@ -362,8 +362,7 @@ class CustomizeOverlay(QWidget):
             f"QComboBox:hover {{ border-color: {C.BORDER_B}; }}"
             f"QComboBox QAbstractItemView {{ background: #000d12; color: {C.TEXT}; "
             f"selection-background-color: {C.PRI_GHO}; border: 1px solid {C.BORDER}; }}")
-        for _v in AVAILABLE_VOICES:
-            self._voice_combo.addItem(f"{_v}  —  {VOICE_STYLES[_v]}", _v)
+        fill_voice_picker(self._voice_combo, self._sel_voice)
         self._voice_combo.setCurrentIndex(
             max(0, self._voice_combo.findData(self._sel_voice)))
         lay.addWidget(self._voice_combo)

@@ -82,8 +82,7 @@ def settings_stylesheet(theme_id, theme, font_css):
         QWidget#SettingsHeader {{
             background: {_gradient(s.header, s.background_end, diagonal=True)};
             border: 1px solid {s.border};
-            border-bottom: 2px solid {s.accent};
-            border-radius: {min(s.radius, 7)}px;
+            border-radius: {min(s.radius, 10)}px;
         }}
         QLabel#SettingsBrand {{
             color: {s.text};
@@ -93,6 +92,12 @@ def settings_stylesheet(theme_id, theme, font_css):
             color: {s.muted};
         }}
         QLabel#SettingsHeading {{ color: {s.text}; font-weight: 700; }}
+        QLabel#SettingsBreadcrumb {{
+            color: {s.accent};
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            background: transparent;
+        }}
         QPushButton#SettingsWindowClose {{
             background: transparent;
             color: {s.muted};
@@ -109,21 +114,62 @@ def settings_stylesheet(theme_id, theme, font_css):
         QWidget#SettingsPage, QScrollArea, QScrollArea > QWidget,
         QStackedWidget {{ background: transparent; border: none; }}
         QWidget#SettingsHome {{ background: transparent; }}
-        QPushButton#SettingsHomeTile {{
+        QWidget#SettingsGroupCard {{
+            background: {card};
+            border: 1px solid {s.border};
+            border-radius: {min(s.radius, 12)}px;
+        }}
+        QPushButton#SettingsHeroRow {{
             background: {card};
             color: {s.text};
             border: 1px solid {s.border};
-            border-radius: {min(s.radius, 10)}px;
+            border-radius: {min(s.radius, 12)}px;
             text-align: left;
-            padding: 6px 10px;
-            min-height: 54px;
+            padding: 4px 6px;
+            min-height: 60px;
+        }}
+        QPushButton#SettingsHeroRow:hover {{
+            border: 1px solid {s.accent};
+            background: {selected};
+        }}
+        QWidget#SettingsAvatar {{
+            background: {_gradient(s.accent, s.accent_secondary)};
+            border: 1px solid {s.strong_border};
+            border-radius: 21px;
+        }}
+        QWidget#SettingsTileIcon {{
+            background: {_gradient(s.selected, s.surface_end)};
+            border: 1px solid {s.border};
+            border-radius: 10px;
+        }}
+        QLabel#SettingsRowSeparator {{
+            background: {s.border};
+            border: none;
+            margin: 0 12px;
+        }}
+        QPushButton#SettingsHomeTile {{
+            background: transparent;
+            color: {s.text};
+            border: none;
+            border-radius: {min(s.radius, 9)}px;
+            text-align: left;
+            padding: 4px 6px;
+            min-height: 52px;
         }}
         QPushButton#SettingsHomeTile:hover {{
             background: {selected};
-            border: 1px solid {s.accent};
+            border: none;
+        }}
+        QPushButton#SettingsHomeTile:pressed {{
+            background: {selected};
+            border: none;
         }}
         QLabel#SettingsHomeTileTitle {{ color: {s.text}; font-weight: 700; }}
         QLabel#SettingsHomeTileDescription {{ color: {s.muted}; font-size: 8pt; }}
+        QLabel#SettingsHomeTileArrow {{ color: {s.muted}; }}
+        QPushButton#SettingsHomeTile:hover QLabel#SettingsHomeTileArrow {{
+            color: {s.accent};
+        }}
         QLabel#SettingsSectionLabel {{
             color: {s.accent};
             font-weight: 700;
@@ -171,8 +217,10 @@ def settings_stylesheet(theme_id, theme, font_css):
             font-weight: 700;
             background: transparent;
             border: none;
-            border-left: 3px solid {s.accent};
             padding-left: 7px;
+            border-left: 3px solid {s.accent};
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
         }}
         QWidget#SettingsFooter {{
             background: {s.header};
@@ -252,13 +300,14 @@ def settings_stylesheet(theme_id, theme, font_css):
         }}
         QProgressBar::chunk {{ background: {s.accent}; border-radius: 5px; }}
         QScrollBar:vertical {{
-            background: {s.background};
-            width: 9px; border: none;
+            background: transparent;
+            width: 7px; border: none;
+            margin: 2px 1px 2px 0;
         }}
         QScrollBar::handle:vertical {{
             background: {s.border};
-            min-height: 28px;
-            border-radius: 4px;
+            min-height: 40px;
+            border-radius: 3px;
         }}
         QScrollBar::handle:vertical:hover {{ background: {s.accent}; }}
         QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
@@ -280,5 +329,4 @@ def settings_stylesheet(theme_id, theme, font_css):
         QLineEdit#SettingsSearch:focus {{
             border: 1px solid {s.accent};
         }}
-        QScrollBar::handle:vertical:hover {{ background: {s.accent}; }}
     """

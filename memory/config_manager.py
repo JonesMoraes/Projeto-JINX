@@ -179,6 +179,20 @@ VOICE_STYLES = {
 AVAILABLE_VOICES = tuple(VOICE_STYLES)
 DEFAULT_VOICE    = "Charon"
 
+# Gender of each Gemini Live voice, used to group the voice pickers:
+# 15 feminine and 15 masculine, in the stable catalog order above.
+VOICE_FEMININE = (
+    "Zephyr", "Kore", "Leda", "Aoede", "Callirrhoe", "Autonoe",
+    "Enceladus", "Despina", "Erinome", "Laomedeia", "Achernar",
+    "Gacrux", "Pulcherrima", "Vindemiatrix", "Sulafat",
+)
+VOICE_MASCULINE = tuple(v for v in VOICE_STYLES if v not in VOICE_FEMININE)
+
+
+def voices_by_gender():
+    """Return (feminine, masculine) tuples of voice names, catalog order."""
+    return VOICE_FEMININE, VOICE_MASCULINE
+
 
 def get_voice() -> str:
     """Return the configured Live voice, falling back to the default if unset

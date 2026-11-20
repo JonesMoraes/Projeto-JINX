@@ -3,18 +3,20 @@
 Forms are created on demand on the Qt thread. Each form retains its existing
 save/reconnect contract; theme changes only write the settings_theme key.
 """
+import os
 import re
 import unicodedata
 from weakref import WeakKeyDictionary
 
 from PyQt6.QtCore import QEvent, Qt, QTimer, QRectF
-from PyQt6.QtGui import QColor, QFont, QPainter, QPen, QPalette, QLinearGradient, QRadialGradient, QBrush
+from PyQt6.QtGui import (QColor, QFont, QPainter, QPen, QPalette, QLinearGradient, QRadialGradient, QBrush,
+                         QPainterPath)
 from PyQt6.QtWidgets import (QApplication, QBoxLayout, QCheckBox, QComboBox, QDialog, QFrame, QGridLayout,
     QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem, QPushButton,
     QScrollArea, QSizePolicy, QStackedWidget, QVBoxLayout, QWidget)
 
 from gui.style import hud_font, DISPLAY_FAMILIES, DISPLAY_CSS
-from gui.settings_visuals import settings_stylesheet
+from gui.settings_visuals import settings_stylesheet, visual_skin
 from gui.theme import C, retheme_all_widgets
 from gui.settings_controls import ToggleSwitch, ToggleRow
 from gui.settings_themes import (SETTINGS_THEMES, DEFAULT_SETTINGS_THEME,
@@ -147,6 +149,129 @@ class ThemePreview(QWidget):
         p.end()
 
 
+def _accent_luminance(accent):
+    hexs = str(accent).lstrip('#')
+    r, g, b = (int(hexs[i:i + 2], 16) for i in (0, 2, 4))
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
+
+
+def _icon_ink(accent, mode):
+    """Escolhe a tinta do icone a partir de uma cor de accent ja resolvida."""
+    if mode == 'contrast':
+        return QColor('#10151b') if _accent_luminance(accent) > 0.62 else QColor('#ffffff')
+    return QColor(accent)
+
+
+class SettingsIcon(QWidget):
+    """Vector icon painted natively by QPainter — no font and no emoji.
+
+    ``mode='accent'`` strokes the glyph in the theme accent (for badges on
+    a subtle tinted tile); ``mode='contrast'`` picks white or dark ink so
+    the glyph stays readable on a solid accent background.
+    """
+    def __init__(self, kind, dialog, mode='accent', size=20, parent=None):
+        super().__init__(parent)
+        self.kind = kind
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setFixedSize(size, size)
+        # Cor resolvida UMA vez na construcao. O paintEvent nunca consulta
+        # tema/QSS — repolir widgets durante o paint derrubava o app com
+        # segfault nativo no modo offscreen (0xC0000409, sem traceback).
+        accent = None
+        try:
+            skin = visual_skin(dialog.theme_id, resolved_settings_theme(dialog.theme_id))
+            accent = skin.accent
+        except Exception:
+            accent = None
+        if not accent:
+            accent = '#67e8f9'
+        self._ink = _icon_ink(accent, mode)
+
+    def paintEvent(self, event):
+        color = self._ink
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pen = QPen(color, 1.7)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        p.setPen(pen)
+        p.setBrush(Qt.BrushStyle.NoBrush)
+
+        def seg(x1, y1, x2, y2):
+            """Traca um segmento via QPainterPath. QPainter.drawLine pode
+            segfaultar no Qt offscreen do Windows quando misturado com
+            elipses preenchidas/antialias (ver nota no icone 'palette')."""
+            path = QPainterPath()
+            path.moveTo(x1, y1)
+            path.lineTo(x2, y2)
+            p.drawPath(path)
+
+        k = self.kind
+        if k == 'person':
+            p.drawEllipse(QRectF(7, 2.5, 6, 6))
+            p.drawArc(QRectF(3.5, 10.5, 13, 12), 0, 180 * 16)
+        elif k == 'palette':
+            # NB: um QPainter.drawLine(int, ...) logo apos elipses preenchidas
+            # com antialias derruba o processo (segfault nativo no Qt offscreen
+            # do Windows). Todo traco aqui usa drawPath/drawPolyline, nao
+            # drawLine — testado com o repro do crash.
+            p.drawEllipse(QRectF(3, 3, 14, 14))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(color)
+            for x, y in ((6.5, 6.5), (11.5, 6.5), (6.5, 11.5)):
+                p.drawEllipse(QRectF(x, y, 2, 2))
+            p.setBrush(Qt.BrushStyle.NoBrush)
+            path = QPainterPath()
+            path.moveTo(10, 10.5)
+            path.lineTo(13.5, 13.5)
+            p.setPen(QPen(color, 1.5))
+            p.drawPath(path)
+        elif k == 'mic':
+            p.drawRoundedRect(QRectF(7.3, 2.5, 5.4, 9), 2.6, 2.6)
+            p.drawArc(QRectF(4.5, 6, 11, 10.5), 185 * 16, 170 * 16)
+            seg(10, 16, 10, 17.8)
+            seg(7.4, 17.8, 12.6, 17.8)
+        elif k == 'chip':
+            p.drawRoundedRect(QRectF(5, 5, 10, 10), 2, 2)
+            for x in (7.3, 10, 12.7):
+                seg(x, 2.4, x, 5)
+                seg(x, 15, x, 17.6)
+        elif k == 'database':
+            p.drawEllipse(QRectF(4, 2.8, 12, 4.6))
+            seg(4, 5.1, 4, 15)
+            seg(16, 5.1, 16, 15)
+            p.drawArc(QRectF(4, 12.7, 12, 4.6), 180 * 16, 180 * 16)
+            p.drawArc(QRectF(4, 8.8, 12, 4.6), 180 * 16, 180 * 16)
+        elif k == 'rules':
+            seg(5, 4.5, 15, 4.5)
+            seg(5, 10, 15, 10)
+            seg(5, 15.5, 11.5, 15.5)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(color)
+            for y in (3.2, 8.7, 14.2):
+                p.drawEllipse(QRectF(2, y, 1.5, 1.5))
+        elif k == 'clock':
+            p.drawEllipse(QRectF(3, 3, 14, 14))
+            seg(10, 10, 10, 5.6)
+            seg(10, 10, 13.2, 11.6)
+        elif k == 'plug':
+            seg(7.5, 2.6, 7.5, 6)
+            seg(12.5, 2.6, 12.5, 6)
+            p.drawRoundedRect(QRectF(5.5, 6, 9, 6.5), 2.5, 2.5)
+            p.drawArc(QRectF(6, 10.5, 8, 7), 150 * 16, 120 * 16)
+            seg(13.5, 17.3, 15, 16.5)
+        elif k == 'lock':
+            p.drawArc(QRectF(6.2, 2.6, 7.6, 9), 0, 180 * 16)
+            p.drawRoundedRect(QRectF(4, 9, 12, 8.6), 2, 2)
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(color)
+            p.drawEllipse(QRectF(9.2, 11.6, 1.7, 1.7))
+        elif k == 'power':
+            p.drawArc(QRectF(3, 4, 14, 14), -40 * 16, 260 * 16)
+            seg(10, 2.4, 10, 9.5)
+        p.end()
+
+
 class SettingsDialog(QDialog):
     def __init__(self, window):
         super().__init__(window)
@@ -219,6 +344,7 @@ class SettingsDialog(QDialog):
         self.search.setAccessibleName('Buscar configurações')
         self.search.setClearButtonEnabled(True)
         self.search.setMaximumWidth(190)
+        self.search.setToolTip('Buscar configurações (Ctrl+F)')
         header.addWidget(self.search)
         header_close = QPushButton('✕')
         header_close.setObjectName('SettingsWindowClose')
@@ -228,6 +354,10 @@ class SettingsDialog(QDialog):
         header.addWidget(header_close)
         root.addWidget(header_host)
         right = QVBoxLayout()
+        self.breadcrumb = QLabel()
+        self.breadcrumb.setObjectName('SettingsBreadcrumb')
+        self.breadcrumb.setFont(hud_font(7))
+        right.addWidget(self.breadcrumb)
         self.heading = QLabel()
         self.heading.setObjectName('SettingsHeading')
         self.heading.setFont(hud_font(17, QFont.Weight.Bold))
@@ -249,7 +379,7 @@ class SettingsDialog(QDialog):
         footer_host.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         footer = QHBoxLayout(footer_host)
         footer.setContentsMargins(12, 6, 12, 6)
-        self.status = QLabel('As alterações são salvas em cada seção.')
+        self.status = QLabel('Alterações salvas automaticamente. Esc volta, Ctrl+F busca.')
         self.status.setObjectName('SettingsHint')
         self.status.setWordWrap(True)
         footer.addWidget(self.status, 1)
@@ -261,9 +391,38 @@ class SettingsDialog(QDialog):
         footer.addWidget(close)
         root.addWidget(footer_host)
         self.search.textChanged.connect(self._search)
+        self.search.returnPressed.connect(self._open_first_result)
         self._show_group('home')
         self._apply_theme()
+        from PyQt6.QtGui import QKeySequence, QShortcut
+        find = QShortcut(QKeySequence('Ctrl+F'), self)
+        find.setContext(Qt.ShortcutContext.WindowShortcut)
+        find.activated.connect(self._focus_search)
+        escape = QShortcut(QKeySequence('Esc'), self)
+        escape.setContext(Qt.ShortcutContext.WindowShortcut)
+        escape.activated.connect(self._escape)
         QApplication.instance().installEventFilter(self)
+
+    def _focus_search(self):
+        self.search.setFocus()
+        self.search.selectAll()
+
+    def _escape(self):
+        """Esc desescada: limpa a busca, volta ao Início e só então fecha."""
+        if self.search.text() or self._current != 'home':
+            self.show_home()
+        else:
+            self.close()
+
+    def _open_first_result(self):
+        """Enter na busca abre a primeira área visível nos tiles."""
+        for key, _title, _description, _terms in CATEGORIES:
+            tile = self._home_tiles.get(key) if hasattr(self, '_home_tiles') else None
+            if tile is not None and tile.isVisible():
+                self.show_home()
+                self.show_category(key)
+                return
+        self.status.setText('Nada encontrado para \"' + self.search.text() + '\".')
 
     def _card(self, layout, title, description=''):
         """Real responsive Qt panel; all controls keep their callbacks."""
@@ -348,6 +507,10 @@ class SettingsDialog(QDialog):
             keys = CATEGORY_GROUPS.get(group_title, ())
             label.setVisible(any(self._home_tiles[k].isVisible()
                                  for k in keys if k in self._home_tiles))
+        seps = self._home_separators if hasattr(self, '_home_separators') else {}
+        for (_group, left, right), sep in seps.items():
+            sep.setVisible(self._home_tiles[left].isVisible()
+                           and self._home_tiles[right].isVisible())
 
     def show_category(self, key):
         if key != 'audio' and hasattr(self, 'preview'):
@@ -355,15 +518,22 @@ class SettingsDialog(QDialog):
         self._current = key
         self.back_btn.setVisible(key != 'home')
         if key == 'home':
+            self.breadcrumb.setText('')
             self.heading.setText('Configurações')
             self.subtitle.setText('Escolha uma área ou use a busca acima.')
             if self._home_page is None:
                 self._home_page = self._build_home()
                 self.stack.addWidget(self._home_page)
             self._apply_search_filter(self.search.text().strip())
+            self.search.setVisible(True)
             self.stack.setCurrentWidget(self._home_page)
+            self._home_page.verticalScrollBar().setValue(0)
             return
+        group_title = next((label for label, keys in NAV_GROUPS if key in keys), '')
         _, title, description, _ = next(c for c in CATEGORIES if c[0] == key)
+        # Breadcrumb mostra o caminho: em que seção do Início você está.
+        self.breadcrumb.setText(f'INÍCIO  ›  {group_title}'.strip()
+                                if group_title else 'INÍCIO')
         self.heading.setText(title)
         self.subtitle.setText(description)
         if key not in self._pages:
@@ -383,20 +553,129 @@ class SettingsDialog(QDialog):
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
             scroll.setFrameShape(QFrame.Shape.NoFrame)
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
             scroll.setWidget(page)
             self._pages[key] = scroll
             self.stack.addWidget(scroll)
         self.stack.setCurrentWidget(self._pages[key])
         self._restyle_forms()
 
+    # Ícones vetoriais das linhas do Início, no estilo dos apps de ajustes
+    # modernos — desenhados com QPainter, portanto seguem o tema e não
+    # dependem de fonte instalada nem usam emoji.
+    CATEGORY_ICONS = {
+        'general': 'person', 'appearance': 'palette', 'audio': 'mic',
+        'ai': 'chip', 'memory': 'database', 'learned_rules': 'rules',
+        'automation': 'clock', 'integrations': 'plug', 'security': 'lock',
+        'system': 'power',
+    }
+
+    def _home_separator(self):
+        line = QLabel()
+        line.setObjectName('SettingsRowSeparator')
+        line.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        line.setFixedHeight(1)
+        return line
+
+    def _home_row(self, key, title, description):
+        tile = QPushButton()
+        tile.setObjectName('SettingsHomeTile')
+        tile.setMinimumHeight(56)
+        tile.setCursor(Qt.CursorShape.PointingHandCursor)
+        tile.setAccessibleName(title)
+        row = QHBoxLayout(tile)
+        row.setContentsMargins(10, 6, 12, 6)
+        row.setSpacing(11)
+        badge = QWidget()
+        badge.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        badge.setObjectName('SettingsTileIcon')
+        badge.setFixedSize(36, 36)
+        badge_ev = QHBoxLayout(badge)
+        badge_ev.setContentsMargins(0, 0, 0, 0)
+        badge_ev.addStretch(1)
+        badge_ev.addWidget(SettingsIcon(
+            self.CATEGORY_ICONS.get(key, 'person'), self, mode='accent', size=20))
+        badge_ev.addStretch(1)
+        badge.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        row.addWidget(badge)
+        text_col = QVBoxLayout()
+        text_col.setSpacing(2)
+        name = QLabel(title)
+        name.setObjectName('SettingsHomeTileTitle')
+        name.setFont(hud_font(10, QFont.Weight.Bold))
+        name.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        text_col.addWidget(name)
+        detail = QLabel(description)
+        detail.setObjectName('SettingsHomeTileDescription')
+        detail.setFont(hud_font(8))
+        detail.setWordWrap(True)
+        detail.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        text_col.addWidget(detail)
+        row.addLayout(text_col, 1)
+        arrow = QLabel('›')
+        arrow.setObjectName('SettingsHomeTileArrow')
+        arrow.setFont(hud_font(14, QFont.Weight.Bold))
+        arrow.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        row.addWidget(arrow, 0, Qt.AlignmentFlag.AlignVCenter)
+        tile.clicked.connect(lambda checked=False, k=key: self.show_category(k))
+        return tile
+
     def _build_home(self):
+        """Home no estilo dos ajustes modernos: perfil no topo e grupos
+        de linhas em cartoes, com um divisor fino entre as linhas."""
         page = QWidget()
         page.setObjectName('SettingsHome')
         outer = QVBoxLayout(page)
-        outer.setContentsMargins(2, 2, 8, 8)
-        outer.setSpacing(6)
+        outer.setContentsMargins(2, 4, 8, 8)
+        outer.setSpacing(9)
+        cfg = config.load_api_keys()
+
+        # Cartao de perfil: atalho direto para a pagina Perfil.
+        hero = QPushButton()
+        hero.setObjectName('SettingsHeroRow')
+        hero.setMinimumHeight(64)
+        hero.setCursor(Qt.CursorShape.PointingHandCursor)
+        hero.setAccessibleName('Abrir perfil')
+        hero_row = QHBoxLayout(hero)
+        hero_row.setContentsMargins(12, 9, 12, 9)
+        hero_row.setSpacing(12)
+        avatar = QWidget()
+        avatar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        avatar.setObjectName('SettingsAvatar')
+        avatar.setFixedSize(42, 42)
+        avatar.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        avatar_layout = QHBoxLayout(avatar)
+        avatar_layout.setContentsMargins(0, 0, 0, 0)
+        avatar_layout.addStretch(1)
+        avatar_layout.addWidget(SettingsIcon('person', self, mode='contrast', size=22))
+        avatar_layout.addStretch(1)
+        hero_row.addWidget(avatar)
+        hero_col = QVBoxLayout()
+        hero_col.setSpacing(2)
+        hero_name = QLabel(cfg.get('assistant_name') or 'JINX')
+        hero_name.setObjectName('SettingsHomeTileTitle')
+        hero_name.setFont(hud_font(11, QFont.Weight.Bold))
+        hero_name.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        hero_col.addWidget(hero_name)
+        user = (cfg.get('user_name') or '').strip()
+        hero_sub = QLabel('Atendente de ' + user if user
+                          else 'Toque para configurar seu perfil')
+        hero_sub.setObjectName('SettingsHomeTileDescription')
+        hero_sub.setFont(hud_font(8))
+        hero_sub.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        hero_col.addWidget(hero_sub)
+        hero_row.addLayout(hero_col, 1)
+        hero_arrow = QLabel('›')
+        hero_arrow.setObjectName('SettingsHomeTileArrow')
+        hero_arrow.setFont(hud_font(16, QFont.Weight.Bold))
+        hero_arrow.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        hero_row.addWidget(hero_arrow, 0, Qt.AlignmentFlag.AlignVCenter)
+        hero.clicked.connect(lambda checked=False: self.show_category('general'))
+        outer.addWidget(hero)
+
         self._home_tiles = {}
         self._home_group_labels = {}
+        self._home_separators = {}
         for group_title, keys in NAV_GROUPS:
             targets = [k for k in keys
                        if k != 'home' and any(c[0] == k for c in CATEGORIES)]
@@ -404,42 +683,35 @@ class SettingsDialog(QDialog):
                 continue
             rotulo = QLabel(group_title)
             rotulo.setObjectName('SettingsSectionLabel')
+            rotulo.setFont(hud_font(7))
             outer.addWidget(rotulo)
             self._home_group_labels[group_title] = rotulo
-            grid = QGridLayout()
-            grid.setHorizontalSpacing(8)
-            grid.setVerticalSpacing(8)
-            for index, key in enumerate(targets):
+            card = QWidget()
+            card.setObjectName('SettingsGroupCard')
+            card.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+            col = QVBoxLayout(card)
+            col.setContentsMargins(4, 4, 4, 4)
+            col.setSpacing(0)
+            previous = None
+            for key in targets:
+                if previous is not None:
+                    sep = self._home_separator()
+                    col.addWidget(sep)
+                    self._home_separators[(group_title, previous, key)] = sep
                 _, title, description, _ = next(c for c in CATEGORIES if c[0] == key)
-                tile = QPushButton()
-                tile.setObjectName('SettingsHomeTile')
-                tile.setMinimumHeight(58)
-                tile.setCursor(Qt.CursorShape.PointingHandCursor)
-                tile.setAccessibleName(title)
-                content = QVBoxLayout(tile)
-                content.setContentsMargins(12, 8, 12, 7)
-                content.setSpacing(2)
-                name = QLabel(title)
-                name.setObjectName('SettingsHomeTileTitle')
-                name.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-                content.addWidget(name)
-                detail = QLabel(description)
-                detail.setObjectName('SettingsHomeTileDescription')
-                detail.setWordWrap(True)
-                detail.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
-                content.addWidget(detail)
-                tile.clicked.connect(lambda checked=False, k=key: self.show_category(k))
-                grid.addWidget(tile, index // 2, index % 2)
+                tile = self._home_row(key, title, description)
+                col.addWidget(tile)
                 self._home_tiles[key] = tile
-            for column in range(2):
-                grid.setColumnStretch(column, 1)
-            outer.addLayout(grid)
+                previous = key
+            outer.addWidget(card)
         outer.addStretch(1)
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         scroll.setWidget(page)
         return scroll
+
     def _search(self, text):
         query = normalized(text.strip())
         self._search_matches = None
@@ -456,8 +728,12 @@ class SettingsDialog(QDialog):
         else:
             self._apply_search_filter(query)
         if not matches:
-            self.heading.setText('Busca')
-            self.subtitle.setText('Nenhum resultado para a busca.')
+            self.subtitle.setText(f'Nenhum resultado para \u201c{text.strip()}\u201d.')
+        elif len(matches) == 1:
+            self.subtitle.setText('1 área encontrada — Enter abre.')
+        else:
+            self.subtitle.setText(
+                f'{len(matches)} áreas encontradas — Enter abre a primeira.')
 
 
     def _embed(self, layout, widget):
@@ -638,8 +914,7 @@ class SettingsDialog(QDialog):
                     selector.setMaximumWidth(16777215)
                     selector.setMaximumHeight(190)
         narrow = self.width() < 760
-        self.search.setMaximumWidth(160 if narrow else 230)
-        self.search.setVisible(self.width() >= 620)
+        self.search.setMaximumWidth(170 if narrow else 190)
         self.findChild(QLabel, 'SettingsKicker').setVisible(not narrow)
 
     def resizeEvent(self, event):
@@ -660,9 +935,8 @@ class SettingsDialog(QDialog):
                                 'Escolha e ouça uma amostra antes de alterar a voz ativa.')
         voice_body.addWidget(QLabel('Modelo de voz Gemini'))
         self.voice = VoicePicker()
-        for name in config.AVAILABLE_VOICES:
-            self.voice.addItem(f'{name} — {config.VOICE_STYLES[name]}', name)
-        self.voice.setCurrentIndex(max(0, self.voice.findData(config.get_voice())))
+        from gui.voice_preview import fill_voice_picker
+        fill_voice_picker(self.voice, config.get_voice())
         voice_body.addWidget(self.voice)
         self.voice_status = QLabel('Escolha uma voz e ouça antes de aplicar.')
         self.voice_status.setWordWrap(True)
@@ -672,7 +946,7 @@ class SettingsDialog(QDialog):
         self.preview.status.connect(lambda voice, msg: self.voice_status.setText(f'{voice}: {msg}'))
         self.voice.preview_requested.connect(self.preview.player.request)
         actions = QHBoxLayout()
-        self._button(actions, 'Ouvir prévia', lambda: self.preview.player.request(self.voice.currentData()))
+        self._button(actions, 'Ouvir prévia', lambda: self._preview_voice())
         self._button(actions, 'Parar', self.preview.player.stop)
         self._button(actions, 'Aplicar voz', self._save_voice)
         voice_body.addLayout(actions)
@@ -690,9 +964,19 @@ class SettingsDialog(QDialog):
         columns.setStretch(0, 1)
         columns.setStretch(1, 1)
 
+    def _preview_voice(self):
+        voice = self.voice.currentData()
+        if voice is None:
+            self.voice_status.setText('Selecione uma voz antes de ouvir a prévia.')
+            return
+        self.preview.player.request(voice)
+
     def _save_voice(self):
         try:
             voice = self.voice.currentData()
+            if voice is None:
+                self.voice_status.setText('Selecione uma voz antes de aplicar.')
+                return
             changed = voice != config.get_voice()
             config.save_voice(voice)
             self.preview.player.stop()
@@ -939,6 +1223,7 @@ class SettingsDialog(QDialog):
             self._embed(layout, panel)
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
+            scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
             scroll.setWidget(page)
             self._pages[key] = scroll
             self.stack.addWidget(scroll)

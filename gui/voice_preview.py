@@ -16,8 +16,33 @@ class VoicePicker(QComboBox):
         self.preview_buttons = {}
 
     def showPopup(self):
+        from PyQt6.QtWidgets import QLabel
         for row in range(self.count()):
             idx = self.model().index(row, 0)
+            voice = self.itemData(row)
+            theme = getattr(self, 'preview_theme', None)
+            if not voice:
+                # Group header ("VOZES FEMININAS" / "VOZES MASCULINAS"):
+                # disabled in the model, so keyboard and click selection
+                # can never land on it; rendered as an accent label.
+                self.model().setData(idx, QSize(300, 24), Qt.ItemDataRole.SizeHintRole)
+                model_item = self.model().item(row)
+                if model_item is not None:
+                    model_item.setEnabled(False)
+                header = QWidget()
+                header.setStyleSheet(
+                    f'background: {theme.panel if theme is not None else C.BG};')
+                header_layout = QHBoxLayout(header)
+                header_layout.setContentsMargins(8, 2, 2, 2)
+                label = QLabel(self.itemText(row))
+                label.setFont(hud_font(8))
+                accent = theme.accent if theme is not None else C.PRI
+                label.setStyleSheet(
+                    f'color: {accent}; background: transparent; letter-spacing: 1px;')
+                header_layout.addWidget(label)
+                header_layout.addStretch(1)
+                self.view().setIndexWidget(idx, header)
+                continue
             self.model().setData(idx, QSize(300, 36), Qt.ItemDataRole.SizeHintRole)
             item = QWidget()
             item.setStyleSheet(f'background: {C.BG}; color: {C.TEXT};')
@@ -51,8 +76,28 @@ class VoicePicker(QComboBox):
         super().showPopup()
 
     def _choose(self, row):
+        if self.itemData(row) is None:
+            return  # Never select a group header.
         self.setCurrentIndex(row)
         self.hidePopup()
+
+
+def fill_voice_picker(combo, selected=None):
+    """Populate a VoicePicker grouped into feminine and masculine sections.
+
+    Section headers are added with ``None`` as their data; VoicePicker renders
+    them as accent labels and refuses to select them.
+    """
+    from memory.config_manager import VOICE_STYLES, voices_by_gender
+    feminine, masculine = voices_by_gender()
+    combo.addItem('VOZES FEMININAS', None)
+    for name in feminine:
+        combo.addItem(f'{name} — {VOICE_STYLES[name]}', name)
+    combo.addItem('VOZES MASCULINAS', None)
+    for name in masculine:
+        combo.addItem(f'{name} — {VOICE_STYLES[name]}', name)
+    if selected:
+        combo.setCurrentIndex(max(0, combo.findData(selected)))
 
 
 class VoicePreviewController(QObject):
