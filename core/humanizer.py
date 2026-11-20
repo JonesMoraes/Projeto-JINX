@@ -57,12 +57,18 @@ _OPENERS = (
     "Claro!", "Com certeza!", "Perfeito!", "Ótimo!", "Beleza!", "Vamos lá!",
     "Sure!", "Certainly!", "Of course!", "Great question!",
     "Excellent question!", "That's a great question!",
+    # Deep-sounding dressing (blader/humanizer §3): it stages an ordinary
+    # claim as an insight. Removing changes nothing said — "A verdade é que
+    # ele saiu" is "Ele saiu".
+    "Em última análise,", "No fundo,", "A verdade é que", "Basicamente,",
+    "Honestamente,", "Olha,", "Look,", "Honestly,", "The thing is,",
 )
 _CLOSERS = (
     "Espero ter ajudado!", "Espero ter ajudado.", "Não hesite em perguntar!",
     "Não hesite em perguntar.", "Fico à disposição!", "Fico à disposição.",
     "Estou à disposição!", "Estou à disposição.",
     "Não hesite em me perguntar se precisar de mais alguma coisa.",
+    "Simples assim!", "Simples assim.", "É isso!",
     "I hope this helps!", "Hope that helps!",
     "Let me know if you have any questions!",
     "Don't hesitate to reach out!", "Feel free to ask!",

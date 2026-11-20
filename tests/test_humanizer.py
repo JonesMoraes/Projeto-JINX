@@ -78,6 +78,22 @@ class HumanizerTests(unittest.TestCase):
         self.assertNotIn("Great question", out)
         self.assertNotIn("hope this helps", out)
 
+    def test_deep_dressing_removed(self):
+        """blader/humanizer §3: o fora-de-modalidade não vira fala."""
+        out = humanizer.humanize("Em última análise, o backup falhou às 09:00.")
+        self.assertEqual(out, "O backup falhou às 09:00.")
+        out = humanizer.humanize("A verdade é que ele saiu.")
+        self.assertEqual(out, "Ele saiu.")
+
+    def test_deep_dressing_mid_sentence_survives(self):
+        """Na boca do usuário citado, a expressão é conteúdo."""
+        text = "Ela disse que no fundo ele sabia."
+        self.assertEqual(humanizer.humanize(text), text)
+
+    def test_dramatic_closer_removed(self):
+        out = humanizer.humanize("O cache corta o trabalho repetido. Simples assim.")
+        self.assertEqual(out, "O cache corta o trabalho repetido.")
+
     def test_table_pipes_flattened(self):
         text = "Resumo:\n| item | valor |\n|---|---|\n| arroz | 10 |"
         out = humanizer.humanize(text)
