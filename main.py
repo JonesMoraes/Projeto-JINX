@@ -1449,6 +1449,14 @@ class JinxLive:
                           "device playback latency is additional.")
 
     def speak(self, text: str):
+        # Text a tool hands over to be spoken was written for reading, not
+        # hearing: markdown, fences and chat filler go through the humanizer
+        # first. A failure there must not stop the line from being said.
+        try:
+            from core import humanizer
+            text = humanizer.humanize(text) or text
+        except Exception:
+            pass
         if not self._loop or not self.session:
             return
         asyncio.run_coroutine_threadsafe(
