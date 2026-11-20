@@ -98,12 +98,35 @@ class _OrbAssetFetcher(threading.Thread):
             self.signals.failed.emit("brahma_evo", str(exc))
 
 
+def _orb_neural_init_js() -> str:
+    """One-shot JS that re-applies the saved Orbe Neural settings after the
+    page (re)loads; '' when nothing was saved yet."""
+    try:
+        from memory import config_manager
+        settings = config_manager.get_plugin_config('hud_qwen_neural')
+    except Exception:
+        settings = {}
+    if not isinstance(settings, dict):
+        return ''
+    parts = []
+    for key, value in settings.items():
+        if key == 'palette':
+            parts.append(f"J.setPalette({json.dumps(value)});")
+        elif isinstance(value, bool):
+            parts.append(f"J.set({json.dumps(key)}, {'true' if value else 'false'});")
+        elif isinstance(value, (int, float)):
+            parts.append(f"J.set({json.dumps(key)}, {float(value)});")
+    if not parts:
+        return ''
+    return "if(window.JINX){const J=window.JINX;" + "".join(parts) + "}"
+
+
 class HudCanvas(QWidget):
     visual_failed = pyqtSignal(str)
 
     @staticmethod
     def available_styles():
-        return ('face', 'core', 'aurora')
+        return ('face', 'core', 'aurora', 'qwen_neural')
 
     def __init__(self, face_path: str, assistant_name: str = "JINX", parent=None):
         super().__init__(parent)
@@ -184,6 +207,9 @@ class HudCanvas(QWidget):
         # (0.0–1.0), _amp_disp is the smoothed value the paint code reads.
         self._live_amp  = 0.0
         self._amp_disp  = 0.0
+        # Dedicated level for the web orb pages: attack fast, release slow,
+        # so their input is one continuous breath instead of chunky peaks.
+        self._orb_amp   = 0.0
         # (frames, start_time, hop) posted by the playback thread — see
         # push_visemes(). None means "no schedule; use the plain level".
         self._visemes = None
@@ -273,7 +299,7 @@ class HudCanvas(QWidget):
 
     def _sync_hud_style(self) -> None:
         """Show exactly the selected local orb, if its WebEngine is available."""
-        if (self.hud_style in ('brahma_evo', 'brahma_echo')
+        if (self.hud_style in ('brahma_evo', 'brahma_echo', 'qwen_neural')
                 and QWebEngineView is not None and self.hud_style not in self._orb_views):
             style = self.hud_style
             view = QWebEngineView(self)
@@ -282,6 +308,11 @@ class HudCanvas(QWidget):
                 settings = view.settings()
                 settings.setAttribute(QWebEngineSettings.WebAttribute.WebGLEnabled, True)
                 settings.setAttribute(QWebEngineSettings.WebAttribute.Accelerated2dCanvasEnabled, True)
+            if style == "qwen_neural":
+                # The orb page is transparent on purpose (the HUD's own painted
+                # backdrop shows through). Chromium's default page background
+                # is white — make it transparent instead of a white rectangle.
+                view.page().setBackgroundColor(QColor(0, 0, 0, 0))
             view._jinx_orb_loaded_once = False
             view._jinx_orb_download_started = False
             view.renderProcessTerminated.connect(
@@ -335,6 +366,11 @@ class HudCanvas(QWidget):
         url = QUrl.fromLocalFile(str(page))
         if style == "brahma_evo":
             url.setQuery("quality=low")
+        elif style == "qwen_neural":
+            # Embed mode of the page: transparent background, no page chrome,
+            # and it waits for this HUD to push level/state instead of
+            # capturing the microphone itself.
+            url.setQuery("embed=1&bg=transparent&source=external")
         view._jinx_orb_loaded_once = True
         view.setUrl(url)
 
@@ -419,6 +455,10 @@ class HudCanvas(QWidget):
         if self._last_orb_style != self.hud_style:
             view.page().runJavaScript(
                 "if (window.resumeBrahmaBackground) window.resumeBrahmaBackground();")
+            if self.hud_style == 'qwen_neural':
+                init_js = _orb_neural_init_js()
+                if init_js:
+                    view.page().runJavaScript(init_js)
             self._last_orb_style = self.hud_style
             self._last_orb_state = None
         if state != self._last_orb_state:
@@ -426,9 +466,24 @@ class HudCanvas(QWidget):
                 "if (window.setBrahmaState) window.setBrahmaState(" +
                 json.dumps(state) + ");")
             self._last_orb_state = state
+        # The orb should read the room, not JINX's own voice. While the
+        # assistant speaks, the playback thread pushes its own near-full-scale
+        # level (main.py) and set_audio_level keeps the louder of the two, so
+        # a naive feed pegs the orb at maximum — blown out and spiking past the
+        # frame. Damp JINX's own energy and let the SPEAKING state carry it
+        # instead; the user's microphone still drives everything else.
+        #
+        # The raw amp arrives as a max-latched sawtooth (audio chunks are
+        # peaky and _live_amp decays fast); the orb reads that as stutter.
+        # A dedicated follower — quick attack, slow release — flattens it into
+        # one fluid motion; the page smooths again on top of this.
+        target = max(0.0, min(1.0, float(amp)))
+        k = 0.45 if target > self._orb_amp else 0.085      # per 0.12 s push
+        self._orb_amp += (target - self._orb_amp) * k
+        fed = self._orb_amp * (0.12 if self.speaking else 1.0)
         view.page().runJavaScript(
             "if (window.setAudioLevel) window.setAudioLevel(" +
-            f"{max(0.0, min(1.0, float(amp))):.4f}" + ");")
+            f"{max(0.0, min(1.0, fed)):.4f}" + ");")
 
     def _make_grid(self, W: int, H: int) -> QPixmap:
         """Pre-render the static backdrop — atmosphere, workshop floor, bokeh

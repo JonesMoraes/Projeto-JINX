@@ -822,7 +822,8 @@ class SettingsDialog(QDialog):
                             'As esferas e a cor do HUD são independentes dos outros quatro temas.')
         layout.addWidget(QLabel('Visual do assistente no HUD'))
         hud = QComboBox()
-        names = {'face': 'Rosto animado', 'core': 'Núcleo reator', 'brahma_evo': 'EVO', 'brahma_echo': 'ECHO'}
+        names = {'face': 'Rosto animado', 'core': 'Núcleo reator', 'brahma_evo': 'EVO',
+                 'brahma_echo': 'ECHO', 'qwen_neural': 'Orbe Neural'}
         for key in self.window.hud.available_styles():
             hud.addItem(names.get(key, key), key)
         hud.setCurrentIndex(max(0, hud.findData(self.window.hud.hud_style)))
@@ -847,6 +848,7 @@ class SettingsDialog(QDialog):
         toggle.toggled.connect(color_panel.setVisible)
         layout.addWidget(color_panel)
         color_panel.hide()
+        self._build_orb_neural_card(layout)
         self._sync_theme_buttons()
 
     def _save_hud_color(self):
@@ -862,6 +864,93 @@ class SettingsDialog(QDialog):
             self.status.setText('Cor da JINX aplicada e salva.')
         except Exception as exc:
             self.status.setText(f'Não foi possível aplicar a cor: {exc}')
+
+    _ORB_NEURAL_STOPS = (
+        ('Paleta', 'palette', (('Nebulosa', 'nebula'), ('Plasma', 'plasma'),
+                               ('Aurora', 'aurora'), ('Solar', 'solar'),
+                               ('Fantasma', 'ghost'), ('Esmeralda', 'emerald'))),
+        ('Qualidade', 'quality', (('Eco', 'eco'), ('Padrão', 'standard'),
+                                  ('Alta', 'high'), ('Ultra', 'ultra'))),
+        ('Partículas', 'count', (('8 mil', 8000), ('16 mil', 16000),
+                                 ('24 mil', 24000), ('32 mil', 32000),
+                                 ('40 mil', 40000))),
+        ('Turbulência', 'turb', (('Suave', 0.5), ('Padrão', 0.9), ('Energética', 1.4))),
+        ('Fluxo', 'flow', (('Lento', 0.7), ('Padrão', 1.0), ('Rápido', 1.3))),
+        ('Escala', 'size', (('Compacta', 1.0), ('Padrão', 1.35), ('Grande', 1.8))),
+        ('Brilho', 'glow', (('Suave', 0.7), ('Padrão', 1.0), ('Intenso', 1.4))),
+        ('Sensibilidade à voz', 'sens', (('Baixa', 0.8), ('Padrão', 1.3), ('Alta', 2.0))),
+    )
+
+    def _build_orb_neural_card(self, layout):
+        """Orbe Neural: tunables pushed live to the qwen_neural page and saved."""
+        from gui import hud as hud_module
+        if hud_module.QWebEngineView is None:
+            self._card(layout, 'Orbe Neural',
+                       'Exige o PyQt6-WebEngine declarado em requirements.txt.')
+            return
+        card = self._card(layout, 'Orbe Neural',
+                          'Ajustes do Orbe Neural aplicados na hora e salvos; '
+                          'o orbe reage à voz pelo próprio HUD.')
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(14)
+        grid.setVerticalSpacing(6)
+        current = dict(config.get_plugin_config('hud_qwen_neural'))
+        self._orb_combos = []
+        self._orb_checks = []
+        row = 0
+
+        def add_combo(label, key, options):
+            nonlocal row
+            grid.addWidget(QLabel(label), row, 0)
+            combo = QComboBox()
+            for text, value in options:
+                combo.addItem(text, value)
+            value = current.get(key)
+            if value is not None:
+                idx = combo.findData(value)
+                if idx < 0 and isinstance(value, (int, float)):
+                    numeric = [(i, combo.itemData(i)) for i in range(combo.count())
+                               if isinstance(combo.itemData(i), (int, float))]
+                    if numeric:
+                        idx = min(numeric, key=lambda t: abs(t[1] - float(value)))[0]
+                if idx >= 0:
+                    combo.setCurrentIndex(idx)
+            combo.currentIndexChanged.connect(
+                lambda _index, key=key, combo=combo: self._save_orb_setting(key, combo.currentData()))
+            grid.addWidget(combo, row, 1)
+            self._orb_combos.append((key, combo))
+            row += 1
+
+        for label, key, options in self._ORB_NEURAL_STOPS:
+            add_combo(label, key, options)
+
+        for label, key in (('Corona', 'corona'), ('Faíscas', 'sparkles')):
+            chk = QCheckBox(label)
+            chk.setChecked(bool(current.get(key, True)))
+            chk.toggled.connect(lambda on, key=key: self._save_orb_setting(key, bool(on)))
+            grid.addWidget(chk, row, 0, 1, 2)
+            self._orb_checks.append((key, chk))
+            row += 1
+
+        buttons = QHBoxLayout()
+        randomize = QPushButton('Aleatorizar')
+        randomize.clicked.connect(self.window._orb_neural_randomize)
+        reset = QPushButton('Restaurar padrão')
+        reset.clicked.connect(self.window._orb_neural_reset)
+        buttons.addWidget(randomize)
+        buttons.addWidget(reset)
+        buttons.addStretch(1)
+        grid.addLayout(buttons, row, 0, 1, 2)
+        card.addLayout(grid)
+
+    def _save_orb_setting(self, key, value):
+        """Persist one Orbe Neural adjustment and push it to the live page."""
+        try:
+            config.save_plugin_config('hud_qwen_neural', {key: value})
+        except Exception as exc:
+            self.status.setText(f'Não foi possível salvar o ajuste do orbe: {exc}')
+            return
+        self.window._orb_neural_push(key, value)
 
     def select_theme(self, key):
         key = settings_theme_id(key)

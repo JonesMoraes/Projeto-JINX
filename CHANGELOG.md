@@ -1,5 +1,27 @@
 # Histórico de alterações
 
+## 2026-11-20 — Orbe Neural (qwen_neural) como visual do HUD
+- Novo hud_style `qwen_neural`: o "Orbe Neural Reativo à Voz" (página autoral
+  feita com Qwen) embutido em QWebEngineView. Assets em
+  assets/third_party/qwen_neural/ — three.js r128 local (fallback CDN na página).
+- Página rodando em modo embed transparente e fonte `external`: sem microfone
+  próprio; o HUD alimenta nível e estado pelo contrato existente dos orbes
+  (setBrahmaState/setAudioLevel), com adaptador dentro da página.
+- Seleção em ⚙ → Visual do HUD ("Orbe Neural") e no menu do botão do HUD;
+  persistida via config_manager. 41 testes passaram em face/core/aurora/web.
+- Painel de ajustes do orbe no mesmo cartão de configurações (paleta,
+  qualidade, partículas, turbulência, fluxo, escala, brilho, sensibilidade,
+  corona e faíscas, mais aleatorizar/restaurar padrão): aplicado ao vivo na
+  página via JINX.set/setPalette/randomize/reset e persistido em
+  plugin_config[hud_qwen_neural], re-aplicado no carregamento da página.
+- Fundo transparente de verdade: page().setBackgroundColor transparente do
+  lado do Qt (o padrão do Chromium é branco) e elemento html transparente.
+- Fluidez: medidor dedicado no HUD com ataque rápido e liberação lenta (o
+  max-latch do waveform chegava como serras), página segura o nível externo
+  entre pushes (sem ondulação de 8 Hz), suavização maior no embed
+  (smooth 0.78) e deriva viva da câmera no repouso. Enquanto JINX fala, o
+  nível de saída dele chega amortecido (a voz do usuário é quem comanda).
+
 ## 2026-11-14 — Google Agenda como agenda principal
 - Painel e ferramenta agenda_sync usam Google Calendar por padrão. Campos
   de lista Trello substituídos por calendário Google, JSON OAuth e conexão no
