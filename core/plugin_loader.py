@@ -116,12 +116,44 @@ class PluginRegistry:
 
     # -- called by main.py from _execute_tool's else branch --
     def run(self, name: str, parameters: dict, player=None, session_memory=None) -> str:
+        """Same policy gate as actions (core/autonomy.py), then dispatch.
+
+        A gate failure must never break dispatch: on error the call proceeds
+        exactly as it did before the gate existed.
+        """
         started = time.monotonic()
-        result = self._run(name, parameters, player, session_memory)
+        try:
+            from core.autonomy import evaluate, note_decision
+            decision = evaluate(name, parameters or {})
+            mode, kind = decision.get("mode", "run"), decision.get("reason", "")
+            if mode == "block":
+                note_decision(name, "block", kind)
+                return (f"Plugin '{name}' refused by the autonomy policy: {kind}. "
+                        "This floor cannot be crossed; do it manually or ask the user.")
+            if mode == "confirm":
+                note_decision(name, "confirm", kind)
+                from core import confirm
+                gate_start = time.monotonic()
+                return confirm.propose(
+                    f"gate-{name}", f"Ação irreversível: {name}",
+                    f"Tipo: {kind}. O modelo não confirma por você.",
+                    lambda: (self._record(self._run(name, parameters, player, session_memory),
+                                          name, parameters, gate_start)))
+        except Exception:
+            pass
+        return self._record(self._run(name, parameters, player, session_memory),
+                            name, parameters, started)
+
+    def _record(self, result: str, name: str, parameters: dict, started: float) -> str:
         try:
             from core.audit import record_tool_call
             record_tool_call("plugin", name, parameters, result,
                              (time.monotonic() - started) * 1000)
+        except Exception:
+            pass
+        try:
+            from memory import episodic
+            episodic.note_tool("plugin", name, str(result)[:200])
         except Exception:
             pass
         return result

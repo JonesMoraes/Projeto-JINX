@@ -77,3 +77,7 @@ memory/*.json
 config/learned_rules.json
 
 ~/
+
+# Dados de execução da memória observada — nunca sobem ao repositório.
+memory/episodic.db
+memory/captures/

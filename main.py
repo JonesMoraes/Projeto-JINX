@@ -2883,6 +2883,14 @@ class JinxLive:
         )
         set_trim_notifier(self.ui.write_log)
 
+        # Episodic observer: dormant unless the user enables it, but started
+        # either way so the toggles and the nightly digest simply exist.
+        try:
+            from memory import episodic
+            episodic.ensure_started()
+        except Exception:
+            pass
+
         # Tell the device picker the exact rates the streams open at, from the
         # constants that actually open them — so it can never list a device that
         # cannot be opened at them.

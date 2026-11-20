@@ -156,15 +156,60 @@ class ActionRegistry:
 
     # -- called by main.py from _execute_tool --
     def run(self, name: str, parameters: dict, ctx: dict | None = None) -> str:
+        """Audit + policy gate, then dispatch.
+
+        The autonomy gate (core/autonomy.py) is the single point that decides
+        run/confirm/queue/block for destructiveness and deny-list violations.
+        A policy failure must never break dispatch: on any gate error the call
+        proceeds exactly as it did before the gate existed.
+        """
         started = time.monotonic()
+        try:
+            from core.autonomy import evaluate, note_decision
+            decision = evaluate(name, parameters or {})
+            mode, kind = decision.get("mode", "run"), decision.get("reason", "")
+            if mode == "block":
+                note_decision(name, "block", kind)
+                return (f"Action '{name}' refused by the autonomy policy: {kind}. "
+                        "This floor cannot be crossed; do it manually or ask the user.")
+            if mode == "queue":
+                note_decision(name, "queue", kind)
+                # evaluate() already enqueued: the queue lives in the policy,
+                # not in the loader — this branch only reports it.
+                n = decision.get("slot", 0)
+                return (f"Action '{name}' ({kind}) is irreversible and was queued "
+                        f"(#{n} pending). Run it only when the user explicitly asks, "
+                        "via the autonomy_control tool.")
+            if mode == "confirm":
+                note_decision(name, "confirm", kind)
+                from core import confirm
+                budget_start = time.monotonic()
+                return confirm.propose(
+                    f"gate-{name}", f"Ação irreversível: {name}",
+                    f"Tipo: {kind}. O modelo não confirma por você.",
+                    lambda: self._finish(name, parameters, ctx, budget_start))
+        except Exception:
+            pass  # gate failure == old behaviour, never a partial block
+        return self._finish(name, parameters, ctx, started)
+
+    def _finish(self, name: str, parameters: dict, ctx: dict | None,
+                started: float) -> str:
         result = self._run(name, parameters, ctx)
+        self._audit(name, parameters, result, started)
+        return result
+
+    def _audit(self, name: str, parameters: dict, result: str, started: float) -> None:
         try:
             from core.audit import record_tool_call
             record_tool_call("action", name, parameters, result,
                              (time.monotonic() - started) * 1000)
         except Exception:
             pass
-        return result
+        try:
+            from memory import episodic
+            episodic.note_tool("action", name, str(result)[:200])
+        except Exception:
+            pass
 
     def _run(self, name: str, parameters: dict, ctx: dict | None = None) -> str:
         rec = self._actions.get(name)
@@ -176,6 +221,16 @@ class ActionRegistry:
             self._logger(f"Action '{name}' crashed during run(): {e}")
             traceback.print_exc()
             return f"Tool '{name}' failed: {e}"
+
+
+# The registry produced by the last discover_actions() call. Tools that need to
+# re-dispatch a stored request (autonomy_control's queue) reach it from here
+# instead of re-discovering, which would fork the handler objects.
+ACTIVE_REGISTRY: Optional["ActionRegistry"] = None
+
+
+def active_registry() -> Optional["ActionRegistry"]:
+    return ACTIVE_REGISTRY
 
 
 def _call_handler(fn: Callable, parameters: dict, ctx: dict) -> str:
@@ -289,5 +344,7 @@ def discover_actions(actions_dir: Path, reserved_names: set[str] | None = None,
 
     registry = ActionRegistry(valid, logger)
     registry._all_records = all_records
+    global ACTIVE_REGISTRY
+    ACTIVE_REGISTRY = registry
     logger(f"Action discovery complete: {len(valid)} active.")
     return registry

@@ -34,8 +34,9 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Optional
 
-# Kept for compatibility with the UI's resolve/hide signals. New requests no
-# longer create pending banners.
+# Kept for compatibility with the UI's resolve/hide signals. Banners are
+# created again by propose() — used only by the autonomy gate for the
+# destructive ACL — never by individual tools self-gating.
 TIMEOUT_SECONDS = 90.0
 
 
@@ -71,6 +72,36 @@ def _log(msg: str) -> None:
             _log_cb(msg)
         except Exception:
             pass
+
+
+def propose(key: str, title: str, detail: str, run: Callable[[], str]) -> str:
+    """Show the HUD confirm banner for an irreversible action.
+
+    This is the ONLY path that may put a pending banner up, and it exists for
+    the autonomy gate, not for tools: the human answers on the interface, the
+    model only relays. The timed-out resolve() in this module handles the
+    rest, including running the action off the Qt thread.
+
+    Returns a short status the tool call can relay to the model. Never raises.
+    """
+    from core import outcome
+
+    global _pending
+    action_key = str(key or "action")[:64]
+    with _lock:
+        if time.monotonic() - getattr(_pending, "at", 0.0) < TIMEOUT_SECONDS \
+                and _pending is not None and _pending.key == action_key:
+            return outcome.ask("confirm", "A confirmação anterior ainda está pendente no HUD.")
+        _pending = _Pending(key=action_key, title=str(title)[:120], detail=str(detail)[:300],
+                            run=run, at=time.monotonic())
+    if _show_cb:
+        try:
+            _show_cb(title, detail)
+        except Exception:
+            pass
+    _log(f"SYS: Banner de confirmação — {title}")
+    return outcome.ask("confirm", "Ação irreversível: banner de confirmação mostrado no HUD; "
+                                  "avise o usuário e aguarde o toque em CONFIRMAR.")
 
 
 def request(key: str, title: str, detail: str, run: Callable[[], str]) -> str:

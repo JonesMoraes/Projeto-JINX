@@ -111,6 +111,13 @@ def undo_last() -> str:
     except Exception as e:
         return f"Could not undo '{entry.label}': {e}"
 
+    # An undo means an autonomous decision was wrong: fall back for a day.
+    try:
+        from core.autonomy import note_undo
+        note_undo()
+    except Exception:
+        pass
+
     return f"Undone: {entry.label}." + (f" {detail}" if detail else "")
 
 
