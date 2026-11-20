@@ -1,8 +1,10 @@
 # ── JINX — Python dependencies ────────────────────────────────────────────
-# Runtime: CPython 3.14, pinned in .python-version (currently 3.14.10). The
+# Runtime: CPython 3.12, pinned in .python-version (currently 3.12.10). The
 # minor is pinned on purpose: a new CPython lands each October and the native
 # packages (onnxruntime, mediapipe) take months to ship a wheel for it, so
-# chasing "latest stable" breaks a working install once a year.
+# chasing "latest stable" breaks a working install once a year. 3.12 is the
+# intersection every dependency supports — including mediapipe — so the main
+# app and the gesture runtime share one interpreter.
 # Python itself is installed/validated by runtime_manager.py, not by pip.
 # INICIAR_JINX.cmd checks python.org and selects only a tested environment.
 # pip skips any line whose sys_platform marker does not match your OS, so this

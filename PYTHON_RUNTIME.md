@@ -1,5 +1,20 @@
 # Python no Windows
 
+Política revisada em 19/11/2026: fixar o Python em **3.12** em vez de 3.14,
+para que o aplicativo inteiro — e não só o runtime isolado de gestos — rode
+em **um único interpretador**. O 3.12 é a interseção que todas as
+dependências suportam com wheels publicados, inclusive o mediapipe dos
+gestos, cujos wheels param no 3.12. Exemplos verificados nesta migração:
+onnxruntime/openwakeword (wake word), PyQt6 6.11 (wheels abi3), sounddevice,
+google-genai, piper-tts, faster-whisper, pandas, vosk e pydub (que no 3.12
+usa o `audioop` da biblioteca padrão — sem necessidade do audioop-lts).
+Requisito do aplicativo: Python >=3.12, registrado em setup.py;
+.python-version aponta para 3.12.10 e é ele que decide o major.minor.
+requirements.txt lista os pacotes, não o interpretador: pip não instala o
+próprio Python como uma dependência comum.
+
+# Histórico — política de 14/11/2026 (fixar em 3.14)
+
 Política revisada em 14/11/2026: fixar o Python em **3.14** em vez de
 acompanhar a última estável. Requisito do aplicativo: Python >=3.14, registrado
 em setup.py; .python-version aponta para 3.14.10 e é ele que decide o
