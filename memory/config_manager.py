@@ -243,7 +243,7 @@ def save_push_to_talk_enabled(enabled: bool) -> None:
     _save_flag("push_to_talk_enabled", enabled)
 
 
-HUD_STYLES = ("face", "core", "aurora")
+HUD_STYLES = ("face", "core", "aurora", "qwen_neural")
 
 
 # Temas completos da interface: cada um troca a cor de destaque (PRI) e
@@ -269,7 +269,7 @@ def save_theme(name: str) -> None:
 
 
 def get_hud_style() -> str:
-    """Which centrepiece the HUD draws: face, JINX core, or Brahma orbs.
+    """Which centrepiece the HUD draws: face, JINX core, aurora or web orbs.
 
     The selected style survives a restart.
     """

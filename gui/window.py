@@ -2803,12 +2803,13 @@ class MainWindow(QMainWindow):
             "face": "🧑  HUD: ROSTO ANIMADO",
             "core": "◉  HUD: NÚCLEO REATOR",
             "aurora": "◌  HUD: AURORA",
+            "qwen_neural": "✧  HUD: ORBE NEURAL",
         }
         styles = self.hud.available_styles()
         style = self.hud.hud_style if self.hud.hud_style in styles else 'face'
         self._hud_btn.setText(names.get(style, names["face"]))
         self._hud_btn.setStyleSheet(btn_css("choice"))
-        self._hud_btn.setToolTip('Escolher visual: rosto, núcleo reator ou aurora.')
+        self._hud_btn.setToolTip('Escolher visual: rosto, núcleo reator, aurora ou orbe neural.')
 
     def _show_hud_choices(self):
         from PyQt6.QtWidgets import QMenu
@@ -2816,7 +2817,7 @@ class MainWindow(QMainWindow):
         menu = QMenu(self)
         menu.setToolTipsVisible(True)
         for style, label in (('face', 'Rosto animado'), ('core', 'Núcleo reator'),
-                             ('aurora', 'Aurora')):
+                             ('aurora', 'Aurora'), ('qwen_neural', 'Orbe Neural')):
             available = style in self.hud.available_styles()
             action = menu.addAction(label if available else label + ' — indisponível nesta execução')
             action.setCheckable(True)
@@ -2852,8 +2853,69 @@ class MainWindow(QMainWindow):
         if self._orb_mode and self._orb_mode.active:
             self._orb_mode.saved['style'] = want
         self._refresh_hud_btn()
-        labels = {"face": "rosto animado", "core": "núcleo reator", "aurora": "aurora"}
+        labels = {"face": "rosto animado", "core": "núcleo reator", "aurora": "aurora",
+                  "qwen_neural": "orbe neural"}
         self._log.append_log(f"SYS: HUD alterado para {labels[want]}.")
+
+    # ── Orbe Neural (qwen_neural): parâmetros enviados à página viva ────────
+
+    _ORB_NEURAL_NAMESPACE = 'hud_qwen_neural'
+
+    def _orb_neural_view(self):
+        return self.hud._orb_views.get('qwen_neural')
+
+    def _orb_neural_push(self, key, value):
+        """Send one Orbe Neural setting to the live page, if it is active."""
+        view = self._orb_neural_view()
+        if view is None:
+            return
+        if key == 'palette':
+            expr = f"if(window.JINX)window.JINX.setPalette({json.dumps(value)});"
+        elif isinstance(value, bool):
+            expr = (f"if(window.JINX)window.JINX.set({json.dumps(key)}, "
+                    f"{'true' if value else 'false'});")
+        elif isinstance(value, (int, float)):
+            expr = f"if(window.JINX)window.JINX.set({json.dumps(key)}, {float(value)});"
+        else:
+            return
+        view.page().runJavaScript(expr)
+
+    def _orb_neural_saved(self, data):
+        """Persist the config JSON the page returns after randomize/reset."""
+        try:
+            values = json.loads(data) if isinstance(data, str) else data
+            if not isinstance(values, dict):
+                return
+            from memory import config_manager
+            config_manager.save_plugin_config(self._ORB_NEURAL_NAMESPACE, {
+                key: values[key] for key in
+                ('count', 'radius', 'turb', 'flow', 'rot', 'size', 'glow', 'sens',
+                 'smooth', 'sparkles', 'corona', 'palette', 'quality')
+                if key in values})
+        except Exception:
+            pass
+        dialog = getattr(self, '_settings_dialog', None)
+        if dialog is not None and hasattr(dialog, 'refresh_orb_controls'):
+            try:
+                dialog.refresh_orb_controls()
+            except Exception:
+                pass
+
+    def _orb_neural_randomize(self):
+        view = self._orb_neural_view()
+        if view is None:
+            return
+        view.page().runJavaScript(
+            "if(window.JINX){JSON.stringify(window.JINX.randomize());}null;",
+            self._orb_neural_saved)
+
+    def _orb_neural_reset(self):
+        view = self._orb_neural_view()
+        if view is None:
+            return
+        view.page().runJavaScript(
+            "if(window.JINX){JSON.stringify(window.JINX.reset());}null;",
+            self._orb_neural_saved)
 
     def _toggle_ptt(self):
         from memory.config_manager import (get_push_to_talk_enabled,

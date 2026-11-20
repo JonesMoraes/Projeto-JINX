@@ -30,8 +30,14 @@ class NativeHudTests(unittest.TestCase):
                 self.assertEqual(canvas._orb_views, {})
         create.assert_not_called()
 
-    def test_available_styles_are_all_native(self):
-        self.assertEqual(hud.HudCanvas.available_styles(), ('face', 'core', 'aurora'))
+    def test_available_styles(self):
+        self.assertEqual(
+            hud.HudCanvas.available_styles(), ('face', 'core', 'aurora', 'qwen_neural'))
+
+    def test_qwen_neural_orb_is_bundled(self):
+        page = hud.HudCanvas._orb_page_path('qwen_neural')
+        self.assertTrue(page.is_file(), f'faltando: {page}')
+        self.assertEqual(page.parent.name, 'qwen_neural')
 
     def test_aurora_is_a_native_style(self):
         canvas = self.canvas('aurora')
