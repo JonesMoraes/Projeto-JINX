@@ -44,7 +44,16 @@ def fetch(url, limit=2_000_000):
 
 
 def release(version):
-    """(version, installer URL, SHA-256) for one exact release, from python.org."""
+    """(version, installer URL, SHA-256 or None) for one exact release, from python.org.
+
+    A None digest means the release page no longer prints the full hash:
+    newer pages truncated it and moved attestation to .sigstore (the
+    checksum row shows only a 32-hex fingerprint now, first seen on the
+    3.12.10 page). The downloaded installer is still verified by its
+    Authenticode signature — Python Software Foundation, enforced in
+    prepare() regardless of this digest — which is the check that does not
+    share python.org's single point of trust with the downloaded file.
+    """
     url = f'https://www.python.org/ftp/python/{version}/python-{version}-amd64.exe'
     page = 'https://www.python.org/downloads/release/python-' + version.replace('.', '') + '/'
     parser = FileRows()
@@ -53,6 +62,8 @@ def release(version):
         if url in row['links']:
             digest = re.search(r'(?<![a-f0-9])[a-f0-9]{64}(?![a-f0-9])', re.sub(r'\s+', '', row['text']))
             if digest: return version, url, digest[0]
+            if any(link.endswith('.sigstore') for link in row['links']):
+                return version, url, None
     raise ValueError('Installer SHA-256 missing from official release page')
 
 
@@ -93,7 +104,11 @@ def target():
                       if (int(a), int(b)) == minor}, reverse=True)
     if not patches:
         raise ValueError(f'python.org publishes no {minor[0]}.{minor[1]} release')
-    for patch in patches[:5]:
+    # Window over every patch of the pinned minor: an EOL or near-EOL minor
+    # can carry many security-only releases ("source-only, no binary") before
+    # the last one that shipped a Windows installer, and all of them still
+    # need to be tried newest-first.
+    for patch in patches:
         try:
             return release('.'.join(map(str, patch)))
         except ValueError:
@@ -150,8 +165,11 @@ def prepare(version, url, digest, log):
         target = STATE / 'downloads' / f'python-{version}-amd64.exe'
         target.parent.mkdir(parents=True, exist_ok=True)
         data = target.read_bytes() if target.is_file() else fetch(url, limit=80 * 1048576)
-        if hashlib.sha256(data).hexdigest() != digest:
-            raise ValueError('Python installer checksum mismatch')
+        if digest:
+            if hashlib.sha256(data).hexdigest() != digest:
+                raise ValueError('Python installer checksum mismatch')
+        else:
+            log.write('Sem SHA-256 na página da release; confiando na assinatura Authenticode verificada a seguir.\n'.encode())
         target.write_bytes(data)
         # Verify Authenticode as well as the checksum from python.org.
         script = "$s=Get-AuthenticodeSignature -LiteralPath '" + str(target).replace("'", "''") + "'; if ($s.Status -ne 'Valid' -or $s.SignerCertificate.Subject -notlike '*Python Software Foundation*') { exit 1 }"

@@ -65,7 +65,7 @@ def install(plan, *, approved=False):
         logs = ROOT / 'logs'
         logs.mkdir(exist_ok=True)
         with (logs / 'gesture-install.log').open('ab') as log:
-            subprocess.run([str(base_python), '-m', 'venv', str(RUNTIME / 'env')],
+            subprocess.run([str(base_python()), '-m', 'venv', str(RUNTIME / 'env')],
                            stdout=log, stderr=subprocess.STDOUT, timeout=90, check=True, shell=False)
             artifacts = []
             for item in plan['packages']:
@@ -74,9 +74,9 @@ def install(plan, *, approved=False):
                         or not re.fullmatch('[a-fA-F0-9]{64}', item['sha256'])):
                     raise ValueError('Invalid install plan')
                 artifacts.append(item['url'] + '#sha256=' + item['sha256'])
-            subprocess.run([str(PYTHON, shell=False), '-m', 'pip', 'install', '--no-deps', *artifacts],
+            subprocess.run([str(PYTHON), '-m', 'pip', 'install', '--no-deps', *artifacts],
                            stdout=log, stderr=subprocess.STDOUT, timeout=300, check=True, shell=False)
-            subprocess.run([str(PYTHON, shell=False), '-m', 'pip', 'check'], stdout=log,
+            subprocess.run([str(PYTHON), '-m', 'pip', 'check'], stdout=log,
                            stderr=subprocess.STDOUT, timeout=30, check=True, shell=False)
             with urllib.request.urlopen(MODEL_URL, timeout=30) as reply:
                 data = reply.read(20 * 1048576 + 1)
